@@ -172,7 +172,8 @@ class NLevelCoarsener : public ICoarsener,
           HypernodeID u = hn;
           HypernodeID v = rating.target;
           // In case v is a high degree vertex, we reverse contraction order to improve performance
-          if ( _hg.nodeDegree(u) < _hg.nodeDegree(v) && _hg.nodeDegree(v) > HIGH_DEGREE_VERTEX_THRESHOLD ) {
+          if ( ( _context.coarsening.use_high_degree_contractions || _hg.nodeDegree(v) > HIGH_DEGREE_VERTEX_THRESHOLD ) &&
+                 _hg.nodeDegree(u) < _hg.nodeDegree(v) ) {
             u = rating.target;
             v = hn;
           }

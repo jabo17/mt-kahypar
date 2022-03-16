@@ -277,7 +277,11 @@ namespace mt_kahypar {
             ("c-num-sub-rounds",
              po::value<size_t>(&context.coarsening.num_sub_rounds_deterministic)->value_name(
                      "<size_t>")->default_value(16),
-             "Number of sub-rounds used for deterministic coarsening.");
+             "Number of sub-rounds used for deterministic coarsening.")
+            ("c-use-high-degree-contractions",
+             po::value<bool>(&context.coarsening.use_high_degree_contractions)->value_name(
+                     "<bool>")->default_value(false),
+             "Contract low degree vertex always on high degree vertex.");
     return options;
   }
 
