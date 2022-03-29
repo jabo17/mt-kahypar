@@ -38,12 +38,21 @@ add_custom_command(TARGET MtKaHyParGraph PRE_BUILD
       -E echo_append "${MT_KAHYPAR_VERSION_GIT_REFSPEC} at sha ${MT_KAHYPAR_VERSION_GIT_SHA1}" >
       ${PROJECT_BINARY_DIR}/mt-kahypar/application/git_mt_kahypar_graph.txt)
 
+
+add_executable(MtKaHyParFlows flows.cc)
+target_link_libraries(MtKaHyParFlows ${Boost_LIBRARIES})
+target_link_libraries(MtKaHyParFlows pthread)
+set_property(TARGET MtKaHyParFlows PROPERTY CXX_STANDARD 17)
+set_property(TARGET MtKaHyParFlows PROPERTY CXX_STANDARD_REQUIRED ON)
+target_compile_definitions(MtKaHyParFlows PUBLIC USE_GRAPH_PARTITIONER)
+
 if(ENABLE_PROFILE MATCHES ON)
   target_link_libraries(MtKaHyParWrapper ${PROFILE_FLAGS})
   target_link_libraries(MtKaHyParDefault ${PROFILE_FLAGS})
   target_link_libraries(MtKaHyParQuality ${PROFILE_FLAGS})
   target_link_libraries(MtKaHyParGraph ${PROFILE_FLAGS})
+  target_link_libraries(MtKaHyParFlows ${PROFILE_FLAGS})
 endif()
 
 
-set(TARGETS_WANTING_ALL_SOURCES ${TARGETS_WANTING_ALL_SOURCES} MtKaHyParWrapper MtKaHyParDefault MtKaHyParQuality MtKaHyParGraph PARENT_SCOPE)
+set(TARGETS_WANTING_ALL_SOURCES ${TARGETS_WANTING_ALL_SOURCES} MtKaHyParWrapper MtKaHyParDefault MtKaHyParQuality MtKaHyParGraph MtKaHyParFlows PARENT_SCOPE)

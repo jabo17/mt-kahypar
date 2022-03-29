@@ -59,6 +59,9 @@ namespace mt_kahypar {
             ("write-partition-file",
              po::value<bool>(&context.partition.write_partition_file)->value_name("<bool>")->default_value(false),
              "If true, then partition output file is generated")
+            ("input-partition-filename",
+             po::value<std::string>(&context.partition.input_partition_filename)->value_name("<string>"),
+             "Input Partition File")
             ("partition-output-folder",
              po::value<std::string>(&context.partition.graph_partition_output_folder)->value_name("<string>"),
              "Output folder for partition file")

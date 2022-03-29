@@ -194,6 +194,9 @@ namespace mt_kahypar::io {
   }
 
   void printPartWeightsAndSizes(const PartitionedHypergraph& hypergraph, const Context& context) {
+    if ( context.partition.k > 128 ) {
+      std::cout << RED << "Only imbalanced blocks are shown (too many blocks)" << END << std::endl;
+    }
     vec<HypernodeID> part_sizes(hypergraph.k(), 0);
     for (HypernodeID u : hypergraph.nodes()) {
       part_sizes[hypergraph.partID(u)]++;
@@ -209,15 +212,17 @@ namespace mt_kahypar::io {
     for (PartitionID i = 0; i != hypergraph.k(); ++i) {
       bool is_imbalanced =
               hypergraph.partWeight(i) > context.partition.max_part_weights[i] || hypergraph.partWeight(i) == 0;
-      if ( is_imbalanced ) std::cout << RED;
-      std::cout << "|block " << std::left  << std::setw(k_digits) << i
-                << std::setw(1) << "| = "  << std::right << std::setw(part_digits) << part_sizes[i]
-                << std::setw(1) << "  w( "  << std::right << std::setw(k_digits) << i
-                << std::setw(1) << " ) = "  << std::right << std::setw(part_digits) << hypergraph.partWeight(i)
-                << std::setw(1) << "  max( " << std::right << std::setw(k_digits) << i
-                << std::setw(1) << " ) = "  << std::right << std::setw(part_digits) << context.partition.max_part_weights[i]
-                << std::endl;
-      if ( is_imbalanced ) std::cout << END;
+      if ( is_imbalanced || context.partition.k <= 128 ) {
+        if ( is_imbalanced ) std::cout << RED;
+        std::cout << "|block " << std::left  << std::setw(k_digits) << i
+                  << std::setw(1) << "| = "  << std::right << std::setw(part_digits) << part_sizes[i]
+                  << std::setw(1) << "  w( "  << std::right << std::setw(k_digits) << i
+                  << std::setw(1) << " ) = "  << std::right << std::setw(part_digits) << hypergraph.partWeight(i)
+                  << std::setw(1) << "  max( " << std::right << std::setw(k_digits) << i
+                  << std::setw(1) << " ) = "  << std::right << std::setw(part_digits) << context.partition.max_part_weights[i]
+                  << std::endl;
+        if ( is_imbalanced ) std::cout << END;
+      }
     }
   }
 
