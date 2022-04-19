@@ -127,6 +127,7 @@ static std::string getBinary(const mt_kahypar::Context& context) {
 static std::string getPresetFile(const mt_kahypar::Context& context) {
   switch ( context.partition.preset_type ) {
     case mt_kahypar::PresetType::deterministic: return std::string(MT_KAHYPAR_CONFIG_DIR) + "deterministic_preset.ini";
+    case mt_kahypar::PresetType::speed_preset: return std::string(MT_KAHYPAR_CONFIG_DIR) + "speed_preset.ini";
     case mt_kahypar::PresetType::default_preset: return std::string(MT_KAHYPAR_CONFIG_DIR) + "default_preset.ini";
     case mt_kahypar::PresetType::default_flows: return std::string(MT_KAHYPAR_CONFIG_DIR) + "default_flow_preset.ini";
     case mt_kahypar::PresetType::quality_preset: return std::string(MT_KAHYPAR_CONFIG_DIR) + "quality_preset.ini";
