@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "mt-kahypar/utils/randomize.h"
 #include "mt-kahypar/partition/refinement/fm/fm_commons.h"
 
 
@@ -39,11 +40,21 @@ namespace mt_kahypar {
    *
    */
 
+template<typename Left, typename Right>
+struct PairLess {
+  bool operator()(const std::pair<Left, Right>& x, const std::pair<Left, Right>& y) const {
+    return x.first < y.first || (x.first == y.first && x.second < y.second);
+  }
+};
+
+template<typename KeyT, typename IdT>
+using RandomizedMaxHeap = ds::Heap<std::pair<KeyT, int>, IdT, PairLess<KeyT, int>, 2>;
+
 class GainCacheStrategy {
 public:
 
-  using BlockPriorityQueue = ds::ExclusiveHandleHeap< ds::MaxHeap<Gain, PartitionID> >;
-  using VertexPriorityQueue = ds::MaxHeap<Gain, HypernodeID>;    // these need external handles
+  using BlockPriorityQueue = ds::ExclusiveHandleHeap< RandomizedMaxHeap<Gain, PartitionID> >;
+  using VertexPriorityQueue = RandomizedMaxHeap<Gain, HypernodeID>;    // these need external handles
 
   static constexpr bool uses_gain_cache = true;
   static constexpr bool maintain_gain_cache_between_rounds = true;
@@ -57,7 +68,8 @@ public:
       sharedData(sharedData),
       blockPQ(static_cast<size_t>(context.partition.k)),
       vertexPQs(static_cast<size_t>(context.partition.k),
-                VertexPriorityQueue(sharedData.vertexPQHandles.data(), numNodes))
+                VertexPriorityQueue(sharedData.vertexPQHandles.data(), numNodes)),
+      cpu_id(sched_getcpu())
       { }
 
   template<typename PHG>
@@ -66,7 +78,7 @@ public:
     const PartitionID pv = phg.partID(v);
     auto [target, gain] = computeBestTargetBlock(phg, v, pv);
     sharedData.targetPart[v] = target;
-    vertexPQs[pv].insert(v, gain);  // blockPQ updates are done later, collectively.
+    vertexPQs[pv].insert(v, std::make_pair(gain, randomInt()));  // blockPQ updates are done later, collectively.
     runStats.pushes++;
   }
 
@@ -90,7 +102,7 @@ public:
     }
 
     sharedData.targetPart[v] = newTarget;
-    vertexPQs[pv].adjustKey(v, gain);
+    vertexPQs[pv].adjustKey(v, std::make_pair(gain, randomInt()));
   }
 
   template<typename PHG>
@@ -105,8 +117,9 @@ public:
     while (true) {
       const PartitionID from = blockPQ.top();
       const HypernodeID u = vertexPQs[from].top();
-      const Gain estimated_gain = vertexPQs[from].topKey();
-      ASSERT(estimated_gain == blockPQ.topKey());
+      const Gain estimated_gain = vertexPQs[from].topKey().first;
+      const int random_part = vertexPQs[from].topKey().second;
+      ASSERT(estimated_gain == blockPQ.topKey().first);
       auto [to, gain] = computeBestTargetBlock(phg, u, phg.partID(u));
 
       if (gain >= estimated_gain) { // accept any gain that is at least as good
@@ -117,7 +130,7 @@ public:
         return true;
       } else {
         runStats.retries++;
-        vertexPQs[from].adjustKey(u, gain);
+        vertexPQs[from].adjustKey(u, std::make_pair(gain, random_part));
         sharedData.targetPart[u] = to;
         if (vertexPQs[from].topKey() != blockPQ.keyOf(from)) {
           blockPQ.adjustKey(from, vertexPQs[from].topKey());
@@ -168,7 +181,12 @@ public:
   }
 
 private:
-
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
+  int randomInt() {
+    ASSERT(cpu_id == sched_getcpu());
+    return utils::Randomize::instance().getRandomInt(std::numeric_limits<int>::min(),
+                                                     std::numeric_limits<int>::max(), cpu_id);
+  }
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   void updatePQs() {
@@ -252,6 +270,8 @@ private:
   // ! in that block) touched by the current local search associated
   // ! with their gain values
   vec<VertexPriorityQueue> vertexPQs;
+
+  int cpu_id;
 };
 
 }
