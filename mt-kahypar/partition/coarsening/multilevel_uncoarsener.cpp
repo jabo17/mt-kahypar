@@ -96,7 +96,11 @@ namespace mt_kahypar {
     }
 
     // If we reach the original hypergraph and partition is imbalanced, we try to rebalance it
-    if (_context.type == kahypar::ContextType::main && !metrics::isBalanced(*_uncoarseningData.partitioned_hg, _context)) {
+    bool is_triggered = false;
+    const HyperedgeWeight metric_before = current_metrics.getMetric(
+      _context.partition.mode, _context.partition.objective);
+    if (_context.type == kahypar::ContextType::main && !metrics::isBalanced(*_uncoarseningData.partitioned_hg, _context) ) {
+      is_triggered = true;
       const HyperedgeWeight quality_before = current_metrics.getMetric(
         Mode::direct, _context.partition.objective);
       if (_context.partition.verbose_output) {
@@ -138,6 +142,15 @@ namespace mt_kahypar {
           }
         }
       }
+    }
+
+    if ( _context.type == kahypar::ContextType::main ) {
+      const HyperedgeWeight metric_after = current_metrics.getMetric(
+        _context.partition.mode, _context.partition.objective);
+      utils::Stats& global_stats = utils::Stats::instance();
+      global_stats.update_stat("rebalancing_triggered", is_triggered);
+      global_stats.update_stat("rebalancing_metric_before", metric_before);
+      global_stats.update_stat("rebalancing_metric_after", metric_after);
     }
 
     ASSERT(metrics::objective(*_uncoarseningData.partitioned_hg, _context.partition.objective) ==
