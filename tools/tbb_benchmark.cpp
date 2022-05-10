@@ -41,10 +41,10 @@ namespace po = boost::program_options;
 
 using HighResClockTimepoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-static double sort_benchmark(int N) {
+static double sort_benchmark(size_t N) {
   // Generate random permutation of the numbers from 0 to N
   mt_kahypar::vec<uint32_t> a(N, 0);
-  tbb::parallel_for(0U, uint32_t(N), [&](uint32_t i) {
+  tbb::parallel_for(0UL, N, [&](size_t i) {
     a[i] = i;
   });
   mt_kahypar::utils::Randomize::instance().shuffleVector(a);
@@ -56,47 +56,47 @@ static double sort_benchmark(int N) {
   return std::chrono::duration<double>(end - start).count();
 }
 
-static double reduce_benchmark(int N) {
+static double reduce_benchmark(size_t N) {
   // Generate bitset of size N
   mt_kahypar::vec<uint32_t> a(N, 0);
-  tbb::parallel_for(0U, uint32_t(N), [&](uint32_t i) {
+  tbb::parallel_for(0UL, N, [&](size_t i) {
     a[i] = mt_kahypar::utils::Randomize::instance().flipCoin(sched_getcpu());
   });
 
   HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
-  uint32_t total_ones = tbb::parallel_reduce(tbb::blocked_range<uint32_t>(0U, uint32_t(N)), 0,
-    [&](const tbb::blocked_range<uint32_t>& range, uint32_t init) {
-      uint32_t ones = init;
-      for (uint32_t i = range.begin(); i < range.end(); ++i) {
+  size_t total_ones = tbb::parallel_reduce(tbb::blocked_range<size_t>(0UL, N), 0UL,
+    [&](const tbb::blocked_range<size_t>& range, size_t init) {
+      size_t ones = init;
+      for (size_t i = range.begin(); i < range.end(); ++i) {
         ones += a[i];
       }
       return ones;
-    }, std::plus<uint32_t>());
+    }, std::plus<size_t>());
   HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
   unused(total_ones);
 
   return std::chrono::duration<double>(end - start).count();
 }
 
-static double prefix_sum_benchmark(int N) {
+static double prefix_sum_benchmark(size_t N) {
   // Generate bitset of size N
   mt_kahypar::vec<uint32_t> a(N, 0);
-  tbb::parallel_for(0U, uint32_t(N), [&](uint32_t i) {
+  tbb::parallel_for(0UL, N, [&](size_t i) {
     a[i] = mt_kahypar::utils::Randomize::instance().flipCoin(sched_getcpu());
   });
 
   HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
   mt_kahypar::parallel::TBBPrefixSum<uint32_t> prefix_sum(a);
-  tbb::parallel_scan(tbb::blocked_range<size_t>(0U, uint32_t(N + 1)), prefix_sum);
+  tbb::parallel_scan(tbb::blocked_range<size_t>(0UL, N + 1), prefix_sum);
   HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
 
   return std::chrono::duration<double>(end - start).count();
 }
 
-static double random_shuffle_benchmark(int N) {
+static double random_shuffle_benchmark(size_t N) {
   // Generate vector with the numbers from 0 to N
   mt_kahypar::vec<uint32_t> a(N, 0);
-  tbb::parallel_for(0U, uint32_t(N), [&](uint32_t i) {
+  tbb::parallel_for(0UL, N, [&](size_t i) {
     a[i] = i;
   });
 
