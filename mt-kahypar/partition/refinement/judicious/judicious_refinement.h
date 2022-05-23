@@ -24,7 +24,7 @@
 namespace mt_kahypar {
 class JudiciousRefiner final : public IRefiner {
 
-  static constexpr bool debug = false;
+  static constexpr bool debug = true;
 
 public:
   explicit JudiciousRefiner(Hypergraph& hypergraph,
@@ -32,9 +32,10 @@ public:
     _hypergraph(hypergraph),
     _context(context),
     _refinement_nodes(context.partition.k),
-    _gain_cache(context, hypergraph.initialNumNodes()),
+    _pq(context, hypergraph.initialNumNodes()),
     _part_loads(static_cast<size_t>(context.partition.k)),
-    _neighbor_deduplicator(hypergraph.initialNumNodes(), 0) {}
+    _gain_changes(hypergraph.initialNumNodes(), 0),
+    _gain_update_state(hypergraph.initialNumNodes(), 0) {}
 
   JudiciousRefiner(const JudiciousRefiner&) = delete;
   JudiciousRefiner(JudiciousRefiner&&) = delete;
@@ -58,21 +59,22 @@ public:
   void revertToBestLocalPrefix(PartitionedHypergraph& phg, const size_t bestGainIndex);
   void updateNeighbors(PartitionedHypergraph& phg, const Move& move);
   void reset();
+
 private:
   bool _is_initialized = false;
   Hypergraph& _hypergraph;
   const Context& _context;
   vec<HypernodeID> _refinement_nodes;
-  JudiciousGainCache _gain_cache;
-  vec<HyperedgeID> _edgesWithGainChanges;
+  JudiciousGainCache _pq;
   vec<Move> _moves;
   ds::ExclusiveHandleHeap<ds::MaxHeap<HyperedgeWeight, PartitionID>> _part_loads;
   // ! Used after a move. Stores whether a neighbor of the just moved vertex has already been updated.
-  vec<HypernodeID> _neighbor_deduplicator;
-  HypernodeID _deduplication_time = 1;
-  Gain _total_improvement = 0;
-  Gain _best_improvement = 0;
   HyperedgeWeight _last_load = 0;
   bool _reached_lower_bound = false;
+  vec<HyperedgeID> _edges_with_gain_changes;
+  vec<HypernodeID> _nodes_with_gain_update;
+  vec<HyperedgeWeight> _gain_changes;
+  vec<size_t> _gain_update_state;
+  size_t _gain_update_time = 0;
 };
 }

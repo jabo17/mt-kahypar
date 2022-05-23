@@ -32,24 +32,25 @@ public:
     _context(context),
     _toPQs(static_cast<size_t>(context.partition.k), PriorityQueue(num_nodes)),
     _blockPQ(static_cast<size_t>(context.partition.k)),
-    _target_parts(num_nodes, kInvalidPartition),
-    _parts(context.partition.k),
-    _blocks_enabled(context.partition.k, true) {
-    std::iota(_parts.begin(), _parts.end(), 0);
-  }
+    _part_loads(static_cast<size_t>(context.partition.k)) { }
 
   void insert(const PartitionedHypergraph& phg, const HypernodeID v) {
-    const PartitionID pv = phg.partID(v);
-    auto [target, gain] = computeBestTargetBlock(phg, v, pv, _parts);
-    _toPQs[target].insert(v, gain);
-    _target_parts[v] = target;
+    const Gain benefit = phg.moveFromBenefit(v);
+    for (PartitionID i = 0; i < _context.partition.k; ++i) {
+      if (i != phg.partID(v)) {
+        _toPQs[i].insert(v, benefit - phg.moveToPenalty(v, i));
+      }
+    }
   }
 
-  void initBlockPQ() {
+  void initBlockPQ(const PartitionedHypergraph &phg) {
     ASSERT(_blockPQ.empty());
     for (PartitionID i = 0; i < _context.partition.k; ++i) {
+      _part_loads.insert(i, phg.partLoad(i));
+    }
+    for (PartitionID i = 0; i < _context.partition.k; ++i) {
       if (!_toPQs[i].empty()) {
-        _blockPQ.insert(i, _toPQs[i].topKey());
+        _blockPQ.insert(i, blockGain(phg, i));
       }
     }
   }
@@ -58,36 +59,25 @@ public:
     _active_part = part_id;
   }
 
-  void updateGain(const PartitionedHypergraph& phg, const HypernodeID v, const Move& move) {
-    const PartitionID pv = phg.partID(v);
-    const PartitionID designatedTargetV = _target_parts[v];
-    ASSERT(_toPQs[designatedTargetV].contains(v));
-    if (designatedTargetV == kInvalidPartition) return;
-    Gain gain = 0;
-    PartitionID newTarget = kInvalidPartition;
+  void decreasePenalty(const HypernodeID v,
+                    const HyperedgeWeight w, const PartitionID to) {
+    _toPQs[to].increaseKey(
+        v, _toPQs[to].keyOf(v) + w);
+  }
 
-    if (phg.k() < 4 || designatedTargetV == move.from || designatedTargetV == move.to || _rebalancing) {
-      // moveToPenalty of designatedTargetV is affected.
-      // and may now be greater than that of other blocks --> recompute full
-      std::tie(newTarget, gain) = computeBestTargetBlock(phg, v, pv, _parts);
-    } else {
-      // moveToPenalty of designatedTargetV is not affected.
-      // only move.from and move.to may be better
-      std::tie(newTarget, gain) = computeBestTargetBlock(phg, v, pv, { designatedTargetV, move.to });
-    }
-
-    if (designatedTargetV == newTarget) {
-      _toPQs[designatedTargetV].adjustKey(v, gain);
-    } else {
-      _toPQs[designatedTargetV].remove(v);
-      _toPQs[newTarget].insert(v, gain);
-      _target_parts[v] = newTarget;
+  void increaseBenefit(const HypernodeID v,
+                    const HyperedgeWeight w, const PartitionID from) {
+    for (PartitionID i = 0; i < _context.partition.k; ++i) {
+      if (i != from) {
+        _toPQs[i].increaseKey(
+          v, _toPQs[i].keyOf(v) + w);
+      }
     }
   }
 
   bool findNextMove(const PartitionedHypergraph& phg, Move& m) {
     ASSERT(!_blockPQ.contains(_active_part));
-    if (!updatePQs()) {
+    if (!updatePQs(phg)) {
       return false;
     }
     ASSERT(!_blockPQ.empty());
@@ -96,93 +86,83 @@ public:
     ASSERT(!_toPQs[to].empty());
     const HypernodeID u = _toPQs[to].top();
     ASSERT(phg.partID(u) == _active_part);
-    auto [_to, gain] = computeBestTargetBlock(phg, u, phg.partID(u), _parts);
-    ASSERT(_to != _active_part);
-    ASSERT(blockIsEnabled(_to));
+    const Gain gain = use_block_load_only ? calculateRealGain(phg, to) : _blockPQ.topKey();
     m.node = u;
     m.from = phg.partID(u);
-    m.to = _to;
+    m.to = to;
     m.gain = gain;
     _toPQs[to].deleteTop();
+    for (PartitionID i = 0; i < _context.partition.k; ++i) {
+      if (i != to && i != m.from) {
+        _toPQs[i].remove(u);
+      }
+    }
+    updateOrRemoveToPQFromBlocks(to, phg);
     return true;
   }
 
   void resetGainCache() {
     for (PartitionID i = 0; i < _context.partition.k; ++i) {
       _toPQs[i].clear();
-      _blocks_enabled[i] = true;
     }
     _blockPQ.clear();
-    _rebalancing = false;
-    _target_parts.assign(_target_parts.size(), kInvalidPartition);
+    _part_loads.clear();
   }
 
-  void setOnlyEnabledBlock(PartitionID p) {
-    _blocks_enabled.assign(_blocks_enabled.size(), false);
-    _blocks_enabled[p] = true;
-    _rebalancing = true;
+  // TODO: maybe share part_load PQ with refiner <2022-05-20, noahares>
+  void updatePartLoads(const PartitionedHypergraph &phg,
+                           const PartitionID from, const PartitionID to) {
+    _part_loads.adjustKey(to, phg.partLoad(to));
+    _part_loads.adjustKey(from, phg.partLoad(from));
   }
 
 private:
 
-  bool blockIsEnabled(PartitionID p) const {
-    return _blocks_enabled[p];
-  }
-
-  bool updatePQs() {
+  bool updatePQs(const PartitionedHypergraph &phg) {
     for (PartitionID i = 0; i < _context.partition.k; ++i) {
-      updateOrRemoveToPQFromBlocks(i);
+      updateOrRemoveToPQFromBlocks(i, phg);
     }
     return !_blockPQ.empty();
   }
 
-  void updateOrRemoveToPQFromBlocks(const PartitionID i) {
+  void updateOrRemoveToPQFromBlocks(const PartitionID i, const PartitionedHypergraph &phg) {
       if (!_toPQs[i].empty()) {
-        if (blockIsEnabled(i)) {
-          _blockPQ.insertOrAdjustKey(i, _toPQs[i].topKey());
-        }
+        _blockPQ.insertOrAdjustKey(i, blockGain(phg, i));
       } else if (_blockPQ.contains(i)) {
         _blockPQ.remove(i);
       }
   }
 
-  std::pair<PartitionID, HyperedgeWeight> computeBestTargetBlock(const PartitionedHypergraph& phg,
-                                                                 const HypernodeID u,
-                                                                 const PartitionID from,
-                                                                 const vec<PartitionID> parts) {
-    const HyperedgeWeight from_load = phg.partLoad(from);
-    PartitionID to = kInvalidPartition;
-    HyperedgeWeight to_load = std::numeric_limits<HyperedgeWeight>::max();
-    HyperedgeWeight to_load_after = std::numeric_limits<HyperedgeWeight>::max();
-    for (PartitionID i : parts) {
-      if (i != from && blockIsEnabled(i)) {
-        const HyperedgeWeight load = phg.partLoad(i);
-        const HyperedgeWeight load_after = load + phg.moveToPenalty(u, i);
-        if (load_after < to_load_after || (load_after == to_load_after && load < to_load)) {
-          to = i;
-          to_load = load;
-          to_load_after = load_after;
-        }
-      }
-    }
-    ASSERT(to != kInvalidPartition);
-    to_load_after += phg.weightOfDisabledEdges(u);
-    Gain benefit = phg.moveFromBenefit(u) + phg.weightOfDisabledEdges(u);
-    HyperedgeWeight from_load_after = from_load - benefit;
-    const Gain gain = to_load_after < from_load_after ? benefit :
-                                                        from_load - to_load_after;
+  Gain blockGain(const PartitionedHypergraph &phg,
+                                    const PartitionID p) const {
+    return use_block_load_only ? -phg.partLoad(p) : calculateRealGain(phg, p);
+  }
 
-    return std::make_pair(to, gain);
+  Gain calculateRealGain(const PartitionedHypergraph& phg, const PartitionID p) const {
+    const HyperedgeWeight load_of_first = _part_loads.topKey();
+    const HypernodeID u = _toPQs[p].top();
+    const Gain penalty = phg.moveToPenalty(u, p) + phg.weightOfDisabledEdges(u);
+    if (load_of_first == phg.partLoad(p)) return -penalty;
+    const Gain benefit = phg.moveFromBenefit(u) + phg.weightOfDisabledEdges(u);
+    const PartitionID from = phg.partID(u);
+    const HyperedgeWeight from_load_after = phg.partLoad(from) - benefit;
+    const HyperedgeWeight to_load_after = phg.partLoad(p) + penalty;
+    const HyperedgeWeight load_of_second = _part_loads.keyOfSecond();
+    if (_part_loads.top() == from) {
+       if (from_load_after > to_load_after && from_load_after > load_of_second) return benefit;
+       else if (from_load_after == to_load_after && from_load_after >= load_of_second) return 0;
+       else return load_of_first - std::max(to_load_after, load_of_second);
+    }
+    else return std::min(load_of_first - to_load_after, 0);
   }
 
   const Context& _context;
   vec<PriorityQueue> _toPQs;
   PriorityQueue _blockPQ;
-  vec<PartitionID> _target_parts;
-  vec<PartitionID> _parts;
-  vec<bool> _blocks_enabled;
-  bool _rebalancing = false;
+  ds::ExclusiveHandleHeap<ds::MaxHeap<HypernodeWeight, PartitionID>>
+      _part_loads;
   // only used for assertions
   PartitionID _active_part;
+  bool use_block_load_only = true;
 };
 }
