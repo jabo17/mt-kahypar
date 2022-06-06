@@ -192,6 +192,10 @@ class IncidentNetArray {
                 const AcquireLockFunc& acquire_lock = NOOP_LOCK_FUNC,
                 const ReleaseLockFunc& release_lock = NOOP_LOCK_FUNC);
 
+  void unsafeContract(const HypernodeID u,
+                      const HypernodeID v,
+                      const kahypar::ds::FastResetFlagArray<>& shared_hes_of_u_and_v);
+
   // ! Uncontract two previously contracted vertices u and v.
   // ! Uncontraction involves to decrement the version number of all incident lists contained
   // ! in v and restore all incident nets with a version number equal to the new version.

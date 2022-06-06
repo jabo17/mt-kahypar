@@ -122,6 +122,22 @@ void IncidentNetArray::contract(const HypernodeID u,
   release_lock(u);
 }
 
+// ! Contracts two incident list of u and v, whereby u is the representative and
+// ! v the contraction partner of the contraction. The contraction involves to remove
+// ! all incident nets shared between u and v from the incident net list of v and append
+// ! the list of v to u.
+void IncidentNetArray::unsafeContract(const HypernodeID u,
+                                      const HypernodeID v,
+                                      const kahypar::ds::FastResetFlagArray<>& shared_hes_of_u_and_v) {
+  // Remove all HEs flagged in shared_hes_of_u_and_v from v
+  removeIncidentNets(v, shared_hes_of_u_and_v);
+
+  // Concatenate double-linked list of u and v
+  append(u, v);
+  header(u)->degree += header(v)->degree;
+  ASSERT(verifyIteratorPointers(u), "Iterator pointers of vertex" << u << "are corrupted");
+}
+
 // ! Uncontract two previously contracted vertices u and v.
 // ! Uncontraction involves to decrement the version number of all incident lists contained
 // ! in v and restore all incident nets with a version number equal to the new version.

@@ -103,6 +103,27 @@ size_t DynamicHypergraph::contract(const HypernodeID v,
   return num_contractions;
 }
 
+void DynamicHypergraph::contract(const HypernodeID u, const HypernodeID v) {
+
+   // Contraction is valid if
+  //  1.) Contraction partner v is enabled
+  //  2.) There are no pending contractions on v
+  //  4.) Resulting node weight is less or equal than a predefined upper bound
+  ASSERT(nodeIsEnabled(u), "Hypernode" << u << "is disabled!");
+  hypernode(u).setWeight(nodeWeight(u) + nodeWeight(v));
+  hypernode(v).disable();
+
+  kahypar::ds::FastResetFlagArray<>& shared_incident_nets_u_and_v = _he_bitset.local();
+  shared_incident_nets_u_and_v.reset();
+  for ( const HyperedgeID& he : incidentEdges(v) ) {
+    contractHyperedge(u, v, he, shared_incident_nets_u_and_v);
+  }
+
+  // Contract incident net lists of u and v
+  _incident_nets.unsafeContract(u, v, shared_incident_nets_u_and_v);
+  shared_incident_nets_u_and_v.reset();
+}
+
 
 /**
  * Uncontracts a batch of contractions in parallel. The batches must be uncontracted exactly

@@ -106,6 +106,19 @@ int main(int argc, char* argv[]) {
     time_mt_kahypar = std::chrono::duration<double>(end - start).count();
   }
 
+  double time_mt_kahypar_opt = 0.0;
+  {
+    // Read Hypergraph
+    Hypergraph hg = mt_kahypar::io::readInputFile(
+      context.partition.graph_filename, context.partition.file_format, true, false);
+    HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
+    for ( const Memento& m : contractions ) {
+      hg.contract(m.u, m.v);
+    }
+    HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
+    time_mt_kahypar_opt = std::chrono::duration<double>(end - start).count();
+  }
+
   double time_kahypar = 0.0;
   {
     // Read Hypergraph
@@ -125,6 +138,7 @@ int main(int argc, char* argv[]) {
   std::cout  << "RESULT graph=" << graph_name
              << " seed=" << context.partition.seed
              << " mt_kahypar_time=" << time_mt_kahypar
+             << " mt_kahypar_time_opt=" << time_mt_kahypar_opt
              << " kahypar_time=" << time_kahypar
              << std::endl;
 

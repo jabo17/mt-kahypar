@@ -741,6 +741,9 @@ class DynamicHypergraph {
   size_t contract(const HypernodeID v,
                   const HypernodeWeight max_node_weight = std::numeric_limits<HypernodeWeight>::max());
 
+  void contract(const HypernodeID u, const HypernodeID v);
+
+
   /**
    * Uncontracts a batch of contractions in parallel. The batches must be uncontracted exactly
    * in the order computed by the function createBatchUncontractionHierarchy(...).
