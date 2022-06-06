@@ -58,4 +58,10 @@ target_link_libraries(TBBBenchmark ${Boost_LIBRARIES})
 set_property(TARGET TBBBenchmark PROPERTY CXX_STANDARD 17)
 set_property(TARGET TBBBenchmark PROPERTY CXX_STANDARD_REQUIRED ON)
 
-set(TARGETS_WANTING_ALL_SOURCES ${TARGETS_WANTING_ALL_SOURCES} EvaluateBipart EvaluatePartition VerifyPartition HgrToZoltan HypergraphStats MetisToScotch SnapToMetis GraphToHgr HgrToParkway SnapGraphToHgr TBBBenchmark PARENT_SCOPE)
+add_executable(NLevelBenchmark nlevel_data_structure_benchmark.cc nlevel_data_structure_benchmark.cc)
+target_link_libraries(NLevelBenchmark ${Boost_LIBRARIES})
+set_property(TARGET NLevelBenchmark PROPERTY CXX_STANDARD 17)
+set_property(TARGET NLevelBenchmark PROPERTY CXX_STANDARD_REQUIRED ON)
+target_compile_definitions(NLevelBenchmark PUBLIC USE_STRONG_PARTITIONER)
+
+set(TARGETS_WANTING_ALL_SOURCES ${TARGETS_WANTING_ALL_SOURCES} EvaluateBipart EvaluatePartition VerifyPartition HgrToZoltan HypergraphStats MetisToScotch SnapToMetis GraphToHgr HgrToParkway SnapGraphToHgr TBBBenchmark NLevelBenchmark PARENT_SCOPE)
