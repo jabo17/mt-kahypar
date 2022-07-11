@@ -60,6 +60,7 @@ private:
                                 const PartitionID heaviest_part);
   void doRefinement(PartitionedHypergraph &phg, const PartitionID part_id);
   void updateNeighbors(PartitionedHypergraph &phg, const Move &move);
+  void rebalancePartition(PartitionedHypergraph &phg, kahypar::Metrics &metrics);
 
 private:
   bool _is_initialized = false;
@@ -77,5 +78,6 @@ private:
   vec<size_t> _gain_update_state;
   size_t _gain_update_time = 0;
   size_t _num_bad_refinements = 0;
+  bool _rebalancing = false;
 };
 } // namespace mt_kahypar

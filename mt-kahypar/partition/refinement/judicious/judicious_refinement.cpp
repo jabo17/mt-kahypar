@@ -21,6 +21,8 @@
 #include "mt-kahypar/partition/refinement/judicious/judicious_refinement.h"
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/partition/metrics.h"
+#include <algorithm>
+#include <boost/range/irange.hpp>
 #include <cmath>
 #include <mt-kahypar/datastructures/priority_queue.h>
 
@@ -36,7 +38,7 @@ bool JudiciousRefiner::refineImpl(PartitionedHypergraph &phg,
     throw std::runtime_error(
         "Call initialize on judicious refinement before calling refine");
   DBG << "Initial judicious load:" << V(metrics::judiciousLoad(phg));
-  ASSERT(_last_load == metrics::judiciousLoad(phg) || _last_load == 0);
+  ASSERT(_last_load == metrics::judiciousLoad(phg) || _last_load == 0 || _rebalancing);
   _part_loads.clear();
   for (PartitionID i = 0; i < _context.partition.k; ++i) {
     _part_loads.insert(i, phg.partLoad(i));
@@ -61,6 +63,20 @@ bool JudiciousRefiner::refineImpl(PartitionedHypergraph &phg,
     done = shouldRefinementStop(phg, from_block, max_load_before_refinement);
   } while (!done);
   finalizeRefinement(phg, initial_max_load);
+  const HyperedgeWeight judicious_load = _part_loads.topKey();
+  HyperedgeWeight min_load = judicious_load;
+  for (PartitionID i = 0; i < _context.partition.k; ++i) {
+    if (phg.partLoad(i) > 0) {
+      min_load = std::min(min_load, phg.partLoad(i));
+    }
+  }
+  const double load_ratio =
+      static_cast<double>(judicious_load) / min_load;
+  if (load_ratio <= _context.refinement.judicious.min_load_ratio && !_rebalancing) {
+    _rebalancing = true;
+    rebalancePartition(phg, metrics);
+  }
+  _rebalancing = false;
   metrics.imbalance = metrics::imbalance(phg, _context);
   return initial_max_load - _part_loads.topKey() > 0;
 }
@@ -233,5 +249,103 @@ void JudiciousRefiner::updateNeighbors(PartitionedHypergraph &phg,
     _gain_update_state.assign(_gain_update_state.size(), 0);
     _gain_update_time = 1;
   }
+}
+
+void JudiciousRefiner::rebalancePartition(PartitionedHypergraph &phg, kahypar::Metrics &metrics) {
+  ASSERT(mt_kahypar::metrics::judiciousLoad(phg) == _part_loads.topKey());
+  const HyperedgeWeight initial_judicious_load = _part_loads.topKey();
+  DBG << "Rebalancing" << V(initial_judicious_load);
+
+  vec<PartitionID> part_ids(phg.initialNumNodes());
+  for (size_t i = 0; i < phg.initialNumNodes(); ++i) {
+    part_ids[i] = phg.partID(i);
+  }
+
+  ds::ExclusiveHandleHeap<ds::Heap<HyperedgeWeight, HypernodeID>> parts(_context.partition.k);
+  for (PartitionID p = 0; p < _context.partition.k; ++p) {
+    parts.insert(p, phg.partLoad(p));
+  }
+
+  auto bestToBlock = [&](const HypernodeID v) {
+    auto targets = boost::irange(0, _context.partition.k);
+    return *std::min_element(targets.begin(), targets.end(), [&phg, v] (const PartitionID a, const PartitionID b) {
+      if (phg.partID(v) == a) return false;
+      if (phg.partID(v) == b) return true;
+      return phg.moveToPenalty(v, a) < phg.moveToPenalty(v, b);
+    });
+  };
+
+  ds::ExclusiveHandleHeap<ds::MaxHeap<HyperedgeWeight, HypernodeID>> benefit_pq(
+      phg.initialNumNodes());
+  const size_t num_rounds = parts.size() / 2;
+  for (PartitionID i = 0; i < static_cast<PartitionID>(num_rounds); ++i) {
+    PartitionID p = parts.top();
+    parts.deleteTop();
+    calculateRefinementNodes(phg, p);
+    benefit_pq.clear();
+    _edges_with_gain_changes.clear();
+    for (const auto v : _refinement_nodes) {
+      benefit_pq.insert(v, phg.moveFromBenefit(v));
+    }
+
+    auto delta_func = [&](const HyperedgeID he, const HyperedgeWeight,
+                          const HypernodeID,
+                          const HypernodeID pin_count_in_from_part_after,
+                          const HypernodeID) {
+      if (pin_count_in_from_part_after == 1) {
+        _edges_with_gain_changes.push_back(he);
+      }
+    };
+
+    auto update_neighbors = [&]() {
+      for (const HyperedgeID &he : _edges_with_gain_changes) {
+        for (const HypernodeID &v : phg.pins(he)) {
+          if (_gain_update_state[v] != _gain_update_time && benefit_pq.contains(v)) {
+            benefit_pq.adjustKey(v, phg.moveFromBenefit(v));
+            _gain_update_state[v] = _gain_update_time;
+          }
+        }
+      }
+      _edges_with_gain_changes.clear();
+      if (++_gain_update_time == 0) {
+        _gain_update_state.assign(_gain_update_state.size(), 0);
+        _gain_update_time = 1;
+      }
+    };
+
+    size_t j = 0;
+    while (j < _refinement_nodes.size() * 0.1) {
+      if (benefit_pq.empty()) break;
+      const HypernodeID v = benefit_pq.top();
+      const HyperedgeWeight benefit = benefit_pq.topKey();
+      benefit_pq.deleteTop();
+      PartitionID to = bestToBlock(v);
+      if (benefit - phg.moveToPenalty(v, to) >= 0) {
+        phg.changeNodePartWithGainCacheUpdate(v, p, to,
+                                              std::numeric_limits<HypernodeWeight>::max(),
+                                              [] {},
+                                              delta_func);
+        ++j;
+        if (parts.contains(to)) {
+          parts.adjustKey(to, phg.partLoad(to));
+        }
+        update_neighbors();
+      }
+    }
+    DBG << "Moved" << V(j) << "nodes during rebalancing";
+  }
+  refine(phg, {}, metrics, 0);
+  if (initial_judicious_load < _part_loads.topKey()) {
+    DBG << RED << "Did not improve judicious load after rebalancing! Reverting changes!" << END;
+    phg.resetPartition();
+    for (size_t i = 0; i < phg.initialNumNodes(); ++i) {
+      phg.setOnlyNodePart(i, part_ids[i]);
+    }
+    phg.initializePartition();
+    _last_load = initial_judicious_load;
+  } else {
+    DBG << "Rebalancing improved judicious load by" << initial_judicious_load - _part_loads.topKey();
+  }
+  _edges_with_gain_changes.clear();
 }
 } // namespace mt_kahypar
