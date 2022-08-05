@@ -23,6 +23,7 @@
 
 #include <queue>
 
+#include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/partition/metrics.h"
 #include "mt-kahypar/partition/refinement/policies/gain_policy.h"

@@ -21,14 +21,11 @@
 
 #pragma once
 
-#include <string>
-#include <chrono>
-
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/context.h"
 
-namespace mt_kahypar::io::serializer {
-  std::string serialize(const PartitionedHypergraph& hypergraph,
-                        const Context& context,
-                        const std::chrono::duration<double>& elapsed_seconds);
-}
+namespace mt_kahypar {
+
+void register_memory_pool(const Hypergraph& hypergraph, const Context& context);
+
+} // namespace mt_kahypar

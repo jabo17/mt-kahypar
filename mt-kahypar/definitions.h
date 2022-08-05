@@ -20,8 +20,7 @@
 #pragma once
 
 #include <chrono>
-#include "mt-kahypar/parallel/hardware_topology.h"
-#include "mt-kahypar/parallel/tbb_initializer.h"
+#include "mt-kahypar/parallel/definitions.h"
 
 #ifdef USE_GRAPH_PARTITIONER
 #ifdef USE_STRONG_PARTITIONER
@@ -46,9 +45,6 @@
 #endif
 
 namespace mt_kahypar {
-
-using HardwareTopology = mt_kahypar::parallel::HardwareTopology<>;
-using TBBInitializer = mt_kahypar::parallel::TBBInitializer<HardwareTopology, false>;
 
 #ifdef USE_GRAPH_PARTITIONER
 #ifdef USE_STRONG_PARTITIONER

@@ -22,7 +22,7 @@
 #include "kahypar/meta/registrar.h"
 
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/factories.h"
+#include "mt-kahypar/partition/coarsening/factories.h"
 
 #include "mt-kahypar/partition/coarsening/deterministic_multilevel_coarsener.h"
 
@@ -44,8 +44,32 @@
     return new coarsener(hypergraph, context, uncoarseningData);                                       \
   })
 
+#define REGISTER_POLICY(policy, id, policy_class)                                                    \
+  static kahypar::meta::Registrar<kahypar::meta::PolicyRegistry<policy> > register_ ## policy_class( \
+    id, new policy_class())
 
 namespace mt_kahypar {
+
+// //////////////////////////////////////////////////////////////////////////////
+//                       Coarsening / Rating Policies
+// //////////////////////////////////////////////////////////////////////////////
+REGISTER_POLICY(RatingFunction, RatingFunction::heavy_edge,
+                HeavyEdgeScore);
+REGISTER_POLICY(RatingFunction, RatingFunction::sameness,
+                SamenessScore);
+
+REGISTER_POLICY(HeavyNodePenaltyPolicy, HeavyNodePenaltyPolicy::no_penalty,
+                NoWeightPenalty);
+REGISTER_POLICY(HeavyNodePenaltyPolicy, HeavyNodePenaltyPolicy::multiplicative_penalty,
+                MultiplicativePenalty);
+REGISTER_POLICY(HeavyNodePenaltyPolicy, HeavyNodePenaltyPolicy::additive,
+                AdditivePenalty);
+
+REGISTER_POLICY(AcceptancePolicy, AcceptancePolicy::best,
+                BestRatingWithTieBreaking);
+REGISTER_POLICY(AcceptancePolicy, AcceptancePolicy::best_prefer_unmatched,
+                BestRatingPreferringUnmatched);
+
 REGISTER_DISPATCHED_COARSENER(CoarseningAlgorithm::multilevel_coarsener,
                               MultilevelCoarsenerDispatcher,
                               kahypar::meta::PolicyRegistry<RatingFunction>::getInstance().getPolicy(

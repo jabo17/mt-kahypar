@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of Mt-KaHyPar.
  *
- * Copyright (C) 2019 Lars Gottesbüren <lars.gottesbueren@kit.edu>
  * Copyright (C) 2019 Tobias Heuer <tobias.heuer@kit.edu>
  *
  * Mt-KaHyPar is free software: you can redistribute it and/or modify
@@ -18,17 +17,12 @@
  * along with Mt-KaHyPar.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #pragma once
 
-#include <string>
-#include <chrono>
+#include "mt-kahypar/parallel/hardware_topology.h"
+#include "mt-kahypar/parallel/tbb_initializer.h"
 
-#include "mt-kahypar/definitions.h"
-#include "mt-kahypar/partition/context.h"
-
-namespace mt_kahypar::io::serializer {
-  std::string serialize(const PartitionedHypergraph& hypergraph,
-                        const Context& context,
-                        const std::chrono::duration<double>& elapsed_seconds);
-}
+namespace mt_kahypar {
+using HardwareTopology = mt_kahypar::parallel::HardwareTopology<>;
+using TBBInitializer = mt_kahypar::parallel::TBBInitializer<HardwareTopology, false>;
+}  // namespace mt_kahypar

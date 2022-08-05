@@ -709,7 +709,6 @@ private:
 
   // ! Only for testing
   HyperedgeWeight moveToBenefitRecomputed(const HypernodeID u, PartitionID p) const {
-    PartitionID part_id = partID(u);
     HyperedgeWeight w = 0;
     for (HyperedgeID e : incidentEdges(u)) {
       if (!isSinglePin(e) && partID(edgeTarget(e)) == p) {
@@ -719,7 +718,7 @@ private:
     return w;
   }
 
-  void recomputeMoveFromPenalty(const HypernodeID u) {
+  void recomputeMoveFromPenalty(const HypernodeID) {
     // Nothing to do here
   }
 
@@ -824,6 +823,7 @@ private:
           ASSERT(he_mapping[edge] < num_edges);
           edge_weight[he_mapping[edge]] = edgeWeight(edge);
           for (const HypernodeID& pin : pins(edge)) {
+            unused(pin);
             edge_vector[he_mapping[edge]] = {node_mapping[source], node_mapping[target]};
           }
         }

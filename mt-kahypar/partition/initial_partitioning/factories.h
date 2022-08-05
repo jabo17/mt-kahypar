@@ -21,14 +21,17 @@
 
 #pragma once
 
-#include <string>
-#include <chrono>
+#include "kahypar/meta/abstract_factory.h"
+#include "kahypar/meta/static_multi_dispatch_factory.h"
+#include "kahypar/meta/typelist.h"
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/context.h"
+#include "mt-kahypar/partition/initial_partitioning/i_initial_partitioner.h"
 
-namespace mt_kahypar::io::serializer {
-  std::string serialize(const PartitionedHypergraph& hypergraph,
-                        const Context& context,
-                        const std::chrono::duration<double>& elapsed_seconds);
-}
+namespace mt_kahypar {
+
+using InitialPartitionerFactory = kahypar::meta::Factory<Mode,
+                                                         IInitialPartitioner* (*)(PartitionedHypergraph&, const Context&)>;
+
+}  // namespace mt_kahypar

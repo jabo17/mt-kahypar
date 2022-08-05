@@ -23,7 +23,7 @@
 
 
 #include "mt-kahypar/io/command_line_options.h"
-#include "mt-kahypar/partition/registries/register_memory_pool.h"
+#include "mt-kahypar/parallel/register_memory_pool.h"
 #include "mt-kahypar/io/hypergraph_io.h"
 #include "mt-kahypar/io/sql_plottools_serializer.h"
 #include "mt-kahypar/io/csv_output.h"

@@ -22,7 +22,7 @@
 #include "kahypar/meta/registrar.h"
 #include "mt-kahypar/partition/context.h"
 
-#include "mt-kahypar/partition/factories.h"
+#include "mt-kahypar/partition/refinement/factories.h"
 #include "mt-kahypar/partition/refinement/do_nothing_refiner.h"
 #include "mt-kahypar/partition/refinement/flows/do_nothing_refiner.h"
 #include "mt-kahypar/partition/refinement/flows/flow_refiner.h"

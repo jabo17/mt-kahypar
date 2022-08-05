@@ -21,50 +21,7 @@
 
 #pragma once
 
-#include "kahypar/meta/abstract_factory.h"
-#include "kahypar/meta/static_multi_dispatch_factory.h"
-#include "kahypar/meta/typelist.h"
-
-#include "mt-kahypar/partition/coarsening/nlevel_coarsener.h"
-#include "mt-kahypar/partition/coarsening/multilevel_coarsener.h"
-#include "mt-kahypar/partition/coarsening/i_coarsener.h"
-#include "mt-kahypar/partition/coarsening/policies/rating_acceptance_policy.h"
-#include "mt-kahypar/partition/coarsening/policies/rating_heavy_node_penalty_policy.h"
-#include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/initial_partitioning/i_initial_partitioner.h"
-#include "mt-kahypar/partition/preprocessing/sparsification/i_hypergraph_sparsifier.h"
-#include "mt-kahypar/partition/refinement/i_refiner.h"
-#include "mt-kahypar/partition/refinement/flows/i_flow_refiner.h"
-
-namespace mt_kahypar {
-
-using HypergraphSparsifierFactory = kahypar::meta::Factory<SimiliarNetCombinerStrategy,
-                                                           IHypergraphSparsifier* (*)(const Context&)>;
-
-using CoarsenerFactory = kahypar::meta::Factory<CoarseningAlgorithm,
-                                                ICoarsener* (*)(Hypergraph&, const Context&, UncoarseningData&)>;
-
-using MultilevelCoarsenerDispatcher = kahypar::meta::StaticMultiDispatchFactory<MultilevelCoarsener,
-                                                                                ICoarsener,
-                                                                                kahypar::meta::Typelist<RatingScorePolicies,
-                                                                                                        HeavyNodePenaltyPolicies,
-                                                                                                        AcceptancePolicies> >;
-
-using NLevelCoarsenerDispatcher = kahypar::meta::StaticMultiDispatchFactory<NLevelCoarsener,
-                                                                            ICoarsener,
-                                                                            kahypar::meta::Typelist<RatingScorePolicies,
-                                                                                                        HeavyNodePenaltyPolicies,
-                                                                                                        AcceptancePolicies> >;
-
-using InitialPartitionerFactory = kahypar::meta::Factory<Mode,
-                                                         IInitialPartitioner* (*)(PartitionedHypergraph&, const Context&)>;
-
-using LabelPropagationFactory = kahypar::meta::Factory<LabelPropagationAlgorithm,
-                                                       IRefiner* (*)(Hypergraph&, const Context&)>;
-
-using FMFactory = kahypar::meta::Factory<FMAlgorithm,
-                                         IRefiner* (*)(Hypergraph&, const Context&)>;
-
-using FlowRefinementFactory = kahypar::meta::Factory<FlowAlgorithm,
-                              IFlowRefiner* (*)(const Hypergraph&, const Context&)>;
-}  // namespace mt_kahypar
+#include "mt-kahypar/partition/preprocessing/factories.h"
+#include "mt-kahypar/partition/coarsening/factories.h"
+#include "mt-kahypar/partition/initial_partitioning/factories.h"
+#include "mt-kahypar/partition/refinement/factories.h"

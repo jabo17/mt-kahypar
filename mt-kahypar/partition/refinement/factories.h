@@ -21,10 +21,22 @@
 
 #pragma once
 
+#include "kahypar/meta/abstract_factory.h"
+#include "kahypar/meta/static_multi_dispatch_factory.h"
+#include "kahypar/meta/typelist.h"
+
 #include "mt-kahypar/partition/context.h"
+#include "mt-kahypar/partition/refinement/i_refiner.h"
+#include "mt-kahypar/partition/refinement/flows/i_flow_refiner.h"
 
 namespace mt_kahypar {
 
-void register_memory_pool(const Hypergraph& hypergraph, const Context& context);
+using LabelPropagationFactory = kahypar::meta::Factory<LabelPropagationAlgorithm,
+                                                       IRefiner* (*)(Hypergraph&, const Context&)>;
 
-} // namespace mt_kahypar
+using FMFactory = kahypar::meta::Factory<FMAlgorithm,
+                                         IRefiner* (*)(Hypergraph&, const Context&)>;
+
+using FlowRefinementFactory = kahypar::meta::Factory<FlowAlgorithm,
+                              IFlowRefiner* (*)(const Hypergraph&, const Context&)>;
+}  // namespace mt_kahypar

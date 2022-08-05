@@ -21,6 +21,8 @@
 
 #include "context.h"
 
+#include "mt-kahypar/parallel/definitions.h"
+
 namespace mt_kahypar {
 
   std::ostream & operator<< (std::ostream& str, const PartitioningParameters& params) {
