@@ -1,8 +1,3 @@
-add_subdirectory(preprocessing/)
-add_subdirectory(coarsening)
-add_subdirectory(refinement)
-add_subdirectory(initial_partitioning)
-
 set(PartitionSources
         partitioner.cpp
         multilevel.cpp
@@ -63,3 +58,8 @@ foreach(modtarget IN LISTS TARGETS_WANTING_ALL_SOURCES)
     target_link_libraries(${modtarget} MtKaHyParPartitionGraphQuality MtKaHyParContext)
   endif()
 endforeach()
+
+add_subdirectory(preprocessing/)
+add_subdirectory(coarsening)
+add_subdirectory(refinement)
+add_subdirectory(initial_partitioning)
