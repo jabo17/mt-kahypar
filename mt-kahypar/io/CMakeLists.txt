@@ -24,6 +24,7 @@ list(APPEND IO_LIBRARIES
       MtKaHyParIOGraphQuality)
 
 foreach(io_lib ${IO_LIBRARIES})
+  target_link_libraries(${io_lib} ${Boost_LIBRARIES})
   set_property(TARGET ${io_lib} PROPERTY CXX_STANDARD 17)
   set_property(TARGET ${io_lib} PROPERTY CXX_STANDARD_REQUIRED ON)
 endforeach()
