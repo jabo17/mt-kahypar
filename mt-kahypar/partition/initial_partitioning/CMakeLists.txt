@@ -5,6 +5,9 @@ set(InitialPartitioningSources
         flat/label_propagation_initial_partitioner.cpp
         recursive_bipartitioning_initial_partitioner.cpp
         deep_initial_partitioner.cpp
+        )
+
+set(RegistrySources
         register_initial_partitioning_algorithms.cpp
         )
 
@@ -32,6 +35,7 @@ foreach(ip_lib ${IP_LIBRARIES})
 endforeach()
 
 foreach(modtarget IN LISTS TARGETS_WANTING_ALL_SOURCES)
+  target_sources(${modtarget} PRIVATE ${RegistrySources})
   get_target_property(compile_defs ${modtarget} COMPILE_DEFINITIONS)
   SET(STRONG FALSE)
   SET(GRAPH FALSE)

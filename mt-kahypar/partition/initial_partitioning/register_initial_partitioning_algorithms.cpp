@@ -22,7 +22,7 @@
 #include "kahypar/meta/registrar.h"
 
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/factories.h"
+#include "mt-kahypar/partition/initial_partitioning/factories.h"
 
 #include "mt-kahypar/partition/initial_partitioning/deep_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/recursive_bipartitioning_initial_partitioner.h"

@@ -2,6 +2,9 @@ set(CoarseningSources
         deterministic_multilevel_coarsener.cpp
         multilevel_uncoarsener.cpp
         nlevel_uncoarsener.cpp
+        )
+
+set(RegistrySources
         register_coarsening_algorithms.cpp
         )
 
@@ -29,6 +32,7 @@ foreach(coarsening_lib ${COARSENING_LIBRARIES})
 endforeach()
 
 foreach(modtarget IN LISTS TARGETS_WANTING_ALL_SOURCES)
+  target_sources(${modtarget} PRIVATE ${RegistrySources})
   get_target_property(compile_defs ${modtarget} COMPILE_DEFINITIONS)
   SET(STRONG FALSE)
   SET(GRAPH FALSE)

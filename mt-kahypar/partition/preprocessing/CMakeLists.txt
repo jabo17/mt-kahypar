@@ -1,8 +1,11 @@
 set(PreprocessingSources
         community_detection/parallel_louvain.cpp
         community_detection/local_moving_modularity.cpp
-        ${PROJECT_SOURCE_DIR}/mt-kahypar/datastructures/graph.cpp
-        register_preprocessing_algorithms.cpp)
+        ${PROJECT_SOURCE_DIR}/mt-kahypar/datastructures/graph.cpp)
+
+set(RegistrySources
+        register_preprocessing_algorithms.cpp
+        )
 
 add_library(MtKaHyParPreprocessingDefault STATIC ${PreprocessingSources})
 
@@ -28,6 +31,7 @@ foreach(preprocessing_lib ${PREPROCESSING_LIBRARIES})
 endforeach()
 
 foreach(modtarget IN LISTS TARGETS_WANTING_ALL_SOURCES)
+  target_sources(${modtarget} PRIVATE ${RegistrySources})
   get_target_property(compile_defs ${modtarget} COMPILE_DEFINITIONS)
   SET(STRONG FALSE)
   SET(GRAPH FALSE)

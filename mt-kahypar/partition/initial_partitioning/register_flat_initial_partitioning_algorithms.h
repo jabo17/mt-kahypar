@@ -22,7 +22,6 @@
 #pragma once
 
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/factories.h"
 
 #include "mt-kahypar/partition/initial_partitioning/flat/random_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/flat/bfs_initial_partitioner.h"

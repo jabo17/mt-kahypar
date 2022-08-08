@@ -23,7 +23,7 @@
 #include "kahypar/meta/registrar.h"
 
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/factories.h"
+#include "mt-kahypar/partition/preprocessing/factories.h"
 #include "mt-kahypar/partition/preprocessing/sparsification/hypergraph_sparsifier.h"
 #include "mt-kahypar/partition/preprocessing/sparsification/policies/similiar_net_combine.h"
 
