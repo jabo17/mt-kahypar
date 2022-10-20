@@ -63,6 +63,38 @@ class MultilevelCoarsener : public ICoarsener,
     MATCHED = 2
   };
 
+  struct ConflictStats {
+    explicit ConflictStats() :
+      cluster_join_operations(0),
+      success(0),
+      conflicts(0),
+      path_conflicts(0),
+      cyclic_conflicts(0),
+      max_allowed_node_weight(0),
+      rejects(0),
+      largest_cycle(0) { }
+
+    void reset() {
+      cluster_join_operations = 0;
+      success = 0;
+      conflicts = 0;
+      path_conflicts = 0;
+      cyclic_conflicts = 0;
+      max_allowed_node_weight = 0;
+      rejects = 0;
+      largest_cycle = 0;
+    }
+
+    size_t cluster_join_operations;
+    size_t success;
+    size_t conflicts;
+    size_t path_conflicts;
+    size_t cyclic_conflicts;
+    size_t max_allowed_node_weight;
+    size_t rejects;
+    size_t largest_cycle;
+  };
+
   #define STATE(X) static_cast<uint8_t>(X)
   using AtomicMatchingState = parallel::IntegralAtomicWrapper<uint8_t>;
   using AtomicWeight = parallel::IntegralAtomicWrapper<HypernodeWeight>;
@@ -82,6 +114,7 @@ class MultilevelCoarsener : public ICoarsener,
     _cluster_weight(),
     _matching_partner(),
     _max_allowed_node_weight(context.coarsening.max_allowed_node_weight),
+    _conflict_stats(),
     _progress_bar(hypergraph.initialNumNodes(), 0, false),
     _enable_randomization(true) {
     _progress_bar += hypergraph.numRemovedHypernodes();
@@ -147,6 +180,7 @@ class MultilevelCoarsener : public ICoarsener,
 
     int pass_nr = 0;
     const HypernodeID initial_num_nodes = Base::currentNumNodes();
+    bool is_top_level = true;
     while ( Base::currentNumNodes() > _context.coarsening.contraction_limit ) {
       HighResClockTimepoint round_start = std::chrono::high_resolution_clock::now();
       Hypergraph& current_hg = Base::currentHypergraph();
@@ -184,6 +218,10 @@ class MultilevelCoarsener : public ICoarsener,
       }
       _rater.resetMatches();
       _rater.setCurrentNumberOfNodes(current_hg.initialNumNodes());
+      for ( ConflictStats& stat : _conflict_stats ) {
+        stat.reset();
+      }
+
       const HypernodeID num_hns_before_pass = current_hg.initialNumNodes() - current_hg.numRemovedHypernodes();
       const HypernodeID num_pins_before_pass = current_hg.initialNumPins();
       const HypernodeID hierarchy_contraction_limit = hierarchyContractionLimit(current_hg);
@@ -278,10 +316,38 @@ class MultilevelCoarsener : public ICoarsener,
       }
       _progress_bar += (num_hns_before_pass - current_num_nodes);
 
+      ConflictStats stats;
+      for ( const ConflictStats& stat : _conflict_stats ) {
+        stats.cluster_join_operations += stat.cluster_join_operations;
+        stats.success += stat.success;
+        stats.conflicts += stat.conflicts;
+        stats.path_conflicts += stat.path_conflicts;
+        stats.cyclic_conflicts += stat.cyclic_conflicts;
+        stats.max_allowed_node_weight += stat.max_allowed_node_weight;
+        stats.rejects += stat.rejects;
+        stats.largest_cycle = std::max(stats.largest_cycle, stat.largest_cycle);
+      }
+
+      std::cout << "CLUSTERING_RESULT"
+                << " num_nodes=" << current_hg.initialNumNodes()
+                << " num_edges=" << current_hg.initialNumEdges()
+                << " num_pins=" << current_hg.initialNumPins()
+                << " top_level=" << is_top_level
+                << " cluster_join_operations=" << stats.cluster_join_operations
+                << " success=" << stats.success
+                << " conflicts=" << stats.conflicts
+                << " path_conflicts=" << stats.path_conflicts
+                << " cyclic_conflicts=" << stats.cyclic_conflicts
+                << " max_allowed_node_weight=" << stats.max_allowed_node_weight
+                << " rejects=" << stats.rejects
+                << " largest_cycle=" << stats.largest_cycle
+                << std::endl;
+
       utils::Timer::instance().start_timer("contraction", "Contraction");
       // Perform parallel contraction
       _uncoarseningData.performMultilevelContraction(std::move(cluster_ids), round_start);
       utils::Timer::instance().stop_timer("contraction");
+      is_top_level = false;
 
       if ( _context.coarsening.use_adaptive_max_allowed_node_weight ) {
         // If the reduction ratio of the number of vertices or pins is below
@@ -337,6 +403,8 @@ class MultilevelCoarsener : public ICoarsener,
     ASSERT(v < hypergraph.initialNumNodes());
     uint8_t unmatched = STATE(MatchingState::UNMATCHED);
     uint8_t match_in_progress = STATE(MatchingState::MATCHING_IN_PROGRESS);
+    ConflictStats& stats = _conflict_stats.local();
+    ++stats.cluster_join_operations;
 
     // Indicates that u wants to join the cluster of v.
     // Will be important later for conflict resolution.
@@ -372,6 +440,8 @@ class MultilevelCoarsener : public ICoarsener,
               _cluster_weight[cluster_v] += weight_u;
               ++contracted_nodes;
               success = true;
+            } else {
+              ++stats.max_allowed_node_weight;
             }
           }
         } else if ( _matching_state[v].compare_exchange_strong(unmatched, match_in_progress) ) {
@@ -386,21 +456,27 @@ class MultilevelCoarsener : public ICoarsener,
           // State of v must be either MATCHING_IN_PROGRESS or an other thread changed the state
           // in the meantime to MATCHED. We have to wait until the state of v changed to
           // MATCHED or resolve the conflict if u is matched within a cyclic matching dependency
+          ++stats.conflicts;
 
           // Conflict Resolution
+          size_t largest_cycle = 0;
+          bool found_cycle = false;
           while ( _matching_state[v] == STATE(MatchingState::MATCHING_IN_PROGRESS) ) {
 
             // Check if current vertex is in a cyclic matching dependency
             HypernodeID cur_u = u;
             HypernodeID smallest_node_id_in_cycle = cur_u;
+            largest_cycle = 0;
             while ( _matching_partner[cur_u] != u && _matching_partner[cur_u] != cur_u ) {
               cur_u = _matching_partner[cur_u];
               smallest_node_id_in_cycle = std::min(smallest_node_id_in_cycle, cur_u);
+              ++largest_cycle;
             }
 
             // Resolve cyclic matching dependency
             // Vertex with smallest id starts to resolve conflict
             const bool is_in_cyclic_dependency = _matching_partner[cur_u] == u;
+            found_cycle = found_cycle | is_in_cyclic_dependency;
             if ( is_in_cyclic_dependency && u == smallest_node_id_in_cycle) {
               cluster_ids[u] = v;
               _cluster_weight[v] += weight_u;
@@ -409,6 +485,13 @@ class MultilevelCoarsener : public ICoarsener,
               _matching_state[u] = STATE(MatchingState::MATCHED);
               success = true;
             }
+          }
+
+          if ( found_cycle ) {
+            ++stats.cyclic_conflicts;
+            stats.largest_cycle = std::max(stats.largest_cycle, largest_cycle);
+          } else {
+            ++stats.path_conflicts;
           }
 
           // If u is still in state MATCHING_IN_PROGRESS its matching partner v
@@ -430,8 +513,18 @@ class MultilevelCoarsener : public ICoarsener,
         _rater.markAsMatched(v);
         _matching_partner[u] = u;
         _matching_state[u] = STATE(MatchingState::MATCHED);
+      } else {
+        ++stats.conflicts;
+        ++stats.rejects;
       }
+    } else {
+      ++stats.max_allowed_node_weight;
     }
+
+    if ( success ) {
+      ++stats.success;
+    }
+
     return success;
   }
 
@@ -467,6 +560,7 @@ class MultilevelCoarsener : public ICoarsener,
   parallel::scalable_vector<AtomicWeight> _cluster_weight;
   parallel::scalable_vector<HypernodeID> _matching_partner;
   HypernodeWeight _max_allowed_node_weight;
+  tbb::enumerable_thread_specific<ConflictStats> _conflict_stats;
   utils::ProgressBar _progress_bar;
   bool _enable_randomization;
 };
