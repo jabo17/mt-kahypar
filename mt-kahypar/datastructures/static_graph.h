@@ -617,6 +617,10 @@ class StaticGraph {
     return node(u + 1).firstEntry() - node(u).firstEntry();
   }
 
+  HyperedgeID nodeBegin(const HypernodeID u) const {
+      return node(u).firstEntry();
+  }
+
   // ! Returns whether a hypernode is enabled or not
   bool nodeIsEnabled(const HypernodeID u) const {
     return !node(u).isDisabled();

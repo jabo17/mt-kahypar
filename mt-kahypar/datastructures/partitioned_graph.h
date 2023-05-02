@@ -352,6 +352,10 @@ private:
     return _hg->nodeDegree(u);
   }
 
+  HyperedgeID nodeBegin(const HypernodeID u) const {
+    return _hg->nodeBegin(u);
+  }
+
   // ! Returns, whether a hypernode is enabled or not
   bool nodeIsEnabled(const HypernodeID u) const {
     return _hg->nodeIsEnabled(u);
