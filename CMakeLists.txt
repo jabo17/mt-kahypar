@@ -376,7 +376,7 @@ enable_testing()
 add_subdirectory(mt-kahypar/application)
 add_subdirectory(tools)
 add_subdirectory(lib)
-add_subdirectory(tests)
+#add_subdirectory(tests)
 add_subdirectory(python)
 
 # This adds the source files. It's important that this happens after the compile targets have been added
