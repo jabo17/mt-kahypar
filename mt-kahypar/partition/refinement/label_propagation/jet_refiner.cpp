@@ -111,7 +111,7 @@ bool JetRefiner<TypeTraits, GainCache>::refineImpl(
         << " imbalance=" << kaminpar::shm::metrics::imbalance(p_graph);
 
     hypergraph.doParallelForAllNodes([&](const HypernodeID u) {
-        hypergraph.changeNodePart(u, hypergraph.partID(u), part[u]);
+        hypergraph.changeNodePart(u, hypergraph.partID(u), p_graph.block(u));
     });
 
     LOG << "[MtKaHyPar] Metrics *after* calling JetRefiner: cut="
