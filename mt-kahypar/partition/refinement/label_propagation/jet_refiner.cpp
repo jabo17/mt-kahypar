@@ -13,8 +13,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ *all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -27,43 +27,40 @@
 
 #include "mt-kahypar/partition/refinement/label_propagation/jet_refiner.h"
 
-#include "tbb/parallel_for.h"
-
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/metrics.h"
-#include "mt-kahypar/utils/randomize.h"
-#include "mt-kahypar/utils/utilities.h"
-#include "mt-kahypar/utils/timer.h"
 #include "mt-kahypar/utils/cast.h"
+#include "mt-kahypar/utils/randomize.h"
+#include "mt-kahypar/utils/timer.h"
+#include "mt-kahypar/utils/utilities.h"
+#include "tbb/parallel_for.h"
 
 namespace mt_kahypar {
 
-  template <typename TypeTraits, typename GainCache>
-  bool JetRefiner<TypeTraits, GainCache>::refineImpl(
-                  mt_kahypar_partitioned_hypergraph_t& phg,
-                  const parallel::scalable_vector<HypernodeID>& refinement_nodes,
-                  Metrics& best_metrics,
-                  const double)  {
+template <typename TypeTraits, typename GainCache>
+bool JetRefiner<TypeTraits, GainCache>::refineImpl(
+    mt_kahypar_partitioned_hypergraph_t& phg,
+    const parallel::scalable_vector<HypernodeID>&, Metrics& best_metrics,
+    const double) {
     PartitionedHypergraph& hypergraph = utils::cast<PartitionedHypergraph>(phg);
     unused(hypergraph);
 
-    if ( _context.forceGainCacheUpdates() && _gain_cache.isInitialized() ) {
-      // Do gain cache updates for moved nodes
-    }
 
     return false /* converged */;
-  }
+}
 
-  template <typename TypeTraits, typename GainCache>
-  void JetRefiner<TypeTraits, GainCache>::initializeImpl(mt_kahypar_partitioned_hypergraph_t& phg) {
+template <typename TypeTraits, typename GainCache>
+void JetRefiner<TypeTraits, GainCache>::initializeImpl(
+    mt_kahypar_partitioned_hypergraph_t& phg) {
     PartitionedHypergraph& hypergraph = utils::cast<PartitionedHypergraph>(phg);
     unused(hypergraph);
-  }
-
-  namespace {
-  #define JET_REFINER(X, Y) JetRefiner<X, Y>
-  }
-
-  // explicitly instantiate so the compiler can generate them when compiling this cpp file
-  INSTANTIATE_CLASS_WITH_TYPE_TRAITS_AND_GAIN_CACHE(JET_REFINER)
 }
+
+namespace {
+#define JET_REFINER(X, Y) JetRefiner<X, Y>
+}  // namespace
+
+// explicitly instantiate so the compiler can generate them when compiling this
+// cpp file
+INSTANTIATE_CLASS_WITH_TYPE_TRAITS_AND_GAIN_CACHE(JET_REFINER)
+}  // namespace mt_kahypar
