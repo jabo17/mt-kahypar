@@ -44,6 +44,7 @@
 #include "mt-kahypar/partition/refinement/i_refiner.h"
 #include "mt-kahypar/partition/refinement/flows/i_flow_refiner.h"
 #include "mt-kahypar/partition/refinement/label_propagation/label_propagation_refiner.h"
+#include "mt-kahypar/partition/refinement/label_propagation/jet_refiner.h"
 #include "mt-kahypar/partition/refinement/deterministic/deterministic_label_propagation.h"
 #include "mt-kahypar/partition/refinement/fm/multitry_kway_fm.h"
 #include "mt-kahypar/partition/refinement/gains/gain_cache_ptr.h"
@@ -98,6 +99,11 @@ using FMFactory = kahypar::meta::Factory<FMAlgorithm,
 
 using FMDispatcher = kahypar::meta::StaticMultiDispatchFactory<
                       MultiTryKWayFM,
+                      IRefiner,
+                      kahypar::meta::Typelist<TypeTraitsList, GainCacheTypes>>;
+
+using JetDispatcher = kahypar::meta::StaticMultiDispatchFactory<
+                      JetRefiner,
                       IRefiner,
                       kahypar::meta::Typelist<TypeTraitsList, GainCacheTypes>>;
 

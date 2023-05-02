@@ -131,6 +131,12 @@ REGISTER_DISPATCHED_FM_REFINER(FMAlgorithm::kway_fm,
                                 context.partition.partition_type),
                                kahypar::meta::PolicyRegistry<GainPolicy>::getInstance().getPolicy(
                                 context.partition.gain_policy));
+REGISTER_DISPATCHED_FM_REFINER(FMAlgorithm::jet,
+                               JetDispatcher,
+                               kahypar::meta::PolicyRegistry<mt_kahypar_partition_type_t>::getInstance().getPolicy(
+                                context.partition.partition_type),
+                               kahypar::meta::PolicyRegistry<GainPolicy>::getInstance().getPolicy(
+                                context.partition.gain_policy));
 REGISTER_FM_REFINER(FMAlgorithm::do_nothing, DoNothingRefiner, 2);
 
 REGISTER_DISPATCHED_FLOW_SCHEDULER(FlowAlgorithm::flow_cutter,
