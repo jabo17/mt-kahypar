@@ -107,6 +107,11 @@ bool JetRefiner<TypeTraits, GainCache>::refineImpl(
 
     kaminpar::shm::Graph graph(std::move(xadj), std::move(adjncy),
                                std::move(vwgt), std::move(adjwgt), false);
+    /*for (const NodeID u : graph.nodes()) {
+        if (part[u] >= 32) {
+            LOG << "ERROR";
+        }
+    }*/
     kaminpar::shm::PartitionedGraph p_graph(graph, hypergraph.k(),
                                             std::move(part));
     // kaminpar::shm::validate_graph(graph);
