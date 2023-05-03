@@ -29,6 +29,7 @@
 
 #include <common/datastructures/static_array.h>
 #include <common/parallel/algorithm.h>
+#include <common/timer.h>
 #include <kaminpar/context.h>
 #include <kaminpar/datastructures/graph.h>
 #include <kaminpar/datastructures/partitioned_graph.h>
@@ -56,29 +57,50 @@ bool JetRefiner<TypeTraits, GainCache>::refineImpl(
 
     PartitionedHypergraph& hypergraph = utils::cast<PartitionedHypergraph>(phg);
 
+    DISABLE_TIMERS();
+
     LOG << "[MtKaHyPar] Metrics *before* calling JetRefiner: cut="
         << metrics::hyperedgeCut(hypergraph)
         << " imbalance=" << metrics::imbalance(hypergraph, _context);
+    LOG << "[MtKaHyPar] Number of removed nodes: "
+        << hypergraph.numRemovedHypernodes();
 
-    StaticArray<EdgeID> xadj(hypergraph.initialNumNodes() + 1);
-    StaticArray<NodeID> adjncy(hypergraph.initialNumEdges());
-    StaticArray<NodeWeight> vwgt(hypergraph.initialNumNodes());
-    StaticArray<EdgeWeight> adjwgt(hypergraph.initialNumEdges());
-    StaticArray<BlockID> part(hypergraph.initialNumNodes());
+    const NodeID n =
+        hypergraph.initialNumNodes() - hypergraph.numRemovedHypernodes();
+    const EdgeID m = hypergraph.initialNumEdges();
+
+    StaticArray<NodeID> dense(hypergraph.initialNumNodes() + 1);
+    hypergraph.doParallelForAllNodes(
+        [&](const HypernodeID u) { dense[u + 1] = 1; });
+    kaminpar::parallel::prefix_sum(dense.begin(), dense.end(), dense.begin());
+
+    StaticArray<EdgeID> xadj(n + 1);
+    StaticArray<NodeID> adjncy(m);
+    StaticArray<NodeWeight> vwgt(n);
+    StaticArray<EdgeWeight> adjwgt(m);
+    StaticArray<BlockID> part(n);
 
     hypergraph.doParallelForAllNodes([&](const HypernodeID u) {
-        xadj[u + 1] = hypergraph.nodeDegree(u);
-        vwgt[u] = hypergraph.nodeWeight(u);
-        part[u] = hypergraph.partID(u);
+        const NodeID du = dense[u];
+        xadj[du + 1] = hypergraph.nodeDegree(u);
+        vwgt[du] = hypergraph.nodeWeight(u);
+        part[du] = hypergraph.partID(u);
     });
 
-    ::kaminpar::parallel::prefix_sum(xadj.begin(), xadj.end(), xadj.begin());
+    kaminpar::parallel::prefix_sum(xadj.begin(), xadj.end(), xadj.begin());
+    // LOG << xadj.back() << m;
 
     hypergraph.doParallelForAllNodes([&](const HypernodeID u) {
+        const NodeID du = dense[u];
         HypernodeID offset = 0;
+
         for (const HyperedgeID e : hypergraph.incidentEdges(u)) {
-            adjncy[xadj[u] + offset] = hypergraph.edgeTarget(e);
-            adjwgt[xadj[u] + offset] = hypergraph.edgeWeight(e);
+            const HypernodeID v = hypergraph.edgeTarget(e);
+            const NodeID dv = dense[v];
+
+            adjncy[xadj[du] + offset] = dv;
+            adjwgt[xadj[du] + offset] = hypergraph.edgeWeight(e);
+
             ++offset;
         }
     });
@@ -87,20 +109,21 @@ bool JetRefiner<TypeTraits, GainCache>::refineImpl(
                                std::move(vwgt), std::move(adjwgt), false);
     kaminpar::shm::PartitionedGraph p_graph(graph, hypergraph.k(),
                                             std::move(part));
+    // kaminpar::shm::validate_graph(graph);
 
     kaminpar::shm::Context ctx = kaminpar::shm::create_default_context();
     ctx.partition.k = hypergraph.k();
-    ctx.partition.epsilon = _context.partition.epsilon;
+    ctx.partition.epsilon = 1.0 * _context.partition.max_part_weights[0] *
+                                hypergraph.k() / graph.total_node_weight() -
+                            1.0;
     ctx.setup(graph);
-
-    ctx.refinement.algorithms = {
-        kaminpar::shm::RefinementAlgorithm::GREEDY_BALANCER,
-        kaminpar::shm::RefinementAlgorithm::JET};
-    ctx.refinement.jet.num_iterations = 12;
 
     LOG << "[KaMinPar] Metrics *before* calling JetRefiner: cut="
         << kaminpar::shm::metrics::edge_cut(p_graph)
-        << " imbalance=" << kaminpar::shm::metrics::imbalance(p_graph);
+        << " imbalance=" << kaminpar::shm::metrics::imbalance(p_graph)
+        << " epsilon=" << ctx.partition.epsilon
+        << " max_block_weight=" << ctx.partition.block_weights.max(0)
+        << " max_block_weight'=" << _context.partition.max_part_weights[0];
 
     kaminpar::shm::JetRefiner jet(ctx);
     jet.initialize(p_graph);
@@ -111,7 +134,8 @@ bool JetRefiner<TypeTraits, GainCache>::refineImpl(
         << " imbalance=" << kaminpar::shm::metrics::imbalance(p_graph);
 
     hypergraph.doParallelForAllNodes([&](const HypernodeID u) {
-        hypergraph.changeNodePart(u, hypergraph.partID(u), p_graph.block(u));
+        const NodeID du = dense[u];
+        hypergraph.changeNodePart(u, hypergraph.partID(u), p_graph.block(du));
     });
 
     LOG << "[MtKaHyPar] Metrics *after* calling JetRefiner: cut="
