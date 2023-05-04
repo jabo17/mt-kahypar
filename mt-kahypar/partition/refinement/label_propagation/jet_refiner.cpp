@@ -38,8 +38,6 @@
 #include <kaminpar/refinement/jet_refiner.h>
 #include <tbb/parallel_for.h>
 
-#include <fstream>
-
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/metrics.h"
 #include "mt-kahypar/utils/cast.h"
@@ -87,60 +85,27 @@ bool JetRefiner<TypeTraits, GainCache>::refineImpl(
     StaticArray<BlockID> part(n);
 
     hypergraph.doParallelForAllNodes([&](const HypernodeID u) {
-        KASSERT(u < dense.size());
         const NodeID du = dense[u];
-        KASSERT(du < n);
-
-        KASSERT(du + 1 < xadj.size());
         xadj[du + 1] = hypergraph.nodeDegree(u);
 
         const HypernodeWeight wgt = hypergraph.nodeWeight(u);
-        KASSERT(wgt > 0);
-        KASSERT(du < vwgt.size());
         vwgt[du] = wgt;
 
         const PartitionID block = hypergraph.partID(u);
-        KASSERT(block < hypergraph.k());
-        KASSERT(block >= 0);
-        KASSERT(du < part.size());
         part[du] = block;
     });
 
     kaminpar::parallel::prefix_sum(xadj.begin(), xadj.end(), xadj.begin());
-    KASSERT([&] {
-        for (NodeID u = 0; u + 1 < xadj.size(); ++u) {
-            if (xadj[u] >= m) {  // There should be no deg0 nodes
-                return false;
-            }
-        }
-        if (xadj[xadj.size() - 1] != m) {
-            return false;
-        }
-        return true;
-    }());
-    KASSERT(xadj.front() == 0u);
-    KASSERT(xadj.back() == m);
 
     hypergraph.doParallelForAllNodes([&](const HypernodeID u) {
-        KASSERT(u < dense.size());
         const NodeID du = dense[u];
-        KASSERT(du < n);
-
         HypernodeID offset = 0;
 
         for (const HyperedgeID e : hypergraph.incidentEdges(u)) {
             const HypernodeID v = hypergraph.edgeTarget(e);
-
-            KASSERT(v < dense.size());
             const NodeID dv = dense[v];
-            KASSERT(dv < n);
 
-            KASSERT(du < xadj.size());
             const std::size_t index = xadj[du] + offset;
-            KASSERT(index < m);
-            KASSERT(index < adjncy.size());
-            KASSERT(index < adjwgt.size());
-
             adjncy[index] = dv;
             adjwgt[index] = hypergraph.edgeWeight(e);
 
@@ -148,76 +113,16 @@ bool JetRefiner<TypeTraits, GainCache>::refineImpl(
         }
     });
 
-    /*{
-        std::ofstream out(std::string("graph_n") + std::to_string(n));
-        out.write(reinterpret_cast<const char*>(&n), sizeof(NodeID));
-        out.write(reinterpret_cast<const char*>(&m), sizeof(EdgeID));
-        out.write(reinterpret_cast<const char*>(xadj.data()),
-                  xadj.size() * sizeof(EdgeID));
-        out.write(reinterpret_cast<const char*>(adjncy.data()),
-                  adjncy.size() * sizeof(NodeID));
-        out.write(reinterpret_cast<const char*>(vwgt.data()),
-                  vwgt.size() * sizeof(NodeWeight));
-        out.write(reinterpret_cast<const char*>(adjwgt.data()),
-                  adjwgt.size() * sizeof(EdgeWeight));
-        out.write(reinterpret_cast<const char*>(part.data()),
-                  part.size() * sizeof(BlockID));
-    }*/
-
     kaminpar::shm::Graph graph(std::move(xadj), std::move(adjncy),
                                std::move(vwgt), std::move(adjwgt), false);
     kaminpar::shm::PartitionedGraph p_graph(graph, hypergraph.k(),
                                             std::move(part));
-
-    KASSERT([&] {
-        if (graph.n() != n) {
-            return false;
-        }
-        if (graph.m() != m) {
-            return false;
-        }
-        if (p_graph.k() != static_cast<BlockID>(hypergraph.k())) {
-            return false;
-        }
-        for (NodeID u = 0; u < graph.n(); ++u) {
-            if (u >= n) {
-                return false;
-            }
-            if (graph.node_weight(u) <= 0) {
-                return false;
-            }
-            for (EdgeID e = graph.first_edge(u);
-                 e < graph.first_invalid_edge(u); ++e) {
-                if (e >= m) {
-                    return false;
-                }
-                if (graph.edge_weight(e) <= 0) {
-                    return false;
-                }
-                const NodeID v = graph.edge_target(e);
-                if (v >= n) {
-                    return false;
-                }
-            }
-            if (p_graph.block(u) < 0) {
-                return false;
-            }
-            if (p_graph.block(u) >= static_cast<BlockID>(hypergraph.k())) {
-                return false;
-            }
-        }
-        return true;
-    }());
 
     kaminpar::shm::Context ctx = kaminpar::shm::create_default_context();
     ctx.partition.k = hypergraph.k();
     ctx.partition.epsilon = 1.0 * _context.partition.max_part_weights[0] *
                                 hypergraph.k() / graph.total_node_weight() -
                             1.0;
-    /*LOG << V(ctx.partition.k);
-    LOG << V(ctx.partition.epsilon);
-    LOG << V(sizeof(NodeID)) << V(sizeof(EdgeID)) << V(sizeof(NodeWeight))
-        << V(sizeof(EdgeWeight)) << V(sizeof(BlockID));*/
     ctx.setup(graph);
 
     LOG << "[KaMinPar] Metrics *before* calling JetRefiner: cut="
@@ -240,11 +145,6 @@ bool JetRefiner<TypeTraits, GainCache>::refineImpl(
 
         const PartitionID move_from = hypergraph.partID(u);
         const BlockID move_to = p_graph.block(du);
-        KASSERT(move_to < static_cast<BlockID>(hypergraph.k()));
-        KASSERT(move_to >= 0u);
-
-        KASSERT(move_from < hypergraph.k());
-        KASSERT(move_from >= 0);
 
         hypergraph.changeNodePart(u, move_from, move_to);
     });
