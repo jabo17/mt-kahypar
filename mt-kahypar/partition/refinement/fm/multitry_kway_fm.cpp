@@ -181,12 +181,15 @@ namespace mt_kahypar {
 
           for (int num_threads : { 1, 2, 4, 8, 16, 32, 64 }) {
             {
-              TBBInitializer init(num_threads);
-              LOG << "Running with" << V(num_threads) << " now ";
-              timer.start_timer("rebalance_fm - threads = " + std::to_string(num_threads), "");
-              rebalancer.setMaxPartWeightsForRound(max_part_weights);
-              rebalancer.refine(hypergraph, {}, tmp_metrics, current_time_limit);
-              timer.stop_timer("rebalance_fm - threads = " + std::to_string(num_threads));
+              tbb::task_arena this_arena(num_threads);
+              this_arena.execute([&] {
+                TBBInitializer init(num_threads);
+                LOG << "Running with" << V(num_threads) << " now ";
+                timer.start_timer("rebalance_fm - threads = " + std::to_string(num_threads), "");
+                rebalancer.setMaxPartWeightsForRound(max_part_weights);
+                rebalancer.refine(hypergraph, {}, tmp_metrics, current_time_limit);
+                timer.stop_timer("rebalance_fm - threads = " + std::to_string(num_threads));
+              });
             }
 
             // revert moves again
