@@ -96,7 +96,6 @@ class TBBInitializer {
     }
   }
 
- private:
   explicit TBBInitializer(const int num_threads) :
     _num_threads(num_threads),
     _gc(tbb::global_control::max_allowed_parallelism, num_threads),
@@ -138,6 +137,8 @@ class TBBInitializer {
       _numa_node_to_cpu_id.pop_back();
     }
   }
+
+private:
 
   int _num_threads;
   tbb::global_control _gc;

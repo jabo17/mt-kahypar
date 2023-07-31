@@ -167,6 +167,40 @@ namespace mt_kahypar {
           });
         }
 
+        // hacked in scalability experiments
+        if (phg.initialNumNodes() == sharedData.moveTracker.moveOrder.size() /* top level */) {
+
+          // don't want to measure this
+          if (!gain_cache.isInitialized()) {
+            gain_cache.initializeGainCache(phg);
+          }
+
+          vec<PartitionID> old_partition(phg.initialNumNodes());
+          phg.doParallelForAllNodes([&](NodeID u) { old_partition[u] = phg.partID(u); });
+
+
+          for (int num_threads : { 1, 2, 4, 8, 16, 32, 64 }) {
+            {
+              TBBInitializer init(num_threads);
+              LOG << "Running with" << V(num_threads) << " now ";
+              timer.start_timer("rebalance_fm - threads = " + std::to_string(num_threads), "");
+              rebalancer.setMaxPartWeightsForRound(max_part_weights);
+              rebalancer.refine(hypergraph, {}, tmp_metrics, current_time_limit);
+              timer.stop_timer("rebalance_fm - threads = " + std::to_string(num_threads));
+            }
+
+            // revert moves again
+            phg.doParallelForAllNodes([&](NodeID u) {
+              if (phg.partID(u) != old_partition[u]) {
+                phg.changeNodePart(gain_cache, u, phg.partID(u), old_partition[u]);
+              }
+            });
+          }
+
+          return true;
+        }
+
+
         tmp_metrics.imbalance = metrics::imbalance(phg, context);
         rebalancer.setMaxPartWeightsForRound(max_part_weights);
         rebalancer.refineAndOutputMoves(hypergraph, {}, moves_by_part, tmp_metrics, current_time_limit);
