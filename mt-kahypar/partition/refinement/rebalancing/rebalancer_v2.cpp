@@ -267,7 +267,6 @@ namespace impl {
 
       _pqs[my_pq_id].pq.insert(u, gain);
       _pqs[my_pq_id].lock.unlock();
-      __atomic_fetch_add(&freq[my_pq_id][bucket_id], 1, __ATOMIC_RELAXED);
       _pq_id[u] = my_pq_id;
     });
 
