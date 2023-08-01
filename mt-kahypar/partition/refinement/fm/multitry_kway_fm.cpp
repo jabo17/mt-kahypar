@@ -185,10 +185,10 @@ namespace mt_kahypar {
               this_arena.execute([&] {
                 TBBInitializer init(num_threads);
                 LOG << "Running with" << V(num_threads) << " now ";
-                timer.start_timer("rebalance_fm - threads = " + std::to_string(num_threads), "");
+                timer.start_timer("rebalance_fm_threads_" + std::to_string(num_threads), "");
                 rebalancer.setMaxPartWeightsForRound(max_part_weights);
                 rebalancer.refine(hypergraph, {}, tmp_metrics, current_time_limit);
-                timer.stop_timer("rebalance_fm - threads = " + std::to_string(num_threads));
+                timer.stop_timer("rebalance_fm_threads_" + std::to_string(num_threads));
               });
             }
 
