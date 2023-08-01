@@ -172,7 +172,7 @@ namespace mt_kahypar {
         // hacked in scalability experiments
         if (first_unconstrained_round && phg.initialNumNodes() == sharedData.moveTracker.moveOrder.size() /* top level */) {
           first_unconstrained_round = false;
-          
+
           // don't want to measure this
           if (!gain_cache.isInitialized()) {
             gain_cache.initializeGainCache(phg);
