@@ -113,6 +113,8 @@ namespace mt_kahypar {
       timer.stop_timer("precompute_unconstrained");
     }
 
+    bool first_unconstrained_round = true;
+
     for (size_t round = 0; round < context.refinement.fm.multitry_rounds; ++round) { // global multi try rounds
       for (PartitionID i = 0; i < context.partition.k; ++i) {
         initialPartWeights[i] = phg.partWeight(i);
@@ -168,8 +170,9 @@ namespace mt_kahypar {
         }
 
         // hacked in scalability experiments
-        if (phg.initialNumNodes() == sharedData.moveTracker.moveOrder.size() /* top level */) {
-
+        if (first_unconstrained_round && phg.initialNumNodes() == sharedData.moveTracker.moveOrder.size() /* top level */) {
+          first_unconstrained_round = false;
+          
           // don't want to measure this
           if (!gain_cache.isInitialized()) {
             gain_cache.initializeGainCache(phg);
@@ -200,7 +203,6 @@ namespace mt_kahypar {
             });
           }
 
-          return true;
         }
 
 
