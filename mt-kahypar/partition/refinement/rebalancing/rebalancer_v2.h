@@ -37,7 +37,7 @@ namespace rebalancer {
   struct alignas(64) GuardedPQ {
     GuardedPQ(PosT *handles, size_t num_nodes) : pq(handles, num_nodes) { }
     float top_key = std::numeric_limits<float>::min();
-    SpinLock lock;
+    SpinLock2 lock;
     ds::MaxHeap<float, HypernodeID> pq;
 
     void reset() {
