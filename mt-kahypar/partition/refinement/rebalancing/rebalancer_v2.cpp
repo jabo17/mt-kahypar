@@ -234,7 +234,7 @@ namespace impl {
     auto& phg = utils::cast<PartitionedHypergraph>(hypergraph);
 
     // init PQs if not done before
-    const size_t num_pqs = 2 * _context.shared_memory.num_threads;
+    const size_t num_pqs = 8 * _context.shared_memory.num_threads;
     if (_pqs.size() != num_pqs) {
       _pqs.assign(num_pqs, rebalancer::GuardedPQ(_pq_handles.data(), _node_state.size()));
     }

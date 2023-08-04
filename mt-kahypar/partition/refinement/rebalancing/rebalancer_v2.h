@@ -34,16 +34,19 @@
 namespace mt_kahypar {
 
 namespace rebalancer {
-  struct GuardedPQ {
+  struct alignas(64) GuardedPQ {
     GuardedPQ(PosT *handles, size_t num_nodes) : pq(handles, num_nodes) { }
+    float top_key = std::numeric_limits<float>::min();
     SpinLock lock;
     ds::MaxHeap<float, HypernodeID> pq;
-    float top_key = std::numeric_limits<float>::min();
+
     void reset() {
       pq.clear();
       top_key = std::numeric_limits<float>::min();
     }
   };
+
+  static_assert(sizeof(GuardedPQ) == 64);
 
   struct NodeState {
     uint8_t state = 0;
