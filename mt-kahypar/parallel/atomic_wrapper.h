@@ -95,6 +95,9 @@ class SpinLock2 {
 private:
   std::atomic<bool> lock_ = false;
 public:
+  SpinLock2() { }
+  SpinLock2(const SpinLock2&) { }
+  SpinLock2& operator=(const SpinLock2&) { lock_.store(false, std::memory_order_relaxed); return *this; }
   bool tryLock() { return !lock_.load(std::memory_order_relaxed) && !lock_.exchange(true, std::memory_order_acquire); }
   void unlock() { lock_.store(false, std::memory_order_release); }
   void lock() {
