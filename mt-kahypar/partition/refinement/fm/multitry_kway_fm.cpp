@@ -429,9 +429,9 @@ namespace mt_kahypar {
     if (!gain_cache.isInitialized()) {
       gain_cache.initializeGainCache(phg);
     }
-    rebalancer.initialize(hypergraph);
+    rebalancer.initialize(hypergraph);  // TODO: probably wrong place for this
 
-    is_initialized = true;
+    is_initialized = true; // TODO
   }
 
   template<typename TypeTraits, typename GainTypes>
