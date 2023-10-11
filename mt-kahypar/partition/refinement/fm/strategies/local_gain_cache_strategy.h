@@ -74,7 +74,7 @@ public:
                     const HypernodeID v) {
     const PartitionID pv = phg.partID(v);
     ASSERT(pv < context.partition.k);
-    auto [target, gain] = computeBestTargetBlock(phg, gain_cache, v, pv, true);
+    auto [target, gain] = computeBestTargetBlock(phg, gain_cache, v, pv, false);
     ASSERT(target < context.partition.k, V(target) << V(context.partition.k));
     sharedData.targetPart[v] = target;
     vertexPQs[pv].insert(v, gain);  // blockPQ updates are done later, collectively.
@@ -95,7 +95,7 @@ public:
     if (context.partition.k < 4 || designatedTargetV == move.from || designatedTargetV == move.to) {
       // penalty term of designatedTargetV is affected.
       // and may now be greater than that of other blocks --> recompute full
-      std::tie(newTarget, gain) = computeBestTargetBlock(phg, gain_cache, v, pv, true);
+      std::tie(newTarget, gain) = computeBestTargetBlock(phg, gain_cache, v, pv, false);
     } else {
       // penalty term of designatedTargetV is not affected.
       // only move.from and move.to may be better
