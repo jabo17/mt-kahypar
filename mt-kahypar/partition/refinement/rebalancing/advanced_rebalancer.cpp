@@ -85,6 +85,7 @@ namespace impl {
     const HypernodeWeight from_weight = phg.partWeight(from);
     PartitionID to = kInvalidPartition;
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
+    HyperedgeWeight best_imbalanced_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
     for (PartitionID i : parts) {
       if (i != from && i != kInvalidPartition) {
@@ -96,15 +97,21 @@ namespace impl {
           to = i;
           best_to_weight = to_weight;
         }
+        if (benefit > best_imbalanced_benefit) {
+          best_imbalanced_benefit = benefit;
+        }
       }
     }
 
+    if (best_imbalanced_benefit > to_benefit) {
+      // Edge case: if u does not fit in the best considered block we need to check all blocks.
+      // Note that the new computed block is stored in _target_part[u]. Since nodes are only moved
+      // from overloaded blocks, this case can happen at most once for each target part of a node
+      return computeBestTargetBlock(phg, context, gain_cache, u, from);
+    }
     Gain gain = std::numeric_limits<Gain>::min();
     if (to != kInvalidPartition) {
       gain = to_benefit - gain_cache.penaltyTerm(u, phg.partID(u));
-    } else {
-      // edge case: if u does not fit in any of the three considered blocks we need to check all blocks
-      return computeBestTargetBlock(phg, context, gain_cache, u, from);
     }
     return std::make_pair(to, transformGain(gain, wu));
   }
