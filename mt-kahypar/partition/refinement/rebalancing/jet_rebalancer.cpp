@@ -197,7 +197,7 @@ namespace mt_kahypar {
       const HypernodeWeight weight = phg.nodeWeight(hn);
       if (imbalance(from) > 0 && mayMoveNode(from, weight)) {
         auto& local_weights = _local_bucket_weights.local();
-        const size_t bucket = getBucketID(compute_gain_fn(hn));
+        const size_t bucket = getBucketID(compute_gain_fn(hn), phg.nodeWeight(hn));
         bucket_counts[bucket].fetch_add(1); // TODO: remove
         _buckets[bucket].insert(hn, HypernodeID(hn));
         local_weights[from * NUM_BUCKETS + bucket] += weight;

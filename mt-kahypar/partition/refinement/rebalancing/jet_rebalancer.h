@@ -41,7 +41,7 @@
 namespace mt_kahypar {
 template <typename TypeTraits, typename GainTypes>
 class JetRebalancer final : public IRebalancer {
- private:
+private:
   using BucketMap = ds::ConcurrentBucketMap<HypernodeID>;
   using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
   using GainCache = typename GainTypes::GainCache;
@@ -58,7 +58,7 @@ class JetRebalancer final : public IRebalancer {
 public:
   // TODO: add repairEmptyBlocks functionality?
 
-  explicit JetRebalancer(HypernodeID , const Context& context, GainCache& gain_cache) :
+  explicit JetRebalancer(HypernodeID, const Context& context, GainCache& gain_cache) :
     _context(context),
     _max_part_weights(nullptr),
     _gain_cache(gain_cache),
@@ -68,17 +68,17 @@ public:
     _num_valid_targets(0),
     _part_weights(_context.partition.k),
     _buckets(),
-    _bucket_weights(_context.partition.k * NUM_BUCKETS, 0),
+    _bucket_weights(_context.partition.k* NUM_BUCKETS, 0),
     _local_bucket_weights([&] {
-      return constructBucketWeightVector();
-    }),
+    return constructBucketWeightVector();
+  }),
     _node_was_moved(),
     _moves_by_part(nullptr),
     _locks(_context.partition.k) {
-      for (size_t i = 0; i < NUM_BUCKETS; ++i) {
-        _buckets.emplace_back(BUCKET_FACTOR);
-      }
+    for (size_t i = 0; i < NUM_BUCKETS; ++i) {
+      _buckets.emplace_back(BUCKET_FACTOR);
     }
+  }
 
   explicit JetRebalancer(HypernodeID num_nodes, const Context& context, gain_cache_t gain_cache) :
     JetRebalancer(num_nodes, context, GainCachePtr::cast<GainCache>(gain_cache)) {}
@@ -86,13 +86,13 @@ public:
   JetRebalancer(const JetRebalancer&) = delete;
   JetRebalancer(JetRebalancer&&) = delete;
 
-  JetRebalancer & operator= (const JetRebalancer &) = delete;
-  JetRebalancer & operator= (JetRebalancer &&) = delete;
+  JetRebalancer& operator= (const JetRebalancer&) = delete;
+  JetRebalancer& operator= (JetRebalancer&&) = delete;
 
   bool refineImpl(mt_kahypar_partitioned_hypergraph_t& hypergraph,
-                  const vec<HypernodeID>& refinement_nodes,
-                  Metrics& best_metrics,
-                  double) {
+    const vec<HypernodeID>& refinement_nodes,
+    Metrics& best_metrics,
+    double) {
     ASSERT(refinement_nodes.empty());
     unused(refinement_nodes);
     size_t rounds_without_improvement = 0;
@@ -109,10 +109,10 @@ public:
   }
 
   bool refineAndOutputMovesImpl(mt_kahypar_partitioned_hypergraph_t& hypergraph,
-                                const vec<HypernodeID>& refinement_nodes,
-                                vec<vec<Move>>& moves_by_part,
-                                Metrics& best_metrics,
-                                const double) {
+    const vec<HypernodeID>& refinement_nodes,
+    vec<vec<Move>>& moves_by_part,
+    Metrics& best_metrics,
+    const double) {
     ASSERT(refinement_nodes.empty());
     unused(refinement_nodes);
     size_t rounds_without_improvement = 0;
@@ -120,16 +120,16 @@ public:
   }
 
   virtual bool jetRebalanceImpl(mt_kahypar_partitioned_hypergraph_t& hypergraph,
-                                Metrics& best_metrics,
-                                size_t& rounds_without_improvement) {
+    Metrics& best_metrics,
+    size_t& rounds_without_improvement) {
     return refineInternal(hypergraph, nullptr, best_metrics, rounds_without_improvement);
   }
 
 private:
   bool refineInternal(mt_kahypar_partitioned_hypergraph_t& hypergraph,
-                      vec<vec<Move>>* moves_by_part,
-                      Metrics& best_metric,
-                      size_t& rounds_without_improvement);
+    vec<vec<Move>>* moves_by_part,
+    Metrics& best_metric,
+    size_t& rounds_without_improvement);
 
   template<bool ensure_balanced_moves>
   void weakRebalancingRound(PartitionedHypergraph& phg);
@@ -143,10 +143,10 @@ private:
   void processBuckets(PartitionedHypergraph& phg, F move_node_fn, bool retry_invalid_moves, bool update_local_part_weights);
 
   std::pair<Gain, PartitionID> computeGainAndTargetPart(const PartitionedHypergraph& hypergraph,
-                                                        const HypernodeID hn,
-                                                        bool non_adjacent_blocks,
-                                                        bool use_precise_part_weights = false,
-                                                        bool use_deadzone = true);
+    const HypernodeID hn,
+    bool non_adjacent_blocks,
+    bool use_precise_part_weights = false,
+    bool use_deadzone = true);
 
   // used for Jetrs (strong rebalancing), rounded down
   Gain computeAverageGain(const PartitionedHypergraph& hypergraph, const HypernodeID hn);
@@ -167,7 +167,7 @@ private:
 
   bool mayMoveNode(PartitionID block, HypernodeWeight hn_weight) const {
     double allowed_weight = _part_weights[block].load(std::memory_order_relaxed)
-                            - _context.partition.perfect_balance_part_weights[block];
+      - _context.partition.perfect_balance_part_weights[block];
     allowed_weight *= _context.refinement.jet_rebalancing.heavy_vertex_exclusion_factor;
     return hn_weight <= allowed_weight;
   }
@@ -183,21 +183,21 @@ private:
   }
 
   bool isValidTarget(const PartitionedHypergraph& hypergraph,
-                     PartitionID block,
-                     HypernodeWeight hn_weight,
-                     bool use_precise_part_weights,
-                     bool use_deadzone = true) const {
+    PartitionID block,
+    HypernodeWeight hn_weight,
+    bool use_precise_part_weights,
+    bool use_deadzone = true) const {
     const HypernodeWeight block_weight = use_precise_part_weights ?
-        hypergraph.partWeight(block) : _part_weights[block].load(std::memory_order_relaxed);
+      hypergraph.partWeight(block) : _part_weights[block].load(std::memory_order_relaxed);
     return (!use_deadzone || block_weight < deadzoneForPart(block)) &&
-           block_weight + hn_weight <= _max_part_weights[block];
+      block_weight + hn_weight <= _max_part_weights[block];
   }
 
   bool changeNodePart(PartitionedHypergraph& phg,
-                      const HypernodeID hn,
-                      const PartitionID from,
-                      const PartitionID to,
-                      bool ensure_balanced) {
+    const HypernodeID hn,
+    const PartitionID from,
+    const PartitionID to,
+    bool ensure_balanced) {
     // it happens spuriously that from == to, not entirely sure why (possibly due to moving heavy nodes)
     if (from == to || to == kInvalidPartition) {
       return false;
@@ -206,20 +206,20 @@ private:
     // This function is passed as lambda to the changeNodePart function and used
     // to calculate the "real" delta of a move (in terms of the used objective function).
     auto objective_delta = [&](const HyperedgeID he,
-                               const HyperedgeWeight edge_weight,
-                               const HypernodeID edge_size,
-                               const HypernodeID pin_count_in_from_part_after,
-                               const HypernodeID pin_count_in_to_part_after) {
+      const HyperedgeWeight edge_weight,
+      const HypernodeID edge_size,
+      const HypernodeID pin_count_in_from_part_after,
+      const HypernodeID pin_count_in_to_part_after) {
       _gain.computeDeltaForHyperedge(he, edge_weight, edge_size,
-                                     pin_count_in_from_part_after, pin_count_in_to_part_after);
+        pin_count_in_from_part_after, pin_count_in_to_part_after);
     };
 
     HypernodeWeight max_weight = ensure_balanced ? _max_part_weights[to] : std::numeric_limits<HypernodeWeight>::max();
     bool success = false;
-    if ( _gain_cache.isInitialized() ) {
-      success = phg.changeNodePart(_gain_cache, hn, from, to, max_weight, []{}, objective_delta);
+    if (_gain_cache.isInitialized()) {
+      success = phg.changeNodePart(_gain_cache, hn, from, to, max_weight, [] {}, objective_delta);
     } else {
-      success = phg.changeNodePart(hn, from, to, max_weight, []{}, objective_delta);
+      success = phg.changeNodePart(hn, from, to, max_weight, [] {}, objective_delta);
     }
     ASSERT(success || ensure_balanced);
     if (success) {
@@ -234,7 +234,7 @@ private:
       // Synchronization on executed moves only should be acceptable performance-wise.
       // Still, this is a rather hacky solution and only meant for experimentation
       _locks[from].lock();
-      (*_moves_by_part)[from].push_back(Move{from, to, node, gain});
+      (*_moves_by_part)[from].push_back(Move{ from, to, node, gain });
       _locks[from].unlock();
     }
   }
@@ -247,9 +247,10 @@ private:
     return value;
   }
 
-  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t getBucketID(Gain gain) const {
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t getBucketID(Gain gain, HypernodeWeight weight) const {
     if (gain > 0) {
-      return std::min(2 + log2(gain), NUM_BUCKETS - 1);
+      const double ratio = gain / weight;
+      return std::min(size_t(4 + std::max(std::log2(ratio + 0.25), -2.0)), NUM_BUCKETS - 1);
     } else if (gain == 0) {
       return 1;
     }
@@ -259,7 +260,7 @@ private:
   void resizeDataStructuresForCurrentK() {
     // If the number of blocks changes, we resize data structures
     // (can happen during deep multilevel partitioning)
-    if ( _current_k != _context.partition.k ) {
+    if (_current_k != _context.partition.k) {
       _current_k = _context.partition.k;
       _gain.changeNumberOfBlocks(_current_k);
       _part_weights = parallel::scalable_vector<AtomicWeight>(_current_k);
