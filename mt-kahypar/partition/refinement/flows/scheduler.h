@@ -215,6 +215,8 @@ private:
     return "(" + std::to_string(blocks.i) + "," + std::to_string(blocks.j) + ")";
   }
 
+    void printStats() { }
+
   PartitionedHypergraph* _phg;
   const Context& _context;
   GainCache& _gain_cache;

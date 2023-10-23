@@ -38,6 +38,8 @@
 #include "mt-kahypar/partition/refinement/gains/gain_cache_ptr.h"
 #include "mt-kahypar/utils/cast.h"
 
+#include <tbb/parallel_sort.h>
+
 namespace mt_kahypar {
 
 namespace rebalancer {
@@ -69,8 +71,8 @@ public:
         _num_imbalanced_parts(0),
         _num_valid_targets(0),
         _moves(context.partition.k),
-        _move_weights(context.partition.k) {
-    }
+        _move_weights(context.partition.k),
+        _imbalanced_parts() {}
     explicit DeterministicRebalancer(HypernodeID, const Context& context) :
         DeterministicRebalancer(context) {}
 
@@ -182,11 +184,24 @@ private:
     bool checkPreviouslyOverweightParts(const PartitionedHypergraph& phg)const {
         for (size_t i = 0; i < _moves.size(); ++i) {
             const auto partWeight = phg.partWeight(i);
+            unused(partWeight);
             if (_moves[i].size() > 0) {
                 ASSERT(partWeight >= deadzoneForPart(i) && partWeight <= _max_part_weights[i]);
             }
         }
         return true;
+    }
+
+    void printStats() {
+        if (_imbalanced_parts.size() > 0) {
+            size_t sum = 0;
+            for (const size_t i : _imbalanced_parts) {
+                sum += i;
+            }
+            tbb::parallel_sort(_imbalanced_parts.begin(), _imbalanced_parts.end());
+            std::cout << static_cast<float>(sum) / _imbalanced_parts.size() << ",";
+            std::cout << _imbalanced_parts[_imbalanced_parts.size() / 2] << ",";
+        }
     }
 
     const Context& _context;
@@ -197,6 +212,7 @@ private:
     PartitionID _num_valid_targets;
     parallel::scalable_vector<parallel::scalable_vector<rebalancer::RebalancingMove>> _moves;
     parallel::scalable_vector<parallel::scalable_vector<HypernodeWeight>> _move_weights;
+    parallel::scalable_vector<size_t> _imbalanced_parts;
 };
 
 }  // namespace kahypar

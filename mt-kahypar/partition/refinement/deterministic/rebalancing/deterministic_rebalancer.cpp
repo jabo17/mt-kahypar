@@ -68,6 +68,8 @@ bool DeterministicRebalancer<GraphAndGainTypes>::refineImpl(mt_kahypar_partition
   initializeDataStructures(phg);
 
   while (_num_imbalanced_parts > 0) {
+    //DBG << _num_imbalanced_parts;
+    _imbalanced_parts.push_back(_num_imbalanced_parts);
     weakRebalancingRound(phg);
     HEAVY_REFINEMENT_ASSERT(checkPreviouslyOverweightParts(phg));
     updateImbalance(phg);

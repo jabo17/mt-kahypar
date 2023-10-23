@@ -56,6 +56,7 @@ class IRefiner {
               const double time_limit) {
     return refineImpl(hypergraph, refinement_nodes, best_metrics, time_limit);
   }
+  virtual void printStats() = 0;
 
  protected:
   IRefiner() = default;

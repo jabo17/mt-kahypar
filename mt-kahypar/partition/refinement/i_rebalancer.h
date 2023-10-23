@@ -57,6 +57,7 @@ class IRebalancer: public IRefiner {
                                   const double time_limit) {
     return refineAndOutputMovesLinearImpl(hypergraph, refinement_nodes, moves, best_metrics, time_limit);
   }
+  virtual void printStats() = 0;
 
  protected:
   IRebalancer() = default;

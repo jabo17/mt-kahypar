@@ -407,16 +407,15 @@ namespace mt_kahypar {
       if ( lp_algo != LabelPropagationAlgorithm::do_nothing && lp_algo != LabelPropagationAlgorithm::deterministic && lp_algo != LabelPropagationAlgorithm::deterministic_jet) {
         refinement.label_propagation.algorithm = LabelPropagationAlgorithm::deterministic;
       }
-
+      if (lp_algo == LabelPropagationAlgorithm::deterministic_jet) {
+        initial_partitioning.refinement.rebalancer = RebalancingAlgorithm::deterministic;
+        refinement.rebalancer = RebalancingAlgorithm::deterministic;
+      }
       lp_algo = initial_partitioning.refinement.label_propagation.algorithm;
       if ( lp_algo != LabelPropagationAlgorithm::do_nothing && lp_algo != LabelPropagationAlgorithm::deterministic && lp_algo != LabelPropagationAlgorithm::deterministic_jet) {
         initial_partitioning.refinement.label_propagation.algorithm = LabelPropagationAlgorithm::deterministic;
       }
 
-      if (lp_algo == LabelPropagationAlgorithm::deterministic_jet) {
-        initial_partitioning.refinement.rebalancer = RebalancingAlgorithm::deterministic;
-        refinement.rebalancer = RebalancingAlgorithm::deterministic;
-      }
     }
 
     // Set correct gain policy type

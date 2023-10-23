@@ -73,6 +73,7 @@ namespace mt_kahypar {
       // The next calls to this function will then project the partition to the next level
       // and perform refinement until we reach the input hypergraph.
       IUncoarsener<TypeTraits>::refine();
+              _label_propagation->printStats();
       _progress.setObjective(_current_metrics.quality);
       _progress += partitioned_hg.initialNumNodes();
     } else {
@@ -104,6 +105,7 @@ namespace mt_kahypar {
 
       // Improve partition
       IUncoarsener<TypeTraits>::refine();
+        _label_propagation->printStats();
 
       // Update Progress Bar
       _progress.setObjective(_current_metrics.quality);

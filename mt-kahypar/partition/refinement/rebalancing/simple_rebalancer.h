@@ -41,7 +41,7 @@
 namespace mt_kahypar {
 template <typename GraphAndGainTypes>
 class SimpleRebalancer final : public IRebalancer {
- private:
+private:
   using PartitionedHypergraph = typename GraphAndGainTypes::PartitionedHypergraph;
   using GainCache = typename GraphAndGainTypes::GainCache;
   using GainCalculator = typename GraphAndGainTypes::GainComputation;
@@ -65,7 +65,7 @@ public:
   struct IndexedMovePQ {
     explicit IndexedMovePQ(const size_t idx) :
       idx(idx),
-      pq() { }
+      pq() {}
 
     size_t idx;
     MovePQ pq;
@@ -75,10 +75,10 @@ public:
     _context(context),
     _current_k(context.partition.k),
     _gain(context),
-    _part_weights(_context.partition.k) { }
+    _part_weights(_context.partition.k) {}
 
-  explicit SimpleRebalancer(HypernodeID , const Context& context, GainCache&) :
-    SimpleRebalancer(context) { }
+  explicit SimpleRebalancer(HypernodeID, const Context& context, GainCache&) :
+    SimpleRebalancer(context) {}
 
   explicit SimpleRebalancer(HypernodeID num_nodes, const Context& context, gain_cache_t gain_cache) :
     SimpleRebalancer(num_nodes, context, GainCachePtr::cast<GainCache>(gain_cache)) {}
@@ -86,29 +86,29 @@ public:
   SimpleRebalancer(const SimpleRebalancer&) = delete;
   SimpleRebalancer(SimpleRebalancer&&) = delete;
 
-  SimpleRebalancer & operator= (const SimpleRebalancer &) = delete;
-  SimpleRebalancer & operator= (SimpleRebalancer &&) = delete;
+  SimpleRebalancer& operator= (const SimpleRebalancer&) = delete;
+  SimpleRebalancer& operator= (SimpleRebalancer&&) = delete;
 
   bool refineImpl(mt_kahypar_partitioned_hypergraph_t& hypergraph,
-                  const vec<HypernodeID>&,
-                  Metrics& best_metrics,
-                  double) final ;
+    const vec<HypernodeID>&,
+    Metrics& best_metrics,
+    double) final;
 
-  void initializeImpl(mt_kahypar_partitioned_hypergraph_t&) final { }
+  void initializeImpl(mt_kahypar_partitioned_hypergraph_t&) final {}
 
   bool refineAndOutputMovesImpl(mt_kahypar_partitioned_hypergraph_t&,
-                                const vec<HypernodeID>&,
-                                vec<vec<Move>>&,
-                                Metrics&,
-                                const double) override final {
+    const vec<HypernodeID>&,
+    vec<vec<Move>>&,
+    Metrics&,
+    const double) override final {
     ERR("simple rebalancer can not be used for unconstrained refinement");
   }
 
   bool refineAndOutputMovesLinearImpl(mt_kahypar_partitioned_hypergraph_t&,
-                                      const vec<HypernodeID>&,
-                                      vec<Move>&,
-                                      Metrics&,
-                                      const double) override final {
+    const vec<HypernodeID>&,
+    vec<Move>&,
+    Metrics&,
+    const double) override final {
     ERR("simple rebalancer can not be used for unconstrained refinement");
   }
 
@@ -118,21 +118,21 @@ private:
 
   template<typename F>
   bool moveVertex(PartitionedHypergraph& phg,
-                  const HypernodeID hn,
-                  const Move& move,
-                  const F& objective_delta) {
+    const HypernodeID hn,
+    const Move& move,
+    const F& objective_delta) {
     ASSERT(phg.partID(hn) == move.from);
     const PartitionID from = move.from;
     const PartitionID to = move.to;
     const HypernodeWeight node_weight = phg.nodeWeight(hn);
-    if ( from != to ) {
+    if (from != to) {
       // Before moving, we ensure that the block we move the vertex to does
       // not become overloaded
       _part_weights[to] += node_weight;
-      if ( _part_weights[to] <= _context.partition.max_part_weights[to] ) {
-        if ( phg.changeNodePart(hn, from, to, objective_delta) ) {
+      if (_part_weights[to] <= _context.partition.max_part_weights[to]) {
+        if (phg.changeNodePart(hn, from, to, objective_delta)) {
           DBG << "Moved vertex" << hn << "from block" << from << "to block" << to
-              << "with gain" << move.gain;
+            << "with gain" << move.gain;
           _part_weights[from] -= node_weight;
           return true;
         }
@@ -146,12 +146,14 @@ private:
   void resizeDataStructuresForCurrentK() {
     // If the number of blocks changes, we resize data structures
     // (can happen during deep multilevel partitioning)
-    if ( _current_k != _context.partition.k ) {
+    if (_current_k != _context.partition.k) {
       _current_k = _context.partition.k;
       _gain.changeNumberOfBlocks(_current_k);
       _part_weights = parallel::scalable_vector<AtomicWeight>(_context.partition.k);
     }
   }
+
+  void printStats() {}
 
   const Context& _context;
   PartitionID _current_k;

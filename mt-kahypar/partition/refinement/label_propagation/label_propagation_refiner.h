@@ -194,6 +194,10 @@ class LabelPropagationRefiner final : public IRefiner {
     }
   }
 
+    void printStats() {
+    _rebalancer.printStats();
+  }
+
   bool _might_be_uninitialized;
   const Context& _context;
   GainCache& _gain_cache;

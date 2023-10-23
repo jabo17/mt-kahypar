@@ -131,6 +131,10 @@ private:
     }
   }
 
+  void printStats() {
+    _rebalancer.printStats();
+  }
+
   const Context& _context;
   PartitionID _current_k;
   HypernodeID _top_level_num_nodes;
