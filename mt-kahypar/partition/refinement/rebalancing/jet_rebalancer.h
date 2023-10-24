@@ -249,8 +249,9 @@ private:
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t getBucketID(Gain gain, HypernodeWeight weight) const {
     if (gain > 0) {
-      const double ratio = gain / weight;
-      return std::min(size_t(4 + std::max(std::log2(ratio + 0.25), -2.0)), NUM_BUCKETS - 1);
+      const double ratio = static_cast<double>(gain) / weight;
+      constexpr int a = 2;
+      return std::min(size_t(2+a + std::max(std::log2(ratio + 1.0 / (1<<a)), static_cast<double>(-a-2.0))), NUM_BUCKETS - 1);
     } else if (gain == 0) {
       return 1;
     }
