@@ -648,7 +648,15 @@ namespace mt_kahypar {
             ((initial_partitioning ? "i-r-jetr-greedy-balanced-use-deadzone" : "r-jetr-greedy-balanced-use-deadzone"),
              po::value<bool>((initial_partitioning ? &context.initial_partitioning.refinement.jet_rebalancing.greedy_balanced_use_deadzone :
                                 &context.refinement.jet_rebalancing.greedy_balanced_use_deadzone))->value_name("<bool>")->default_value(true),
-             "If strong JET is replaced with greedy, determines whether the deadzone should be used.");
+             "If strong JET is replaced with greedy, determines whether the deadzone should be used.")
+             ((initial_partitioning ? "i-r-jetr-bucket-step-size" : "r-jetr-bucket-step-size"),
+             po::value<double>((initial_partitioning ? &context.initial_partitioning.refinement.jet_rebalancing.bucket_step_size :
+                                &context.refinement.jet_rebalancing.bucket_step_size))->value_name("<double>")->default_value(2.0),
+             "Step size for buckets.")
+             ((initial_partitioning ? "i-r-jetr-buckets-between-zero-and-one" : "r-jetr-buckets-between-zero-and-one"),
+             po::value<size_t>((initial_partitioning ? &context.initial_partitioning.refinement.jet_rebalancing.buckets_between_zero_and_one :
+                                &context.refinement.jet_rebalancing.buckets_between_zero_and_one))->value_name("<size_t>")->default_value(0),
+             "Step size for buckets.");
     return options;
   }
 

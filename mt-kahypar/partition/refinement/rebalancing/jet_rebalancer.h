@@ -49,7 +49,6 @@ private:
   using RatingMap = typename GainCalculator::RatingMap;
   using AtomicWeight = parallel::IntegralAtomicWrapper<HypernodeWeight>;
 
-  static constexpr size_t NUM_BUCKETS = 12;
   static constexpr size_t BUCKET_FACTOR = 32;
 
   static constexpr bool debug = false;
@@ -61,6 +60,7 @@ public:
   explicit JetRebalancer(HypernodeID, const Context& context, GainCache& gain_cache) :
     _context(context),
     _max_part_weights(nullptr),
+    NUM_BUCKETS(std::ceil(12 * 1.0 / std::log2(_context.refinement.jet_rebalancing.bucket_step_size)) + _context.refinement.jet_rebalancing.buckets_between_zero_and_one),
     _gain_cache(gain_cache),
     _current_k(_context.partition.k),
     _gain(context),
@@ -249,9 +249,9 @@ private:
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t getBucketID(Gain gain, HypernodeWeight weight) const {
     if (gain > 0) {
-      const double ratio = static_cast<double>(gain) / weight;
-      constexpr int a = 2;
-      return std::min(size_t(2+a + std::max(std::log2(ratio + 1.0 / (1<<a)), static_cast<double>(-a-2.0))), NUM_BUCKETS - 1);
+      const int a = _context.refinement.jet_rebalancing.buckets_between_zero_and_one;
+      const double ratio = static_cast<double>(gain) / weight + 1.0 / (1 << a);
+      return std::min(size_t(2 + a + std::max(std::log2(ratio) / std::log2(_context.refinement.jet_rebalancing.bucket_step_size), static_cast<double>(-a - 2.0))), NUM_BUCKETS - 1);
     } else if (gain == 0) {
       return 1;
     }
@@ -275,6 +275,7 @@ private:
 
   const Context& _context;
   const HypernodeWeight* _max_part_weights;
+  const size_t NUM_BUCKETS;
   GainCache& _gain_cache;
   PartitionID _current_k;
   GainCalculator _gain;

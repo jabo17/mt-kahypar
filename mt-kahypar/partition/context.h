@@ -230,6 +230,8 @@ struct JetRebalancingParameters {
   double relative_deadzone_size = 1.0;
   bool use_greedy_balanced_instead_of_strong_iteration = false;
   bool greedy_balanced_use_deadzone = true;
+  double bucket_step_size = 2;
+  size_t buckets_between_zero_and_one = 0;
 };
 
 std::ostream& operator<<(std::ostream& out, const JetRebalancingParameters& params);

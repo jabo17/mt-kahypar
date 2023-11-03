@@ -202,6 +202,8 @@ namespace mt_kahypar {
     out << "    Heavy Vertex Exclusion Factor:    " << params.heavy_vertex_exclusion_factor << std::endl;
     out << "    Relative Deadzone Size:           " << params.relative_deadzone_size << std::endl;
     out << "    Use Greedy Balanced:              " << std::boolalpha << params.use_greedy_balanced_instead_of_strong_iteration << std::endl;
+    out << "    Buckets between 0 and 1:          " << params.buckets_between_zero_and_one << std::endl;
+    out << "    Bucket step size:                 " << params.bucket_step_size << std::endl;
     return out;
   }
 
