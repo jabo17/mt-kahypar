@@ -157,16 +157,15 @@ rebalancer::RebalancingMove DeterministicRebalancer<GraphAndGainTypes>::computeG
 
 template <typename  GraphAndGainTypes>
 void DeterministicRebalancer<GraphAndGainTypes>::weakRebalancingRound(PartitionedHypergraph& phg) {
-  utils::Timer& timer = utils::Utilities::instance().getTimer(_context.utility_id);
+  // utils::Timer& timer = utils::Utilities::instance().getTimer(_context.utility_id);
   //timer.start_timer("alloc", "Tmp move allocation");
   for (auto& moves : tmp_potential_moves) {
     moves.clear_parallel();
   }
   //timer.stop_timer("alloc");
-
-  // calculate gain and target for each node in a overweight part
-  // group moves by source part
-  timer.start_timer("gain_computation", "Gain Computation");
+    // calculate gain and target for each node in a overweight part
+    // group moves by source part
+  //timer.start_timer("gain_computation", "Gain Computation");
   phg.doParallelForAllNodes([&](const HypernodeID hn) {
     const PartitionID from = phg.partID(hn);
     const HypernodeWeight weight = phg.nodeWeight(hn);
@@ -180,37 +179,58 @@ void DeterministicRebalancer<GraphAndGainTypes>::weakRebalancingRound(Partitione
 
     }
   });
-  timer.stop_timer("gain_computation");
+  //timer.stop_timer("gain_computation");
   //timer.start_timer("rest", "Move Selection and Execution");
+  constexpr size_t NUM_BUCKETS = 5;
+  for (size_t b = 0; b < NUM_BUCKETS; ++b) {
 
- //tbb::parallel_for(0UL, _moves.size(), [&](const size_t i) {
-  for (size_t i = 0; i < _moves.size(); ++i) {
-    timer.start_timer("copy_moves", "Copy Moves");
-    _moves[i] = tmp_potential_moves[i].copy_parallel();
-    timer.stop_timer("copy_moves");
-    if (_moves[i].size() > 0) {
-      // sort the moves from each overweight part by priority
-      timer.start_timer("sorting", "Sorting");
-      tbb::parallel_sort(_moves[i].begin(), _moves[i].end(), [&](const rebalancer::RebalancingMove& a, const rebalancer::RebalancingMove& b) {
-        return a.priority < b.priority || (a.priority == b.priority && a.hn > b.hn);
-      });
-      timer.stop_timer("sorting");
-      // calculate perfix sum for each source-part to know which moves to execute (prefix_sum > current_weight - max_weight)
-      timer.start_timer("find_moves", "Find Moves");
-      _move_weights[i].resize(_moves[i].size());
-      tbb::parallel_for(0UL, _moves[i].size(), [&](const size_t j) {
-        _move_weights[i][j] = phg.nodeWeight(_moves[i][j].hn);
-      });
-      parallel_prefix_sum(_move_weights[i].begin(), _move_weights[i].end(), _move_weights[i].begin(), std::plus<HypernodeWeight>(), 0);
-      const size_t last_move_idx = std::upper_bound(_move_weights[i].begin(), _move_weights[i].end(), phg.partWeight(i) - _max_part_weights[i] - 1) - _move_weights[i].begin();
-      timer.stop_timer("find_moves");
+    tbb::parallel_for(0UL, _moves.size(), [&](const size_t i) {
+      //for (size_t i = 0; i < _moves.size(); ++i) {
+        //timer.start_timer("copy_moves", "Copy Moves");
+      if (b == 0UL) {
+        _moves[i] = tmp_potential_moves[i].copy_parallel();
+      }
+      const size_t bucket_size = _moves[i].size() / NUM_BUCKETS + 1;
+      const size_t bucket_start_index = b * bucket_size;
+      const size_t bucket_end_index = std::min(_moves[i].size(), bucket_start_index + bucket_size);
+      //timer.stop_timer("copy_moves");
+      if (_moves[i].size() > 0) {
+        // sort the moves from each overweight part by priority
+        //timer.start_timer("sorting", "Sorting");
+        tbb::parallel_sort(_moves[i].begin() + bucket_start_index, _moves[i].end(), [&](const rebalancer::RebalancingMove& a, const rebalancer::RebalancingMove& b) {
+          return a.priority < b.priority || (a.priority == b.priority && a.hn > b.hn);
+        });
+        //timer.stop_timer("sorting");
+        // calculate perfix sum for each source-part to know which moves to execute (prefix_sum > current_weight - max_weight)
+        //timer.start_timer("find_moves", "Find Moves");
+        _move_weights[i].resize(_moves[i].size());
+        tbb::parallel_for(bucket_start_index, _moves[i].size(), [&](const size_t j) {
+          _move_weights[i][j] = phg.nodeWeight(_moves[i][j].hn);
+        });
+        parallel_prefix_sum(_move_weights[i].begin() + bucket_start_index, _move_weights[i].begin() + bucket_end_index, _move_weights[i].begin() + bucket_start_index, std::plus<HypernodeWeight>(), 0);
+        const size_t last_move_idx = std::upper_bound(_move_weights[i].begin() + bucket_start_index, _move_weights[i].begin() + bucket_end_index, phg.partWeight(i) - _max_part_weights[i] - 1) - _move_weights[i].begin();
+        //timer.stop_timer("find_moves");
 
-      timer.start_timer("exe_moves", "Execute Moves");
-      tbb::parallel_for(0UL, last_move_idx + 1, [&](const size_t j) {
-        const auto move = _moves[i][j];
-        changeNodePart(phg, move.hn, i, move.to, false);
+        // timer.start_timer("exe_moves", "Execute Moves");
+        //DBG << "exe_moves" << V(bucket_start_index) << ", " << V(last_move_idx) << ", " << V(bucket_end_index) << ", " << V(_moves[i].size());
+        tbb::parallel_for(b * bucket_size, std::min(last_move_idx + 1, _moves[i].size()), [&](const size_t j) {
+          const auto move = _moves[i][j];
+          changeNodePart(phg, move.hn, i, move.to, false);
+        });
+        if (last_move_idx < bucket_end_index) {
+          _moves[i].clear();
+        }
+        //timer.stop_timer("exe_moves");
+      }
+      // }
+    });
+
+    for (size_t i = 0; i < _moves.size(); ++i) {
+      const size_t bucket_size = _moves[i].size() / NUM_BUCKETS + 1;
+      const size_t start = (b + 1) * bucket_size;
+      tbb::parallel_for(start, _moves[i].size(), [&](const size_t j) {
+        _moves[i][j] = computeGainAndTargetPart(phg, _moves[i][j].hn, true);
       });
-      timer.stop_timer("exe_moves");
     }
   }
   // });
