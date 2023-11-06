@@ -152,6 +152,7 @@ struct JetParameters {
   // rebalancing
   double heavy_vertex_exclusion_factor = 1.5;
   double relative_deadzone_size = 1.0;
+  size_t num_buckets = 1;
 };
 
 std::ostream & operator<< (std::ostream& str, const JetParameters& params);

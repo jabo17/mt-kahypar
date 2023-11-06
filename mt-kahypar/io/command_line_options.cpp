@@ -337,6 +337,10 @@ namespace mt_kahypar {
              po::value<size_t>((!initial_partitioning ? &context.refinement.min_border_vertices_per_thread :
                                 &context.initial_partitioning.refinement.min_border_vertices_per_thread))->value_name("<size_t>")->default_value(0),
              "Minimum number of border vertices per thread with which we perform a localized search (n-Level Partitioner).")
+            (( initial_partitioning ? "i-r-num-buckets" : "r-num-buckets"),
+             po::value<size_t>((!initial_partitioning ? &context.refinement.deterministic_refinement.jet.num_buckets :
+                                &context.initial_partitioning.refinement.deterministic_refinement.jet.num_buckets))->value_name("<size_t>")->default_value(1),
+             "Number of buckets when rebalancing")
             ((initial_partitioning ? "i-r-lp-type" : "r-lp-type"),
              po::value<std::string>()->value_name("<string>")->notifier(
                      [&, initial_partitioning](const std::string& type) {

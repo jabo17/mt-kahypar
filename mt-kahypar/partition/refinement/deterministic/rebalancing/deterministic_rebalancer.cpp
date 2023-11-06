@@ -181,8 +181,7 @@ void DeterministicRebalancer<GraphAndGainTypes>::weakRebalancingRound(Partitione
   });
   //timer.stop_timer("gain_computation");
   //timer.start_timer("rest", "Move Selection and Execution");
-  constexpr size_t NUM_BUCKETS = 5;
-  for (size_t b = 0; b < NUM_BUCKETS; ++b) {
+  for (size_t b = 0; b < _context.refinement.deterministic_refinement.jet.num_buckets; ++b) {
 
     tbb::parallel_for(0UL, _moves.size(), [&](const size_t i) {
       //for (size_t i = 0; i < _moves.size(); ++i) {
@@ -190,7 +189,7 @@ void DeterministicRebalancer<GraphAndGainTypes>::weakRebalancingRound(Partitione
       if (b == 0UL) {
         _moves[i] = tmp_potential_moves[i].copy_parallel();
       }
-      const size_t bucket_size = _moves[i].size() / NUM_BUCKETS + 1;
+      const size_t bucket_size = _moves[i].size() / _context.refinement.deterministic_refinement.jet.num_buckets + 1;
       const size_t bucket_start_index = b * bucket_size;
       const size_t bucket_end_index = std::min(_moves[i].size(), bucket_start_index + bucket_size);
       //timer.stop_timer("copy_moves");
@@ -224,9 +223,9 @@ void DeterministicRebalancer<GraphAndGainTypes>::weakRebalancingRound(Partitione
       }
       // }
     });
-
+    
     for (size_t i = 0; i < _moves.size(); ++i) {
-      const size_t bucket_size = _moves[i].size() / NUM_BUCKETS + 1;
+      const size_t bucket_size = _moves[i].size() / _context.refinement.deterministic_refinement.jet.num_buckets + 1;
       const size_t start = (b + 1) * bucket_size;
       tbb::parallel_for(start, _moves[i].size(), [&](const size_t j) {
         _moves[i][j] = computeGainAndTargetPart(phg, _moves[i][j].hn, true);
