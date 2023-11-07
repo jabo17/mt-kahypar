@@ -128,7 +128,7 @@ bool DeterministicJetRefiner<GraphAndGainTypes>::refineImpl(mt_kahypar_partition
             return my_gain;
         };
         Gain gain = tbb::parallel_reduce(range, 0, accum, std::plus<>());
-        timer.stop_timer("apply moves");
+        timer.stop_timer("apply_moves");
 
         current_metrics.quality -= gain;
         current_metrics.imbalance = metrics::imbalance(phg, _context);

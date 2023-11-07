@@ -189,13 +189,13 @@ void DeterministicRebalancer<GraphAndGainTypes>::weakRebalancingRound(Partitione
       if (b == 0UL) {
         _moves[i] = tmp_potential_moves[i].copy_parallel();
       }
-      const size_t bucket_size = _moves[i].size() / _context.refinement.deterministic_refinement.jet.num_buckets + 1;
-      const size_t bucket_start_index = b * bucket_size;
-      const size_t bucket_end_index = std::min(_moves[i].size(), bucket_start_index + bucket_size);
-      //timer.stop_timer("copy_moves");
       if (_moves[i].size() > 0) {
-        // sort the moves from each overweight part by priority
-        //timer.start_timer("sorting", "Sorting");
+        const size_t bucket_size = _moves[i].size() / _context.refinement.deterministic_refinement.jet.num_buckets + 1;
+        const size_t bucket_start_index = b * bucket_size;
+        const size_t bucket_end_index = std::min(_moves[i].size(), bucket_start_index + bucket_size);
+        //timer.stop_timer("copy_moves");
+          // sort the moves from each overweight part by priority
+          //timer.start_timer("sorting", "Sorting");
         tbb::parallel_sort(_moves[i].begin() + bucket_start_index, _moves[i].end(), [&](const rebalancer::RebalancingMove& a, const rebalancer::RebalancingMove& b) {
           return a.priority < b.priority || (a.priority == b.priority && a.hn > b.hn);
         });
@@ -212,7 +212,7 @@ void DeterministicRebalancer<GraphAndGainTypes>::weakRebalancingRound(Partitione
 
         // timer.start_timer("exe_moves", "Execute Moves");
         //DBG << "exe_moves" << V(bucket_start_index) << ", " << V(last_move_idx) << ", " << V(bucket_end_index) << ", " << V(_moves[i].size());
-        tbb::parallel_for(b * bucket_size, std::min(last_move_idx + 1, _moves[i].size()), [&](const size_t j) {
+        tbb::parallel_for(b * bucket_size, std::min(last_move_idx + 1, bucket_end_index), [&](const size_t j) {
           const auto move = _moves[i][j];
           changeNodePart(phg, move.hn, i, move.to, false);
         });
@@ -223,12 +223,13 @@ void DeterministicRebalancer<GraphAndGainTypes>::weakRebalancingRound(Partitione
       }
       // }
     });
-    
+
     for (size_t i = 0; i < _moves.size(); ++i) {
       const size_t bucket_size = _moves[i].size() / _context.refinement.deterministic_refinement.jet.num_buckets + 1;
       const size_t start = (b + 1) * bucket_size;
       tbb::parallel_for(start, _moves[i].size(), [&](const size_t j) {
         _moves[i][j] = computeGainAndTargetPart(phg, _moves[i][j].hn, true);
+        ASSERT(phg.partID(_moves[i][j].hn) == i, V(phg.partID(_moves[i][j].hn)) << V(i) << V(j));
       });
     }
   }
