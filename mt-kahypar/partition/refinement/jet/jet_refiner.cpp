@@ -36,6 +36,7 @@
 #include "mt-kahypar/utils/timer.h"
 #include "mt-kahypar/utils/cast.h"
 #include "mt-kahypar/datastructures/streaming_vector.h"
+constexpr bool REFINER_AS_IN_PAPER = true;
 
 namespace mt_kahypar {
 
@@ -56,9 +57,9 @@ namespace mt_kahypar {
     _gain(context),
     _active_nodes(),
     _gains_and_target(_precomputed ? num_hypernodes : 0),
-    _next_active(_context.refinement.jet.exactly_as_in_jet_paper ? 0 : num_hypernodes),
-    _visited_he(_context.refinement.jet.exactly_as_in_jet_paper ? 0 : num_hyperedges),
-    _locks(_context.refinement.jet.exactly_as_in_jet_paper ? num_hypernodes : 0),
+    _next_active(REFINER_AS_IN_PAPER ? 0 : num_hypernodes),
+    _visited_he(REFINER_AS_IN_PAPER ? 0 : num_hyperedges),
+    _locks(REFINER_AS_IN_PAPER ? num_hypernodes : 0),
     _rebalancer(rebalancer) { }
 
   template <typename TypeTraits, typename GainTypes>
@@ -154,9 +155,9 @@ namespace mt_kahypar {
       } else {
         // initialize active vertices for next round
         timer.start_timer("compute_active_nodes", "Compute Active Nodes");
-        if (_context.refinement.jet.exactly_as_in_jet_paper && _precomputed) {
+        if (REFINER_AS_IN_PAPER && _precomputed) {
           computeActiveNodesFromGraph<true>(hypergraph, false);
-        } else if (_context.refinement.jet.exactly_as_in_jet_paper) {
+        } else if (REFINER_AS_IN_PAPER) {
           computeActiveNodesFromGraph<false>(hypergraph, false);
         } else if (_precomputed) {
           computeActiveNodesFromPreviousRound<true>(hypergraph);
@@ -234,13 +235,13 @@ namespace mt_kahypar {
 
         if (total_gain <= 0) {
           changeNodePart(hypergraph, hn, from, to, objective_delta);
-          if (_context.refinement.jet.exactly_as_in_jet_paper) {
+          if (REFINER_AS_IN_PAPER) {
             _locks.set(hn);
           }
         }
       } else {
         bool success = moveVertexGreedily(hypergraph, hn, objective_delta);
-        if (success && _context.refinement.jet.exactly_as_in_jet_paper) {
+        if (success && REFINER_AS_IN_PAPER) {
           _locks.set(hn);
         }
       }

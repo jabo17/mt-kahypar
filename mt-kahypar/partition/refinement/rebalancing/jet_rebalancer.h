@@ -60,7 +60,7 @@ public:
   explicit JetRebalancer(HypernodeID, const Context& context, GainCache& gain_cache) :
     _context(context),
     _max_part_weights(nullptr),
-    NUM_BUCKETS(std::ceil(12 * 1.0 / std::log2(_context.refinement.jet_rebalancing.bucket_step_size)) + _context.refinement.jet_rebalancing.buckets_between_zero_and_one),
+    NUM_BUCKETS(std::ceil(12 * 1.0 / std::log2(_context.refinement.jet_rebalancing.bucket_step_size)) + _context.refinement.jet_rebalancing.buckets_between_zero_and_one + 1),
     _gain_cache(gain_cache),
     _current_k(_context.partition.k),
     _gain(context),
@@ -250,8 +250,12 @@ private:
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t getBucketID(Gain gain, HypernodeWeight weight) const {
     if (gain > 0) {
       const int a = _context.refinement.jet_rebalancing.buckets_between_zero_and_one;
-      const double ratio = static_cast<double>(gain) / weight + 1.0 / (1 << a);
-      return std::min(size_t(2 + a + std::max(std::log2(ratio) / std::log2(_context.refinement.jet_rebalancing.bucket_step_size), static_cast<double>(-a - 2.0))), NUM_BUCKETS - 1);
+      const double ratio = static_cast<double>(gain) / weight;
+      const int log_ratio = int(std::floor(std::log2(ratio) / std::log2(_context.refinement.jet_rebalancing.bucket_step_size)));
+      if (log_ratio < -a) {
+        return 2;
+      }
+      return std::min(size_t(3 + a + log_ratio), NUM_BUCKETS - 1);
     } else if (gain == 0) {
       return 1;
     }

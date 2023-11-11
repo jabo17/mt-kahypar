@@ -203,7 +203,10 @@ namespace mt_kahypar {
         local_weights[from * NUM_BUCKETS + bucket] += weight;
       }
     });
-
+    for (auto c: bucket_counts){
+      std::cout << c << ", ";
+    }
+    std::cout << std::endl;
     // sum the bucket weight, so we know which buckets should be moved completely
     auto add_range_fn = [&](size_t start, size_t end) {
       for (const auto& local_weights: _local_bucket_weights) {
