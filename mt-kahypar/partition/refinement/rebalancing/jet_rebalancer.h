@@ -247,15 +247,15 @@ private:
     return value;
   }
 
-  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t getBucketID(Gain gain, HypernodeWeight weight) const {
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t getBucketID(Gain gain, HypernodeWeight) const {
     if (gain > 0) {
-      const int a = _context.refinement.jet_rebalancing.buckets_between_zero_and_one;
-      const double ratio = static_cast<double>(gain) / weight;
-      const int log_ratio = int(std::floor(std::log2(ratio) / std::log2(_context.refinement.jet_rebalancing.bucket_step_size)));
-      if (log_ratio < -a) {
-        return 2;
-      }
-      return std::min(size_t(3 + a + log_ratio), NUM_BUCKETS - 1);
+      //const int a = _context.refinement.jet_rebalancing.buckets_between_zero_and_one;
+      //const double ratio = static_cast<double>(gain) / weight;
+      //const int log_ratio = int(std::floor(std::log2(ratio) / std::log2(_context.refinement.jet_rebalancing.bucket_step_size)));
+      // if (log_ratio < -a) {
+      //   return 2;
+      // }
+      return std::min(2 + log2(gain), NUM_BUCKETS - 1);
     } else if (gain == 0) {
       return 1;
     }
