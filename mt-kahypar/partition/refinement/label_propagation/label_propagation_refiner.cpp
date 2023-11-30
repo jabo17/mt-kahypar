@@ -292,6 +292,7 @@ namespace mt_kahypar {
         const HypernodeID hn = _active_nodes[j];
         ASSERT(!_might_be_uninitialized || _old_part_is_initialized[hn]);
         if (hypergraph.partID(hn) != _old_part[hn]) {
+          // TODO: use setNodePart here?
           changeNodePart<true>(hypergraph, hn, hypergraph.partID(hn), _old_part[hn], noop_obj_fn);
         }
       });
