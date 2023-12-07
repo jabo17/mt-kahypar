@@ -76,12 +76,8 @@ class SingleRoundLP {
       PQ parallel_pq(_context.shared_memory.num_threads);
       hg.doParallelForAllNodes([&](const HypernodeID hn) {
         double rating = 0;
-        if (_context.coarsening.prioritize_with_edge_weight) {
-          for (const HyperedgeID& he : hg.incidentEdges(hn)) {
-            rating += hg.edgeWeight(he);
-          }
-        } else {
-          rating = hg.nodeDegree(hn);
+        for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+          rating += hg.edgeWeight(he);
         }
         if (_context.coarsening.prioritize_with_node_weight) {
           rating /= hg.nodeWeight(hn);

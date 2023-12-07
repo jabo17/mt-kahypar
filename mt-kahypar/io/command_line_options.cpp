@@ -251,9 +251,6 @@ namespace mt_kahypar {
             ("c-prioritize-high-degree",
              po::value<bool>(&context.coarsening.prioritize_high_degree)->value_name("<bool>")->default_value(false),
              "If true, scan high degree nodes first when looking for contraction partners.")
-            ("c-prioritize-with-edge-weight",
-             po::value<bool>(&context.coarsening.prioritize_with_edge_weight)->value_name("<bool>")->default_value(false),
-             "If true, use full adjacent edge weight for the priority for which node to scan first.")
             ("c-prioritize-with-node-weight",
              po::value<bool>(&context.coarsening.prioritize_with_node_weight)->value_name("<bool>")->default_value(false),
              "If true, use degree / weight as priority for which node to scan first.")
@@ -281,12 +278,6 @@ namespace mt_kahypar {
              po::value<double>(&context.coarsening.scale_allowed_node_weight_factor)->value_name(
                      "<double>")->default_value(1.0),
              "Additional factor for scaling maximum allowed weight for contractions to current level (currently only 3phase-coarsener).")
-            ("c-s-soft",
-             po::value<double>(&context.coarsening.max_allowed_weight_multiplier_soft)->value_name(
-                     "<double>")->default_value(1),
-             "Soft limit for first two phases of 3phase-coarsener.\n"
-             "The maximum weight of a vertex in the coarsest hypergraph H is:\n"
-             "(s * w(H)) / (t * k)\n")
             ("c-min-shrink-factor",
              po::value<double>(&context.coarsening.minimum_shrink_factor)->value_name("<double>")->default_value(1.01),
              "Minimum factor a hypergraph must shrink in a multilevel pass. Otherwise, we terminate coarsening phase.")
