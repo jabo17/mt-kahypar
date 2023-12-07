@@ -81,6 +81,14 @@ class ConcurrentClusteringData {
     return _cluster_weight;
   }
 
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE AtomicWeight& clusterWeightAt(HypernodeID hn) {
+    return _cluster_weight[hn];
+  }
+
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void setClusterWeight(HypernodeID hn, HypernodeWeight weight) {
+    _cluster_weight[hn].store(weight, std::memory_order_relaxed);
+  }
+
   template<typename Hypergraph>
   void initializeCoarseningPass(Hypergraph& current_hg, parallel::scalable_vector<HypernodeID>& cluster_ids);
 

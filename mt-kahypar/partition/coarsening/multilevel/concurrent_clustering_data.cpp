@@ -64,6 +64,7 @@ bool ConcurrentClusteringData::matchVertices(const Hypergraph& hypergraph,
   bool success = false;
   const HypernodeWeight weight_u = hypergraph.nodeWeight(u);
   HypernodeWeight weight_v = _cluster_weight[v];
+  // TODO: use local max_allowed_node_weight ...
   if ( weight_u + weight_v <= _context.coarsening.max_allowed_node_weight ) {
     if ( _matching_state[u].compare_exchange_strong(unmatched, match_in_progress) ) {
       _matching_partner[u] = v;

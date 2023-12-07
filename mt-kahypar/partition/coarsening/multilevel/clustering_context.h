@@ -74,6 +74,12 @@ struct ClusteringContext {
     return cluster_ids[hn];
   }
 
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void resetCluster(const Hypergraph& current_hg, HypernodeID hn) {
+    ASSERT(hn < cluster_ids.size());
+    cluster_ids[hn] = hn;
+    clustering_data.setClusterWeight(hn, current_hg.nodeWeight(hn));
+  }
+
   // returns the weight of the cluster of this node
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HypernodeWeight clusterWeight(HypernodeID hn) const {
     HypernodeID cluster_id = clusterID(hn);
@@ -125,6 +131,36 @@ struct ClusteringContext {
     }
     return success;
   }
+
+  template<bool has_fixed_vertices>
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
+  bool joinClusterIgnoringMatchingState(const Hypergraph& current_hg, const HypernodeID u, const HypernodeID rep) {
+    // ! also won't update the number of nodes
+    ASSERT(rep == cluster_ids[rep]);
+
+    bool success = false;
+    const HypernodeWeight weight_of_u = current_hg.nodeWeight(u);
+    HypernodeWeight weight_of_rep = clusterWeight(rep);
+    bool cluster_join_operation_allowed =
+      weight_of_u + weight_of_rep <= max_allowed_node_weight;
+    // TODO: fixed vertices
+    // if constexpr ( has_fixed_vertices ) {
+    //   if ( cluster_join_operation_allowed ) {
+    //     cluster_join_operation_allowed = fixed_vertices.contract(rep, u);
+    //   }
+    // }
+    while ( cluster_join_operation_allowed && !success ) {
+      success = clustering_data.clusterWeightAt(rep).compare_exchange_strong(
+                  weight_of_rep, weight_of_rep + weight_of_u, std::memory_order_acq_rel);
+      if (success) {
+        cluster_ids[u] = rep;
+      } else {
+        cluster_join_operation_allowed =
+          weight_of_u + weight_of_rep <= max_allowed_node_weight;
+      }
+    }
+    return success;
+}
 
   bool finalize(const Hypergraph& current_hg, const Context& context) {
     if ( current_hg.hasFixedVertices() ) {
