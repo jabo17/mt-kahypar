@@ -74,6 +74,11 @@ struct ClusteringContext {
     return cluster_ids[hn];
   }
 
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void setClusterID(HypernodeID hn, HypernodeID cluster_id) const {
+    ASSERT(hn < cluster_ids.size());
+    cluster_ids[hn] = cluster_id;
+  }
+
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void resetCluster(const Hypergraph& current_hg, HypernodeID hn) {
     ASSERT(hn < cluster_ids.size());
     cluster_ids[hn] = hn;
@@ -136,7 +141,6 @@ struct ClusteringContext {
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   bool joinClusterIgnoringMatchingState(const Hypergraph& current_hg, const HypernodeID u, const HypernodeID rep) {
     // ! also won't update the number of nodes
-    ASSERT(rep == cluster_ids[rep]);
 
     bool success = false;
     const HypernodeWeight weight_of_u = current_hg.nodeWeight(u);
