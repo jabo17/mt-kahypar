@@ -126,25 +126,16 @@ class ClusterSplitting {
         cc.template joinClusterIgnoringMatchingState<has_fixed_vertices>(hg, hn, rating.target);
       }
     };
-    // TODO: multiple rounds
 
-    if (_context.coarsening.prioritize_high_degree) {
-    //   PQ parallel_pq(_context.shared_memory.num_threads);
-    //   hg.doParallelForAllNodes([&](const HypernodeID hn) {
-    //     double rating = 0;
-    //     for (const HyperedgeID& he : hg.incidentEdges(hn)) {
-    //       rating += hg.edgeWeight(he);
-    //     }
-    //     if (_context.coarsening.prioritize_with_node_weight) {
-    //       rating /= hg.nodeWeight(hn);
-    //     }
-    //     parallel_pq.insert(rating, hn);
-    //   });
-    } else {
-      // We iterate in parallel over the active vertices and update their clusters
-      tbb::parallel_for(UL(0), _active_nodes.size(), [&](const size_t i) {
-        handle_node(_active_nodes[i]);
-      });
+    for (size_t i = 0; i < _context.coarsening.splitting_num_rounds; ++i) {
+      if (_context.coarsening.prioritize_high_degree) {
+        // TODO: priority
+      } else {
+        // We iterate in parallel over the active vertices and update their clusters
+        tbb::parallel_for(UL(0), _active_nodes.size(), [&](const size_t i) {
+          handle_node(_active_nodes[i]);
+        });
+      }
     }
 
     // update matching states and number of nodes
@@ -180,6 +171,9 @@ class ClusterSplitting {
           }
           _cluster_sizes[hg.communityID(root)].fetch_sub(found_nodes.size(), std::memory_order_relaxed);
           _cluster_sizes[root].fetch_add(found_nodes.size(), std::memory_order_relaxed);
+          if (found_nodes.size() == 1) {
+            cc.makeVertexUnmatched(root);
+          }
         }
       });
       tbb::parallel_for(UL(0), _active_nodes.size(), [&](const size_t i) {
@@ -233,7 +227,7 @@ class ClusterSplitting {
   bool clusterShouldBeSplit(HypernodeID cluster_id, ClusteringContext<Hypergraph>& cc) {
     // TODO: tolerance factor (~2) for weight??
     return _cluster_sizes[cluster_id].load(std::memory_order_relaxed) >= _context.coarsening.splitting_min_num_nodes
-           && cc.clusterWeight(cluster_id) > cc.max_allowed_node_weight;
+           && cc.clusterWeight(cluster_id) > cc.max_allowed_node_weight * _context.coarsening.splitting_tolerance_factor;
   }
 
   const Context& _context;

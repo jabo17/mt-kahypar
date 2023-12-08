@@ -290,10 +290,18 @@ namespace mt_kahypar {
              po::value<double>(&context.coarsening.splitting_node_weight_exponent)->value_name(
                      "<double>")->default_value(1.0),
              "Scaling exponent of the scaled limit for sub-clusters when splitting.")
+            ("c-splitting-tolerance-factor",
+             po::value<double>(&context.coarsening.splitting_tolerance_factor)->value_name(
+                     "<double>")->default_value(2.0),
+             "Tolerance factor when deciding whether a cluster should be split.")
             ("c-splitting-min-num-nodes",
              po::value<HypernodeID>(&context.coarsening.splitting_min_num_nodes)->value_name(
                      "<int>")->default_value(50),
              "Minimum size of clusters that are split.")
+            ("c-splitting-num-rounds",
+             po::value<size_t>(&context.coarsening.splitting_num_rounds)->value_name(
+                     "<int>")->default_value(1),
+             "Number of LP rounds used for cluster splitting.")
             ("c-min-shrink-factor",
              po::value<double>(&context.coarsening.minimum_shrink_factor)->value_name("<double>")->default_value(1.01),
              "Minimum factor a hypergraph must shrink in a multilevel pass. Otherwise, we terminate coarsening phase.")

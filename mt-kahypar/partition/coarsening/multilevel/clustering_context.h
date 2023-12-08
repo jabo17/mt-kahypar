@@ -96,6 +96,10 @@ struct ClusteringContext {
     return clustering_data.vertexIsUnmatched(u);
   }
 
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void makeVertexUnmatched(const HypernodeID u) {
+    clustering_data.makeVertexUnmatched(u);
+  }
+
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HypernodeID currentNumNodes() const {
     return num_nodes_tracker.currentNumNodes();
   }
