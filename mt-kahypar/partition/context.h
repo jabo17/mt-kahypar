@@ -140,6 +140,12 @@ struct CoarseningParameters {
   bool scale_allowed_node_weight = false;
   double scale_allowed_node_weight_factor = 1.0;
 
+  // Cluster Splitting
+  bool use_cluster_splitting = false;
+  double splitting_node_weight_factor = 1.0;
+  double splitting_node_weight_exponent = 1.0;
+  HypernodeID splitting_min_num_nodes = 50;
+
   // Two-Hop Coarsening
   bool delayed_two_hop_coarsening = false;
   double twin_required_similarity = 0.75;
