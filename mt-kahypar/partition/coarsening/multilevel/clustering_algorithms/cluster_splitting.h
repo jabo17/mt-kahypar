@@ -50,20 +50,17 @@ class ClusterSplitting {
  public:
   ClusterSplitting(const HypernodeID num_nodes, const Context& context):
     _context(context),
-    _old_cluster_sizes(num_nodes),
+    _cluster_sizes(num_nodes),
     _community_ids(),
     _active_nodes(),
-    _cluster_mapping(),
     _node_scanned(),
-    _cluster_scanned() {
+    _cluster_locks() {
       tbb::parallel_invoke([&] {
-        _old_cluster_sizes.assign(num_nodes, CAtomic<HypernodeID>(0));
-      }, [&] {
-        _cluster_mapping.resize(num_nodes, CAtomic<HypernodeID>(kInvalidHypernode));
+        _cluster_sizes.assign(num_nodes, CAtomic<HypernodeID>(0));
       }, [&] {
         _node_scanned.setSize(num_nodes);
       }, [&] {
-        _cluster_scanned.setSize(num_nodes);
+        _cluster_locks.setSize(num_nodes);
       });
     }
 
@@ -90,10 +87,10 @@ class ClusterSplitting {
 
     // compute current cluster sizes, copy community ids (for later restoration)
     tbb::parallel_invoke([&] {
-      _old_cluster_sizes.assign(hg.initialNumNodes(), CAtomic<HypernodeID>(0));
+      _cluster_sizes.assign(hg.initialNumNodes(), CAtomic<HypernodeID>(0));
       hg.doParallelForAllNodes([&](const HypernodeID hn) {
         const HypernodeID cluster_id = cc.clusterID(hn);
-        _old_cluster_sizes[cluster_id].fetch_add(1, std::memory_order_relaxed);
+        _cluster_sizes[cluster_id].fetch_add(1, std::memory_order_relaxed);
       });
     }, [&] {
       _community_ids.resize(hg.initialNumNodes());
@@ -152,50 +149,44 @@ class ClusterSplitting {
 
     // update matching states and number of nodes
     while (_active_nodes.size() > 0) {
-      tbb::enumerable_thread_specific<vec<HypernodeID>> local_queues;
+      tbb::enumerable_thread_specific<vec<HypernodeID>> local_stacks;
+      tbb::enumerable_thread_specific<vec<HypernodeID>> local_node_list;
       tbb::parallel_for(UL(0), _active_nodes.size(), [&](const size_t i) {
-        const HypernodeID hn = _active_nodes[i];
-        const HypernodeID cluster_id = cc.clusterID(hn);
-        if (!_node_scanned[hn] && _cluster_scanned.compare_and_set_to_true(cluster_id)) {
-          _cluster_mapping[cluster_id].store(hn);
-          HypernodeID expected = kInvalidHypernode;
-          _cluster_mapping[hn].compare_exchange_strong(expected, cluster_id);  // ---> avoids collisions!!!
-          // depth first search to collect the nodes of this cluster
-          size_t cluster_size = 0;
-          vec<HypernodeID>& queue = local_queues.local();
-          queue.clear();
-          queue.push_back(hn);
-          _node_scanned.set(hn);
-          while (queue.size() > 0) {
-            cluster_size++;
-            const HypernodeID current = queue.back();
-            queue.pop_back();
-            for (HyperedgeID he: hg.incidentEdges(current)) {
+        const HypernodeID root = _active_nodes[i];
+        const HypernodeID cluster_id = cc.clusterID(root);
+        if (!_node_scanned[root] && _cluster_locks.compare_and_set_to_true(cluster_id)) {
+          vec<HypernodeID>& dfs_stack = local_stacks.local();
+          dfs_stack.clear();
+          vec<HypernodeID>& found_nodes = local_node_list.local();
+          found_nodes.clear();
+          dfs_stack.push_back(root);
+          _node_scanned.set(root);
+          while (dfs_stack.size() > 0) {
+            const HypernodeID current_hn = dfs_stack.back();
+            found_nodes.push_back(current_hn);
+            dfs_stack.pop_back();
+            for (HyperedgeID he: hg.incidentEdges(current_hn)) {
               for (HypernodeID pin: hg.pins(he)) {
                 if (cc.clusterID(pin) == cluster_id && !_node_scanned[pin]) {
-                  queue.push_back(pin);
+                  dfs_stack.push_back(pin);
                   _node_scanned.set(pin);
                 }
               }
             }
           }
-          _cluster_scanned.set(cluster_id, false);
-          // TODO: size update
+          _cluster_locks.set(cluster_id, false);
+          for (const HypernodeID& current_hn: found_nodes) {
+            cc.setClusterID(current_hn, root);
+          }
+          _cluster_sizes[hg.communityID(root)].fetch_sub(found_nodes.size(), std::memory_order_relaxed);
+          _cluster_sizes[root].fetch_add(found_nodes.size(), std::memory_order_relaxed);
         }
       });
       tbb::parallel_for(UL(0), _active_nodes.size(), [&](const size_t i) {
         const HypernodeID hn = _active_nodes[i];
-        const HypernodeID cluster_id = cc.clusterID(hn);
         if (!_node_scanned[hn]) {
           local_active_nodes.stream(hn);
-        } else if (_cluster_mapping[cluster_id] != kInvalidHypernode) {
-          cc.setClusterID(hn, _cluster_mapping[cluster_id]);
         }
-      });
-      // reset mapping
-      tbb::parallel_for(UL(0), _active_nodes.size(), [&](const size_t i) {
-        const HypernodeID hn = _active_nodes[i];
-        _cluster_mapping[cc.clusterID(hn)] = CAtomic<HypernodeID>(kInvalidHypernode);
       });
       _active_nodes.clear();
       local_active_nodes.copy_parallel(_active_nodes);
@@ -205,40 +196,52 @@ class ClusterSplitting {
       }
     }
 
-    // restore parameter and community ids
-    std::swap(cc.max_allowed_node_weight, tmp_max_allowed_node_weight);
-    hg.doParallelForAllNodes([&](const HypernodeID hn) {
-      hg.setCommunityID(hn, _community_ids[hn]);
-      _cluster_mapping[hn] = CAtomic<HypernodeID>(kInvalidHypernode);
-    });
-    _active_nodes.clear();
-    _node_scanned.reset();
-    _cluster_scanned.reset();
     ASSERT([&] {
-      for (const auto& val: _cluster_mapping) {
-        if (val.load() != kInvalidHypernode) {
+      for (HypernodeID hn: hg.nodes()) {
+        HypernodeID cluster_id = cc.clusterID(hn);
+        if (_cluster_sizes[cluster_id] == 0) {
+          return false;
+        }
+        if (hn != cluster_id && _cluster_sizes[hn] > 0) {
           return false;
         }
       }
       return true;
     }());
+    HypernodeID num_clusters = tbb::parallel_reduce(tbb::blocked_range<HypernodeID>(ID(0), hg.initialNumNodes()), 0,
+                                      [&](const tbb::blocked_range<HypernodeID>& range, HypernodeID init) {
+                                        HypernodeID count = init;
+                                        for (HypernodeID hn = range.begin(); hn < range.end(); ++hn) {
+                                            count += (_cluster_sizes[hn].load(std::memory_order_relaxed) > 0) ? 1 : 0;
+                                        }
+                                        return count;
+                                      }, std::plus<>());
+    cc.setNumberOfNodes(num_clusters);
+
+    // restore parameter and community ids
+    std::swap(cc.max_allowed_node_weight, tmp_max_allowed_node_weight);
+    hg.doParallelForAllNodes([&](const HypernodeID hn) {
+      hg.setCommunityID(hn, _community_ids[hn]);
+    });
+    _active_nodes.clear();
+    _node_scanned.reset();
+    _cluster_locks.reset();
   }
 
  private:
   template<typename Hypergraph>
   bool clusterShouldBeSplit(HypernodeID cluster_id, ClusteringContext<Hypergraph>& cc) {
     // TODO: tolerance factor (~2) for weight??
-    return _old_cluster_sizes[cluster_id].load(std::memory_order_relaxed) >= _context.coarsening.splitting_min_num_nodes
+    return _cluster_sizes[cluster_id].load(std::memory_order_relaxed) >= _context.coarsening.splitting_min_num_nodes
            && cc.clusterWeight(cluster_id) > cc.max_allowed_node_weight;
   }
 
   const Context& _context;
-  ds::Array<CAtomic<HypernodeID>> _old_cluster_sizes;
+  ds::Array<CAtomic<HypernodeID>> _cluster_sizes;
   vec<PartitionID> _community_ids;
   vec<HypernodeID> _active_nodes;
-  vec<CAtomic<HypernodeID>> _cluster_mapping;
   kahypar::ds::FastResetFlagArray<> _node_scanned;
-  ds::ThreadSafeFastResetFlagArray<> _cluster_scanned;
+  ds::ThreadSafeFastResetFlagArray<> _cluster_locks;
 };
 
 }  // namespace mt_kahypar

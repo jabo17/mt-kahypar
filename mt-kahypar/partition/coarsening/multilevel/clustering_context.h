@@ -100,6 +100,10 @@ struct ClusteringContext {
     return num_nodes_tracker.currentNumNodes();
   }
 
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void setNumberOfNodes(HypernodeID new_num_nodes) {
+    num_nodes_tracker.setNumberOfNodes(new_num_nodes);
+  }
+
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE bool shouldContinue() const {
     return num_nodes_tracker.currentNumNodes() > hierarchy_contraction_limit;
   }

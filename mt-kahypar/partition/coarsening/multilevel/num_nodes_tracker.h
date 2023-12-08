@@ -51,9 +51,27 @@ class NumNodesTracker {
 
   HypernodeID finalNumNodes() {
     // update state / reset
-    _current_num_nodes = _initial_num_nodes - _contracted_nodes.combine(std::plus<HypernodeID>());
-    _num_nodes_update_threshold = tbb::enumerable_thread_specific<HypernodeID>(0);
+    _current_num_nodes = updatedNumNodes();
+    _num_nodes_update_threshold = 0;
     return _current_num_nodes;
+  }
+
+  void setNumberOfNodes(const HypernodeID new_num_nodes) {
+    ASSERT(new_num_nodes <= _initial_num_nodes);
+    HypernodeID current = updatedNumNodes();
+    _num_nodes_update_threshold = 0;
+    long diff = static_cast<long>(current) - static_cast<long>(new_num_nodes);
+    for (HypernodeID& local_contracted_nodes: _contracted_nodes) {
+      // careful: need to avoid underflow in counters
+      long applicable = std::max(-static_cast<long>(local_contracted_nodes), diff);
+      local_contracted_nodes += applicable;
+      diff -= applicable;
+      if (diff == 0) {
+        break;
+      }
+    }
+    _current_num_nodes = new_num_nodes;
+    ASSERT(diff == 0 && _current_num_nodes == updatedNumNodes());
   }
 
   void initialize(HypernodeID initial_num_nodes) {
@@ -81,7 +99,7 @@ class NumNodesTracker {
     // increased by the new difference (in number of nodes) to the contraction limit
     // divided by the number of PEs.
     if (local_contracted_nodes >= _num_nodes_update_threshold.local()) {
-      _current_num_nodes = _initial_num_nodes - _contracted_nodes.combine(std::plus<HypernodeID>());
+      _current_num_nodes = updatedNumNodes();
       const HypernodeID dist_to_contraction_limit =
         _current_num_nodes > hierarchy_contraction_limit ?
         _current_num_nodes - hierarchy_contraction_limit : 0;
@@ -90,6 +108,11 @@ class NumNodesTracker {
   }
 
  private:
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HypernodeID updatedNumNodes() {
+    return _initial_num_nodes - _contracted_nodes.combine(std::plus<HypernodeID>());
+  }
+
+
   HypernodeID _initial_num_nodes;
   HypernodeID _current_num_nodes;
   tbb::enumerable_thread_specific<HypernodeID> _contracted_nodes;
