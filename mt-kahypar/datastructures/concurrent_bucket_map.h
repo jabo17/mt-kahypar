@@ -62,100 +62,100 @@ template <typename Value>
 class ConcurrentBucketMap
 {
 
-  static constexpr bool debug = false;
-  static constexpr size_t BUCKET_FACTOR = 128;
+    static constexpr bool debug = false;
+    static constexpr size_t BUCKET_FACTOR = 128;
 
-  using Bucket = parallel::scalable_vector<Value>;
+    using Bucket = parallel::scalable_vector<Value>;
 
-public:
-  ConcurrentBucketMap() :
-      _num_buckets(align_to_next_power_of_two(BUCKET_FACTOR *
-                                              std::thread::hardware_concurrency())),
-      _mod_mask(_num_buckets - 1), _spin_locks(_num_buckets), _buckets(_num_buckets)
-  {
-  }
+  public:
+    ConcurrentBucketMap() :
+        _num_buckets(align_to_next_power_of_two(BUCKET_FACTOR *
+                                                std::thread::hardware_concurrency())),
+        _mod_mask(_num_buckets - 1), _spin_locks(_num_buckets), _buckets(_num_buckets)
+    {
+    }
 
-  ConcurrentBucketMap(const ConcurrentBucketMap &) = delete;
-  ConcurrentBucketMap &operator=(const ConcurrentBucketMap &) = delete;
+    ConcurrentBucketMap(const ConcurrentBucketMap &) = delete;
+    ConcurrentBucketMap &operator=(const ConcurrentBucketMap &) = delete;
 
-  ConcurrentBucketMap(ConcurrentBucketMap &&other) :
-      _num_buckets(other._num_buckets), _mod_mask(_num_buckets - 1),
-      _spin_locks(_num_buckets), _buckets(std::move(other._buffer))
-  {
-  }
+    ConcurrentBucketMap(ConcurrentBucketMap &&other) :
+        _num_buckets(other._num_buckets), _mod_mask(_num_buckets - 1),
+        _spin_locks(_num_buckets), _buckets(std::move(other._buffer))
+    {
+    }
 
-  template <typename F>
-  void doParallelForAllBuckets(const F &f)
-  {
-    tbb::parallel_for(UL(0), _num_buckets, [&](const size_t i) { f(i); });
-  }
+    template <typename F>
+    void doParallelForAllBuckets(const F &f)
+    {
+        tbb::parallel_for(UL(0), _num_buckets, [&](const size_t i) { f(i); });
+    }
 
-  // ! Returns the number of buckets
-  size_t numBuckets() const { return _num_buckets; }
+    // ! Returns the number of buckets
+    size_t numBuckets() const { return _num_buckets; }
 
-  // ! Returns the corresponding bucket
-  Bucket &getBucket(const size_t bucket)
-  {
-    ASSERT(bucket < _num_buckets);
-    return _buckets[bucket];
-  }
+    // ! Returns the corresponding bucket
+    Bucket &getBucket(const size_t bucket)
+    {
+        ASSERT(bucket < _num_buckets);
+        return _buckets[bucket];
+    }
 
-  // ! Reserves memory in each bucket such that the estimated number of insertions
-  // ! can be handled without the need (with high probability) of expensive bucket
-  // resizing.
-  void reserve_for_estimated_number_of_insertions(const size_t estimated_num_insertions)
-  {
-    // ! Assumption is that keys are evenly distributed among buckets (with a small
-    // buffer)
-    const size_t estimated_bucket_size = std::max(
-        static_cast<size_t>(1.5 * estimated_num_insertions) / _num_buckets, UL(1));
-    tbb::parallel_for(UL(0), _num_buckets, [&](const size_t i) {
-      _buckets[i].reserve(estimated_bucket_size);
-    });
-  }
+    // ! Reserves memory in each bucket such that the estimated number of insertions
+    // ! can be handled without the need (with high probability) of expensive bucket
+    // resizing.
+    void reserve_for_estimated_number_of_insertions(const size_t estimated_num_insertions)
+    {
+        // ! Assumption is that keys are evenly distributed among buckets (with a small
+        // buffer)
+        const size_t estimated_bucket_size = std::max(
+            static_cast<size_t>(1.5 * estimated_num_insertions) / _num_buckets, UL(1));
+        tbb::parallel_for(UL(0), _num_buckets, [&](const size_t i) {
+            _buckets[i].reserve(estimated_bucket_size);
+        });
+    }
 
-  // ! Inserts a key-value pair
-  void insert(const size_t &key, Value &&value)
-  {
-    size_t bucket = key & _mod_mask;
-    ASSERT(bucket < _num_buckets);
-    _spin_locks[bucket].lock();
-    _buckets[bucket].emplace_back(std::move(value));
-    _spin_locks[bucket].unlock();
-  }
+    // ! Inserts a key-value pair
+    void insert(const size_t &key, Value &&value)
+    {
+        size_t bucket = key & _mod_mask;
+        ASSERT(bucket < _num_buckets);
+        _spin_locks[bucket].lock();
+        _buckets[bucket].emplace_back(std::move(value));
+        _spin_locks[bucket].unlock();
+    }
 
-  // ! Frees the memory of all buckets
-  void free() { parallel::parallel_free(_buckets); }
+    // ! Frees the memory of all buckets
+    void free() { parallel::parallel_free(_buckets); }
 
-  // ! Frees the memory of the corresponding bucket
-  void free(const size_t bucket)
-  {
-    ASSERT(bucket < _num_buckets);
-    parallel::free(_buckets[bucket]);
-  }
+    // ! Frees the memory of the corresponding bucket
+    void free(const size_t bucket)
+    {
+        ASSERT(bucket < _num_buckets);
+        parallel::free(_buckets[bucket]);
+    }
 
-  // ! Clears the corresponding bucket
-  void clear(const size_t bucket)
-  {
-    ASSERT(bucket < _num_buckets);
-    _buckets[bucket].clear();
-  }
+    // ! Clears the corresponding bucket
+    void clear(const size_t bucket)
+    {
+        ASSERT(bucket < _num_buckets);
+        _buckets[bucket].clear();
+    }
 
-  void clearParallel()
-  {
-    doParallelForAllBuckets([&](const size_t i) { clear(i); });
-  }
+    void clearParallel()
+    {
+        doParallelForAllBuckets([&](const size_t i) { clear(i); });
+    }
 
-private:
-  size_t align_to_next_power_of_two(const size_t size) const
-  {
-    return std::pow(2.0, std::ceil(std::log2(static_cast<double>(size))));
-  }
+  private:
+    size_t align_to_next_power_of_two(const size_t size) const
+    {
+        return std::pow(2.0, std::ceil(std::log2(static_cast<double>(size))));
+    }
 
-  const size_t _num_buckets;
-  const size_t _mod_mask;
-  std::vector<SpinLock> _spin_locks;
-  parallel::scalable_vector<Bucket> _buckets;
+    const size_t _num_buckets;
+    const size_t _mod_mask;
+    std::vector<SpinLock> _spin_locks;
+    parallel::scalable_vector<Bucket> _buckets;
 };
 } // namespace ds
 } // namespace mt_kahypar

@@ -38,66 +38,66 @@ namespace mt_kahypar {
 class Km1GainComputation
     : public GainComputationBase<Km1GainComputation, Km1AttributedGains>
 {
-  using Base = GainComputationBase<Km1GainComputation, Km1AttributedGains>;
-  using RatingMap = typename Base::RatingMap;
+    using Base = GainComputationBase<Km1GainComputation, Km1AttributedGains>;
+    using RatingMap = typename Base::RatingMap;
 
-  static constexpr bool enable_heavy_assert = false;
+    static constexpr bool enable_heavy_assert = false;
 
-public:
-  Km1GainComputation(const Context &context, bool disable_randomization = false) :
-      Base(context, disable_randomization)
-  {
-  }
-
-  // ! Precomputes the gain to all adjacent blocks.
-  // ! Conceptually, we compute the gain of moving the node to an non-adjacent block
-  // ! and the gain to all adjacent blocks assuming the node is in an isolated block.
-  // ! The gain of that node to a block to can then be computed by
-  // ! 'isolated_block_gain - tmp_scores[to]' (see gain(...))
-  template <typename PartitionedHypergraph>
-  void precomputeGains(const PartitionedHypergraph &phg, const HypernodeID hn,
-                       RatingMap &tmp_scores, Gain &isolated_block_gain, const bool)
-  {
-    ASSERT(tmp_scores.size() == 0, "Rating map not empty");
-    PartitionID from = phg.partID(hn);
-    for(const HyperedgeID &he : phg.incidentEdges(hn))
+  public:
+    Km1GainComputation(const Context &context, bool disable_randomization = false) :
+        Base(context, disable_randomization)
     {
-      HypernodeID pin_count_in_from_part = phg.pinCountInPart(he, from);
-      HyperedgeWeight he_weight = phg.edgeWeight(he);
-
-      // In case, there is more one than one pin left in from part, we would
-      // increase the connectivity, if we would move the pin to one block
-      // no contained in the connectivity set. In such cases, we can only
-      // increase the connectivity of a hyperedge and therefore gather
-      // the edge weight of all those edges and add it later to move gain
-      // to all other blocks.
-      if(pin_count_in_from_part > 1)
-      {
-        isolated_block_gain += he_weight;
-      }
-
-      // Substract edge weight of all incident blocks.
-      // Note, in case the pin count in from part is greater than one
-      // we will later add that edge weight to the gain (see internal_weight).
-      for(const PartitionID &to : phg.connectivitySet(he))
-      {
-        if(from != to)
-        {
-          tmp_scores[to] += he_weight;
-        }
-      }
     }
-  }
 
-  HyperedgeWeight gain(const Gain to_score, const Gain isolated_block_gain)
-  {
-    return isolated_block_gain - to_score;
-  }
+    // ! Precomputes the gain to all adjacent blocks.
+    // ! Conceptually, we compute the gain of moving the node to an non-adjacent block
+    // ! and the gain to all adjacent blocks assuming the node is in an isolated block.
+    // ! The gain of that node to a block to can then be computed by
+    // ! 'isolated_block_gain - tmp_scores[to]' (see gain(...))
+    template <typename PartitionedHypergraph>
+    void precomputeGains(const PartitionedHypergraph &phg, const HypernodeID hn,
+                         RatingMap &tmp_scores, Gain &isolated_block_gain, const bool)
+    {
+        ASSERT(tmp_scores.size() == 0, "Rating map not empty");
+        PartitionID from = phg.partID(hn);
+        for(const HyperedgeID &he : phg.incidentEdges(hn))
+        {
+            HypernodeID pin_count_in_from_part = phg.pinCountInPart(he, from);
+            HyperedgeWeight he_weight = phg.edgeWeight(he);
 
-  void changeNumberOfBlocksImpl(const PartitionID)
-  {
-    // Do nothing
-  }
+            // In case, there is more one than one pin left in from part, we would
+            // increase the connectivity, if we would move the pin to one block
+            // no contained in the connectivity set. In such cases, we can only
+            // increase the connectivity of a hyperedge and therefore gather
+            // the edge weight of all those edges and add it later to move gain
+            // to all other blocks.
+            if(pin_count_in_from_part > 1)
+            {
+                isolated_block_gain += he_weight;
+            }
+
+            // Substract edge weight of all incident blocks.
+            // Note, in case the pin count in from part is greater than one
+            // we will later add that edge weight to the gain (see internal_weight).
+            for(const PartitionID &to : phg.connectivitySet(he))
+            {
+                if(from != to)
+                {
+                    tmp_scores[to] += he_weight;
+                }
+            }
+        }
+    }
+
+    HyperedgeWeight gain(const Gain to_score, const Gain isolated_block_gain)
+    {
+        return isolated_block_gain - to_score;
+    }
+
+    void changeNumberOfBlocksImpl(const PartitionID)
+    {
+        // Do nothing
+    }
 };
 
 } // namespace mt_kahypar

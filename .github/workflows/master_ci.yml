@@ -9,6 +9,31 @@ on:
       - master
 
 jobs:
+  code_formatting:
+    name: Code Formatting
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        path:
+          - 'include'
+          - 'lib'
+          - 'mt-kahypar'
+          - 'python'
+          - 'tests'
+          - 'tools'
+
+    steps:
+      - name: Checkout HEAD
+        uses: actions/checkout@v3
+        with:
+         fetch-depth: 1
+
+      - name: Run Clang Format
+        uses: jidicula/clang-format-action@v4.11.0
+        with:
+          clang-format-version: '17'
+          check-path: ${{ matrix.path }}
+
   mt_kahypar_compiler_version_test:
     name: Ubuntu Build
     strategy:

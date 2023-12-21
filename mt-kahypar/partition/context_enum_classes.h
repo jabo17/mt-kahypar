@@ -38,166 +38,166 @@ namespace mt_kahypar {
 
 enum class Type : int8_t
 {
-  Unweighted = 0,
-  EdgeWeights = 1,
-  NodeWeights = 10,
-  EdgeAndNodeWeights = 11,
+    Unweighted = 0,
+    EdgeWeights = 1,
+    NodeWeights = 10,
+    EdgeAndNodeWeights = 11,
 };
 
 enum class FileFormat : int8_t
 {
-  hMetis = 0,
-  Metis = 1,
+    hMetis = 0,
+    Metis = 1,
 };
 
 enum class InstanceType : int8_t
 {
-  graph = 0,
-  hypergraph = 1,
-  UNDEFINED = 2
+    graph = 0,
+    hypergraph = 1,
+    UNDEFINED = 2
 };
 
 enum class PresetType : int8_t
 {
-  deterministic,
-  large_k,
-  default_preset,
-  quality,
-  highest_quality,
-  UNDEFINED
+    deterministic,
+    large_k,
+    default_preset,
+    quality,
+    highest_quality,
+    UNDEFINED
 };
 
 enum class ContextType : bool
 {
-  main,
-  initial_partitioning
+    main,
+    initial_partitioning
 };
 
 enum class Mode : uint8_t
 {
-  recursive_bipartitioning,
-  direct,
-  deep_multilevel,
-  UNDEFINED
+    recursive_bipartitioning,
+    direct,
+    deep_multilevel,
+    UNDEFINED
 };
 
 enum class Objective : uint8_t
 {
-  cut,
-  km1,
-  soed,
-  steiner_tree,
-  UNDEFINED
+    cut,
+    km1,
+    soed,
+    steiner_tree,
+    UNDEFINED
 };
 
 enum class GainPolicy : uint8_t
 {
-  km1,
-  cut,
-  soed,
-  steiner_tree,
-  cut_for_graphs,
-  steiner_tree_for_graphs,
-  none
+    km1,
+    cut,
+    soed,
+    steiner_tree,
+    cut_for_graphs,
+    steiner_tree_for_graphs,
+    none
 };
 
 enum class LouvainEdgeWeight : uint8_t
 {
-  hybrid,
-  uniform,
-  non_uniform,
-  degree,
-  UNDEFINED
+    hybrid,
+    uniform,
+    non_uniform,
+    degree,
+    UNDEFINED
 };
 
 enum class SimiliarNetCombinerStrategy : uint8_t
 {
-  union_nets,
-  max_size,
-  importance,
-  UNDEFINED
+    union_nets,
+    max_size,
+    importance,
+    UNDEFINED
 };
 
 enum class CoarseningAlgorithm : uint8_t
 {
-  multilevel_coarsener,
-  deterministic_multilevel_coarsener,
-  nlevel_coarsener,
-  UNDEFINED
+    multilevel_coarsener,
+    deterministic_multilevel_coarsener,
+    nlevel_coarsener,
+    UNDEFINED
 };
 
 enum class RatingFunction : uint8_t
 {
-  heavy_edge,
-  ENABLE_EXPERIMENTAL_FEATURES(sameness COMMA) UNDEFINED
+    heavy_edge,
+    ENABLE_EXPERIMENTAL_FEATURES(sameness COMMA) UNDEFINED
 };
 
 enum class HeavyNodePenaltyPolicy : uint8_t
 {
-  no_penalty,
-  ENABLE_EXPERIMENTAL_FEATURES(multiplicative_penalty COMMA)
-      ENABLE_EXPERIMENTAL_FEATURES(additive COMMA) UNDEFINED
+    no_penalty,
+    ENABLE_EXPERIMENTAL_FEATURES(multiplicative_penalty COMMA)
+        ENABLE_EXPERIMENTAL_FEATURES(additive COMMA) UNDEFINED
 };
 
 enum class AcceptancePolicy : uint8_t
 {
-  ENABLE_EXPERIMENTAL_FEATURES(best COMMA) best_prefer_unmatched,
-  UNDEFINED
+    ENABLE_EXPERIMENTAL_FEATURES(best COMMA) best_prefer_unmatched,
+    UNDEFINED
 };
 
 enum class InitialPartitioningAlgorithm : uint8_t
 {
-  greedy_round_robin_fm = 0,
-  greedy_global_fm = 1,
-  greedy_sequential_fm = 2,
-  random = 3,
-  bfs = 4,
-  label_propagation = 5,
-  greedy_round_robin_max_net = 6,
-  greedy_global_max_net = 7,
-  greedy_sequential_max_net = 8,
-  UNDEFINED = 9
+    greedy_round_robin_fm = 0,
+    greedy_global_fm = 1,
+    greedy_sequential_fm = 2,
+    random = 3,
+    bfs = 4,
+    label_propagation = 5,
+    greedy_round_robin_max_net = 6,
+    greedy_global_max_net = 7,
+    greedy_sequential_max_net = 8,
+    UNDEFINED = 9
 };
 
 enum class LabelPropagationAlgorithm : uint8_t
 {
-  label_propagation,
-  deterministic,
-  do_nothing
+    label_propagation,
+    deterministic,
+    do_nothing
 };
 
 enum class FMAlgorithm : uint8_t
 {
-  kway_fm,
-  unconstrained_fm,
-  do_nothing
+    kway_fm,
+    unconstrained_fm,
+    do_nothing
 };
 
 enum class FlowAlgorithm : uint8_t
 {
-  flow_cutter,
-  mock,
-  do_nothing
+    flow_cutter,
+    mock,
+    do_nothing
 };
 
 enum class RebalancingAlgorithm : uint8_t
 {
-  simple_rebalancer,
-  advanced_rebalancer,
-  do_nothing
+    simple_rebalancer,
+    advanced_rebalancer,
+    do_nothing
 };
 
 enum class OneToOneMappingStrategy : uint8_t
 {
-  greedy_mapping,
-  identity
+    greedy_mapping,
+    identity
 };
 
 enum class SteinerTreeFlowValuePolicy : uint8_t
 {
-  lower_bound,
-  upper_bound,
-  UNDEFINED
+    lower_bound,
+    upper_bound,
+    UNDEFINED
 };
 
 std::ostream &operator<<(std::ostream &os, const Type &type);

@@ -45,5 +45,4 @@ using ThreadLocalKWayPriorityQueue = tbb::enumerable_thread_specific<KWayPriorit
 
 using ThreadLocalFastResetFlagArray =
     tbb::enumerable_thread_specific<kahypar::ds::FastResetFlagArray<> >;
-
 }

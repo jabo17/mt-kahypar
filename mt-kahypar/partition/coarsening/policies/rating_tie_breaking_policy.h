@@ -31,49 +31,52 @@
 namespace mt_kahypar {
 class LastRatingWins
 {
-public:
-  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int) { return true; }
+  public:
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int) { return true; }
 
-  LastRatingWins(const LastRatingWins &) = delete;
-  LastRatingWins &operator=(const LastRatingWins &) = delete;
+    LastRatingWins(const LastRatingWins &) = delete;
+    LastRatingWins &operator=(const LastRatingWins &) = delete;
 
-  LastRatingWins(LastRatingWins &&) = delete;
-  LastRatingWins &operator=(LastRatingWins &&) = delete;
+    LastRatingWins(LastRatingWins &&) = delete;
+    LastRatingWins &operator=(LastRatingWins &&) = delete;
 
-protected:
-  ~LastRatingWins() = default;
+  protected:
+    ~LastRatingWins() = default;
 };
 
 class FirstRatingWins
 {
-public:
-  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int) { return false; }
+  public:
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int)
+    {
+        return false;
+    }
 
-  FirstRatingWins(const FirstRatingWins &) = delete;
-  FirstRatingWins &operator=(const FirstRatingWins &) = delete;
+    FirstRatingWins(const FirstRatingWins &) = delete;
+    FirstRatingWins &operator=(const FirstRatingWins &) = delete;
 
-  FirstRatingWins(FirstRatingWins &&) = delete;
-  FirstRatingWins &operator=(FirstRatingWins &&) = delete;
+    FirstRatingWins(FirstRatingWins &&) = delete;
+    FirstRatingWins &operator=(FirstRatingWins &&) = delete;
 
-protected:
-  ~FirstRatingWins() = default;
+  protected:
+    ~FirstRatingWins() = default;
 };
 
 class RandomRatingWins
 {
-public:
-  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int cpu_id)
-  {
-    return utils::Randomize::instance().flipCoin(cpu_id);
-  }
+  public:
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int cpu_id)
+    {
+        return utils::Randomize::instance().flipCoin(cpu_id);
+    }
 
-  RandomRatingWins(const RandomRatingWins &) = delete;
-  RandomRatingWins &operator=(const RandomRatingWins &) = delete;
+    RandomRatingWins(const RandomRatingWins &) = delete;
+    RandomRatingWins &operator=(const RandomRatingWins &) = delete;
 
-  RandomRatingWins(RandomRatingWins &&) = delete;
-  RandomRatingWins &operator=(RandomRatingWins &&) = delete;
+    RandomRatingWins(RandomRatingWins &&) = delete;
+    RandomRatingWins &operator=(RandomRatingWins &&) = delete;
 
-protected:
-  ~RandomRatingWins() = default;
+  protected:
+    ~RandomRatingWins() = default;
 };
 } // namespace mt_kahypar

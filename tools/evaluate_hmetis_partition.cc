@@ -51,75 +51,75 @@ using PartitionedHypergraph = ds::PartitionedHypergraph<Hypergraph, ds::Connecti
 void readPartitionFile(const std::string &partition_file,
                        PartitionedHypergraph &hypergraph)
 {
-  ASSERT(!partition_file.empty(), "No filename for partition file specified");
-  std::ifstream file(partition_file);
-  if(file)
-  {
-    PartitionID part_id;
-    HypernodeID node = 0;
-    while(file >> part_id)
+    ASSERT(!partition_file.empty(), "No filename for partition file specified");
+    std::ifstream file(partition_file);
+    if(file)
     {
-      hypergraph.setOnlyNodePart(node, part_id);
-      node++;
+        PartitionID part_id;
+        HypernodeID node = 0;
+        while(file >> part_id)
+        {
+            hypergraph.setOnlyNodePart(node, part_id);
+            node++;
+        }
+        if(node != hypergraph.initialNumNodes())
+        {
+            std::cerr << "Number of nodes doesnt match partition file size" << std::endl;
+        }
+        hypergraph.initializePartition();
+        file.close();
     }
-    if(node != hypergraph.initialNumNodes())
+    else
     {
-      std::cerr << "Number of nodes doesnt match partition file size" << std::endl;
+        std::cerr << "Error: File not found: " << std::endl;
     }
-    hypergraph.initializePartition();
-    file.close();
-  }
-  else
-  {
-    std::cerr << "Error: File not found: " << std::endl;
-  }
 }
 
 int main(int argc, char *argv[])
 {
-  Context context;
+    Context context;
 
-  po::options_description options("Options");
-  options.add_options()("hypergraph,h",
-                        po::value<std::string>(&context.partition.graph_filename)
-                            ->value_name("<string>")
-                            ->required(),
-                        "Hypergraph Filename")(
-      "partition-file,b",
-      po::value<std::string>(&context.partition.graph_partition_filename)
-          ->value_name("<string>")
-          ->required(),
-      "Partition Filename")(
-      "blocks,k",
-      po::value<PartitionID>(&context.partition.k)->value_name("<int>")->required(),
-      "Number of Blocks");
+    po::options_description options("Options");
+    options.add_options()("hypergraph,h",
+                          po::value<std::string>(&context.partition.graph_filename)
+                              ->value_name("<string>")
+                              ->required(),
+                          "Hypergraph Filename")(
+        "partition-file,b",
+        po::value<std::string>(&context.partition.graph_partition_filename)
+            ->value_name("<string>")
+            ->required(),
+        "Partition Filename")(
+        "blocks,k",
+        po::value<PartitionID>(&context.partition.k)->value_name("<int>")->required(),
+        "Number of Blocks");
 
-  po::variables_map cmd_vm;
-  po::store(po::parse_command_line(argc, argv, options), cmd_vm);
-  po::notify(cmd_vm);
+    po::variables_map cmd_vm;
+    po::store(po::parse_command_line(argc, argv, options), cmd_vm);
+    po::notify(cmd_vm);
 
-  // Read Hypergraph
-  mt_kahypar_hypergraph_t hypergraph = mt_kahypar::io::readInputFile(
-      context.partition.graph_filename, PresetType::default_preset,
-      InstanceType::hypergraph, FileFormat::hMetis, true);
-  Hypergraph &hg = utils::cast<Hypergraph>(hypergraph);
-  PartitionedHypergraph phg(context.partition.k, hg, parallel_tag_t());
+    // Read Hypergraph
+    mt_kahypar_hypergraph_t hypergraph = mt_kahypar::io::readInputFile(
+        context.partition.graph_filename, PresetType::default_preset,
+        InstanceType::hypergraph, FileFormat::hMetis, true);
+    Hypergraph &hg = utils::cast<Hypergraph>(hypergraph);
+    PartitionedHypergraph phg(context.partition.k, hg, parallel_tag_t());
 
-  // Setup Context
-  context.partition.epsilon = 0.03;
-  context.setupPartWeights(hg.totalWeight());
+    // Setup Context
+    context.partition.epsilon = 0.03;
+    context.setupPartWeights(hg.totalWeight());
 
-  // Read Partition File
-  readPartitionFile(context.partition.graph_partition_filename, phg);
+    // Read Partition File
+    readPartitionFile(context.partition.graph_partition_filename, phg);
 
-  std::cout << "RESULT"
-            << " graph=" << context.partition.graph_filename
-            << " k=" << context.partition.k
-            << " imbalance=" << metrics::imbalance(phg, context)
-            << " cut=" << metrics::quality(phg, Objective::cut)
-            << " km1=" << metrics::quality(phg, Objective::km1) << std::endl;
+    std::cout << "RESULT"
+              << " graph=" << context.partition.graph_filename
+              << " k=" << context.partition.k
+              << " imbalance=" << metrics::imbalance(phg, context)
+              << " cut=" << metrics::quality(phg, Objective::cut)
+              << " km1=" << metrics::quality(phg, Objective::km1) << std::endl;
 
-  utils::delete_hypergraph(hypergraph);
+    utils::delete_hypergraph(hypergraph);
 
-  return 0;
+    return 0;
 }

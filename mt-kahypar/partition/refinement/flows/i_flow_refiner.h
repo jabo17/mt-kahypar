@@ -39,53 +39,56 @@ namespace mt_kahypar {
 class IFlowRefiner
 {
 
-public:
-  IFlowRefiner(const IFlowRefiner &) = delete;
-  IFlowRefiner(IFlowRefiner &&) = delete;
-  IFlowRefiner &operator=(const IFlowRefiner &) = delete;
-  IFlowRefiner &operator=(IFlowRefiner &&) = delete;
+  public:
+    IFlowRefiner(const IFlowRefiner &) = delete;
+    IFlowRefiner(IFlowRefiner &&) = delete;
+    IFlowRefiner &operator=(const IFlowRefiner &) = delete;
+    IFlowRefiner &operator=(IFlowRefiner &&) = delete;
 
-  virtual ~IFlowRefiner() = default;
+    virtual ~IFlowRefiner() = default;
 
-  void initialize(mt_kahypar_partitioned_hypergraph_const_t &phg) { initializeImpl(phg); }
+    void initialize(mt_kahypar_partitioned_hypergraph_const_t &phg)
+    {
+        initializeImpl(phg);
+    }
 
-  MoveSequence refine(mt_kahypar_partitioned_hypergraph_const_t &phg,
-                      const Subhypergraph &sub_hg, const HighResClockTimepoint &start)
-  {
-    return refineImpl(phg, sub_hg, start);
-  }
+    MoveSequence refine(mt_kahypar_partitioned_hypergraph_const_t &phg,
+                        const Subhypergraph &sub_hg, const HighResClockTimepoint &start)
+    {
+        return refineImpl(phg, sub_hg, start);
+    }
 
-  // ! Returns the maximum number of blocks that can be refined
-  // ! per search with this refinement algorithm
-  PartitionID maxNumberOfBlocksPerSearch() const
-  {
-    return maxNumberOfBlocksPerSearchImpl();
-  }
+    // ! Returns the maximum number of blocks that can be refined
+    // ! per search with this refinement algorithm
+    PartitionID maxNumberOfBlocksPerSearch() const
+    {
+        return maxNumberOfBlocksPerSearchImpl();
+    }
 
-  // ! Set the number of threads that is used for the next search
-  void setNumThreadsForSearch(const size_t num_threads)
-  {
-    setNumThreadsForSearchImpl(num_threads);
-  }
+    // ! Set the number of threads that is used for the next search
+    void setNumThreadsForSearch(const size_t num_threads)
+    {
+        setNumThreadsForSearchImpl(num_threads);
+    }
 
-  // ! Updates the time limit (in seconds)
-  void updateTimeLimit(const double time_limit) { _time_limit = time_limit; }
+    // ! Updates the time limit (in seconds)
+    void updateTimeLimit(const double time_limit) { _time_limit = time_limit; }
 
-protected:
-  IFlowRefiner() = default;
+  protected:
+    IFlowRefiner() = default;
 
-  double _time_limit = 0;
+    double _time_limit = 0;
 
-private:
-  virtual void initializeImpl(mt_kahypar_partitioned_hypergraph_const_t &phg) = 0;
+  private:
+    virtual void initializeImpl(mt_kahypar_partitioned_hypergraph_const_t &phg) = 0;
 
-  virtual MoveSequence refineImpl(mt_kahypar_partitioned_hypergraph_const_t &phg,
-                                  const Subhypergraph &sub_hg,
-                                  const HighResClockTimepoint &start) = 0;
+    virtual MoveSequence refineImpl(mt_kahypar_partitioned_hypergraph_const_t &phg,
+                                    const Subhypergraph &sub_hg,
+                                    const HighResClockTimepoint &start) = 0;
 
-  virtual PartitionID maxNumberOfBlocksPerSearchImpl() const = 0;
+    virtual PartitionID maxNumberOfBlocksPerSearchImpl() const = 0;
 
-  virtual void setNumThreadsForSearchImpl(const size_t num_threads) = 0;
+    virtual void setNumThreadsForSearchImpl(const size_t num_threads) = 0;
 };
 
 } // namespace mt_kahypar

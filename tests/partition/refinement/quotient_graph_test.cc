@@ -33,7 +33,7 @@
 using ::testing::Test;
 
 #define MOVE(HN, FROM, TO)                                                               \
-  Move { FROM, TO, HN, 0 }
+    Move { FROM, TO, HN, 0 }
 
 namespace mt_kahypar {
 
@@ -194,5 +194,4 @@ ID:" << search_id << ", Success:"
     }
   }
 }*/
-
 }

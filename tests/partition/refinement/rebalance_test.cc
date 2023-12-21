@@ -47,85 +47,87 @@ using Km1Rebalancer = SimpleRebalancer<GraphAndGainTypes<TypeTraits, Km1GainType
 
 TEST(RebalanceTests, HeapSortWithMoveGainComparator)
 {
-  vec<Move> moves;
-  vec<Gain> gains = { 52, 12, 72, -154, 2672, -717, 1346, -7111, -113461, 136682, 3833 };
+    vec<Move> moves;
+    vec<Gain> gains = {
+        52, 12, 72, -154, 2672, -717, 1346, -7111, -113461, 136682, 3833
+    };
 
-  for(HypernodeID i = 0; i < gains.size(); ++i)
-  {
-    moves.push_back(Move{ -1, -1, i, gains[i] });
-  }
+    for(HypernodeID i = 0; i < gains.size(); ++i)
+    {
+        moves.push_back(Move{ -1, -1, i, gains[i] });
+    }
 
-  std::make_heap(moves.begin(), moves.end(), Km1Rebalancer::MoveGainComparator());
-  for(size_t i = 0; i < moves.size(); ++i)
-  {
-    std::pop_heap(moves.begin(), moves.end() - i, Km1Rebalancer::MoveGainComparator());
-  }
+    std::make_heap(moves.begin(), moves.end(), Km1Rebalancer::MoveGainComparator());
+    for(size_t i = 0; i < moves.size(); ++i)
+    {
+        std::pop_heap(moves.begin(), moves.end() - i,
+                      Km1Rebalancer::MoveGainComparator());
+    }
 
-  // assert that moves is sorted descendingly
-  ASSERT_TRUE(
-      std::is_sorted(moves.begin(), moves.end(), [](const Move &lhs, const Move &rhs) {
-        return lhs.gain > rhs.gain;
-      }));
+    // assert that moves is sorted descendingly
+    ASSERT_TRUE(
+        std::is_sorted(moves.begin(), moves.end(), [](const Move &lhs, const Move &rhs) {
+            return lhs.gain > rhs.gain;
+        }));
 }
 
 TEST(RebalanceTests, FindsMoves)
 {
-  PartitionID k = 8;
-  Context context;
-  context.partition.k = k;
-  context.partition.epsilon = 0.03;
-  Hypergraph hg = io::readInputFile<Hypergraph>("../tests/instances/contracted_ibm01.hgr",
-                                                FileFormat::hMetis,
-                                                true /* enable stable construction */);
-  context.setupPartWeights(hg.totalWeight());
-  PartitionedHypergraph phg = PartitionedHypergraph(k, hg);
+    PartitionID k = 8;
+    Context context;
+    context.partition.k = k;
+    context.partition.epsilon = 0.03;
+    Hypergraph hg = io::readInputFile<Hypergraph>(
+        "../tests/instances/contracted_ibm01.hgr", FileFormat::hMetis,
+        true /* enable stable construction */);
+    context.setupPartWeights(hg.totalWeight());
+    PartitionedHypergraph phg = PartitionedHypergraph(k, hg);
 
-  HypernodeID nodes_per_part = hg.initialNumNodes() / (k - 4);
-  ASSERT(hg.initialNumNodes() % (k - 4) == 0);
-  for(PartitionID i = 0; i < k - 4; ++i)
-  {
-    for(HypernodeID u = i * nodes_per_part; u < (i + 1) * nodes_per_part; ++u)
+    HypernodeID nodes_per_part = hg.initialNumNodes() / (k - 4);
+    ASSERT(hg.initialNumNodes() % (k - 4) == 0);
+    for(PartitionID i = 0; i < k - 4; ++i)
     {
-      phg.setOnlyNodePart(u, i);
-    }
-  }
-  phg.initializePartition();
-  Km1GainCache gain_cache;
-  gain_cache.initializeGainCache(phg);
-
-  Km1Rebalancer rebalancer(context);
-  vec<Move> moves_to_empty_blocks = rebalancer.repairEmptyBlocks(phg);
-
-  ASSERT_EQ(moves_to_empty_blocks.size(), 4);
-
-  for(Move &m : moves_to_empty_blocks)
-  {
-    ASSERT_EQ(gain_cache.gain(m.node, m.from, m.to), m.gain);
-    Gain recomputed_gain = gain_cache.recomputeBenefitTerm(phg, m.node, m.to) -
-                           gain_cache.recomputePenaltyTerm(phg, m.node);
-    if(recomputed_gain == 0)
-    {
-      ASSERT_TRUE([&]() {
-        for(HyperedgeID e : phg.incidentEdges(m.node))
+        for(HypernodeID u = i * nodes_per_part; u < (i + 1) * nodes_per_part; ++u)
         {
-          if(phg.pinCountInPart(e, m.from) != 1)
-          {
-            return false;
-          }
+            phg.setOnlyNodePart(u, i);
         }
-        return true;
-      }());
     }
-    ASSERT_EQ(m.gain, recomputed_gain);
-    ASSERT_EQ(m.from, phg.partID(m.node));
-    ASSERT_EQ(phg.partWeight(m.to), 0);
-    ASSERT_GE(m.to, k - 4);
-    ASSERT_LT(m.from, k - 4);
-    phg.changeNodePart(gain_cache, m.node, m.from, m.to);
-  }
+    phg.initializePartition();
+    Km1GainCache gain_cache;
+    gain_cache.initializeGainCache(phg);
 
-  moves_to_empty_blocks = rebalancer.repairEmptyBlocks(phg);
-  ASSERT_EQ(moves_to_empty_blocks.size(), 0);
+    Km1Rebalancer rebalancer(context);
+    vec<Move> moves_to_empty_blocks = rebalancer.repairEmptyBlocks(phg);
+
+    ASSERT_EQ(moves_to_empty_blocks.size(), 4);
+
+    for(Move &m : moves_to_empty_blocks)
+    {
+        ASSERT_EQ(gain_cache.gain(m.node, m.from, m.to), m.gain);
+        Gain recomputed_gain = gain_cache.recomputeBenefitTerm(phg, m.node, m.to) -
+                               gain_cache.recomputePenaltyTerm(phg, m.node);
+        if(recomputed_gain == 0)
+        {
+            ASSERT_TRUE([&]() {
+                for(HyperedgeID e : phg.incidentEdges(m.node))
+                {
+                    if(phg.pinCountInPart(e, m.from) != 1)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }());
+        }
+        ASSERT_EQ(m.gain, recomputed_gain);
+        ASSERT_EQ(m.from, phg.partID(m.node));
+        ASSERT_EQ(phg.partWeight(m.to), 0);
+        ASSERT_GE(m.to, k - 4);
+        ASSERT_LT(m.from, k - 4);
+        phg.changeNodePart(gain_cache, m.node, m.from, m.to);
+    }
+
+    moves_to_empty_blocks = rebalancer.repairEmptyBlocks(phg);
+    ASSERT_EQ(moves_to_empty_blocks.size(), 0);
 }
-
 }

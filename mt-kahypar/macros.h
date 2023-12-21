@@ -49,16 +49,16 @@
 #include "kahypar-resources/macros.h"
 
 #define SPECIALIZATION(EXPR, TYPE)                                                       \
-  template <bool T = EXPR>                                                               \
-  std::enable_if_t<T, TYPE>
+    template <bool T = EXPR>                                                             \
+    std::enable_if_t<T, TYPE>
 
 #define TRUE_SPECIALIZATION(EXPR, TYPE)                                                  \
-  template <bool T = EXPR>                                                               \
-  std::enable_if_t<T, TYPE>
+    template <bool T = EXPR>                                                             \
+    std::enable_if_t<T, TYPE>
 
 #define FALSE_SPECIALIZATION(EXPR, TYPE)                                                 \
-  template <bool T = EXPR>                                                               \
-  std::enable_if_t<!T, TYPE>
+    template <bool T = EXPR>                                                             \
+    std::enable_if_t<!T, TYPE>
 
 #if(defined(__GNUC__) || defined(__clang__)) && defined(NDEBUG)
 #define MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE __attribute__((always_inline)) inline
@@ -68,7 +68,7 @@
 
 #define HEAVY_ASSERT0(cond) !(enable_heavy_assert) ? (void)0 : [&]() { ASSERT(cond); }()
 #define HEAVY_ASSERT1(cond, msg)                                                         \
-  !(enable_heavy_assert) ? (void)0 : [&]() { ASSERT(cond, msg); }()
+    !(enable_heavy_assert) ? (void)0 : [&]() { ASSERT(cond, msg); }()
 
 #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
 #define HEAVY_PREPROCESSING_ASSERT_1(cond) ASSERT(cond)
@@ -115,13 +115,14 @@
 // flag for specific phase or for specific scope by adding static constexpr
 // bool enable_heavy_assert = false; to the corresponding scope.
 #define HEAVY_PREPROCESSING_ASSERT(...)                                                  \
-  EXPAND(HEAVY_ASSERT_EVAL(PREPROCESSING, EXPAND(NARG(__VA_ARGS__)))(__VA_ARGS__))
+    EXPAND(HEAVY_ASSERT_EVAL(PREPROCESSING, EXPAND(NARG(__VA_ARGS__)))(__VA_ARGS__))
 #define HEAVY_COARSENING_ASSERT(...)                                                     \
-  EXPAND(HEAVY_ASSERT_EVAL(COARSENING, EXPAND(NARG(__VA_ARGS__)))(__VA_ARGS__))
+    EXPAND(HEAVY_ASSERT_EVAL(COARSENING, EXPAND(NARG(__VA_ARGS__)))(__VA_ARGS__))
 #define HEAVY_INITIAL_PARTITIONING_ASSERT(...)                                           \
-  EXPAND(HEAVY_ASSERT_EVAL(INITIAL_PARTITIONING, EXPAND(NARG(__VA_ARGS__)))(__VA_ARGS__))
+    EXPAND(                                                                              \
+        HEAVY_ASSERT_EVAL(INITIAL_PARTITIONING, EXPAND(NARG(__VA_ARGS__)))(__VA_ARGS__))
 #define HEAVY_REFINEMENT_ASSERT(...)                                                     \
-  EXPAND(HEAVY_ASSERT_EVAL(REFINEMENT, EXPAND(NARG(__VA_ARGS__)))(__VA_ARGS__))
+    EXPAND(HEAVY_ASSERT_EVAL(REFINEMENT, EXPAND(NARG(__VA_ARGS__)))(__VA_ARGS__))
 
 // In windows unisgned long != size_t
 #define UL(X) (size_t) X
@@ -145,26 +146,26 @@
 #endif
 #define WARNING(msg) LOG << YELLOW << "[WARNING]" << END << msg
 #define ERR(msg)                                                                         \
-  LOG << RED << "[ERROR]" << END << msg;                                                 \
-  std::exit(-1)
+    LOG << RED << "[ERROR]" << END << msg;                                               \
+    std::exit(-1)
 
 #ifdef MT_KAHYPAR_LIBRARY_MODE
 #define ALGO_SWITCH(warning_msg, error_msg, context_variable, alternative_value)         \
-  ERR(error_msg);
+    ERR(error_msg);
 #else
 #define ALGO_SWITCH(warning_msg, error_msg, context_variable, alternative_value)         \
-  WARNING(warning_msg);                                                                  \
-  char answer = 'N';                                                                     \
-  std::cin >> answer;                                                                    \
-  answer = std::toupper(answer);                                                         \
-  if(answer == 'Y')                                                                      \
-  {                                                                                      \
-    context_variable = alternative_value;                                                \
-  }                                                                                      \
-  else                                                                                   \
-  {                                                                                      \
-    ERR(error_msg);                                                                      \
-  }
+    WARNING(warning_msg);                                                                \
+    char answer = 'N';                                                                   \
+    std::cin >> answer;                                                                  \
+    answer = std::toupper(answer);                                                       \
+    if(answer == 'Y')                                                                    \
+    {                                                                                    \
+        context_variable = alternative_value;                                            \
+    }                                                                                    \
+    else                                                                                 \
+    {                                                                                    \
+        ERR(error_msg);                                                                  \
+    }
 #endif
 
 #ifdef KAHYPAR_ENABLE_EXPERIMENTAL_FEATURES

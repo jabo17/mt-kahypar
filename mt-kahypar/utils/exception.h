@@ -38,63 +38,63 @@ template <class Derived>
 class MtKaHyParException : public std::exception
 {
 
-public:
-  MtKaHyParException(const std::string &what) : _what("")
-  {
-    std::stringstream ss;
-    ss << RED << "[" << Derived::TYPE << "] " << END << " " << what;
-    _what = ss.str();
-  }
+  public:
+    MtKaHyParException(const std::string &what) : _what("")
+    {
+        std::stringstream ss;
+        ss << RED << "[" << Derived::TYPE << "] " << END << " " << what;
+        _what = ss.str();
+    }
 
-  const char *what() const throw() { return _what.c_str(); }
+    const char *what() const throw() { return _what.c_str(); }
 
-private:
-  std::string _what;
+  private:
+    std::string _what;
 };
 
 class InvalidInputException : public MtKaHyParException<InvalidInputException>
 {
 
-  using Base = MtKaHyParException<InvalidInputException>;
+    using Base = MtKaHyParException<InvalidInputException>;
 
-public:
-  static constexpr char TYPE[] = "Invalid Input";
+  public:
+    static constexpr char TYPE[] = "Invalid Input";
 
-  InvalidInputException(const std::string &what) : Base(what) {}
+    InvalidInputException(const std::string &what) : Base(what) {}
 };
 
 class InvalidParameterException : public MtKaHyParException<InvalidParameterException>
 {
 
-  using Base = MtKaHyParException<InvalidParameterException>;
+    using Base = MtKaHyParException<InvalidParameterException>;
 
-public:
-  static constexpr char TYPE[] = "Invalid Parameter";
+  public:
+    static constexpr char TYPE[] = "Invalid Parameter";
 
-  InvalidParameterException(const std::string &what) : Base(what) {}
+    InvalidParameterException(const std::string &what) : Base(what) {}
 };
 
 class NonSupportedOperationException
     : public MtKaHyParException<NonSupportedOperationException>
 {
 
-  using Base = MtKaHyParException<NonSupportedOperationException>;
+    using Base = MtKaHyParException<NonSupportedOperationException>;
 
-public:
-  static constexpr char TYPE[] = "Non Supported Operation";
+  public:
+    static constexpr char TYPE[] = "Non Supported Operation";
 
-  NonSupportedOperationException(const std::string &what) : Base(what) {}
+    NonSupportedOperationException(const std::string &what) : Base(what) {}
 };
 
 class SystemException : public MtKaHyParException<SystemException>
 {
 
-  using Base = MtKaHyParException<SystemException>;
+    using Base = MtKaHyParException<SystemException>;
 
-public:
-  static constexpr char TYPE[] = "System Error";
+  public:
+    static constexpr char TYPE[] = "System Error";
 
-  SystemException(const std::string &what) : Base(what) {}
+    SystemException(const std::string &what) : Base(what) {}
 };
 
 } // namespace mt_kahypar

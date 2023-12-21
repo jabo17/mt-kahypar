@@ -35,34 +35,34 @@ template <typename TypeTraits>
 class RandomInitialPartitioner : public IInitialPartitioner
 {
 
-  static constexpr bool debug = false;
+    static constexpr bool debug = false;
 
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  RandomInitialPartitioner(const InitialPartitioningAlgorithm,
-                           ip_data_container_t *ip_data, const Context &context,
-                           const int seed, const int tag) :
-      _ip_data(ip::to_reference<TypeTraits>(ip_data)),
-      _context(context), _rng(seed), _tag(tag)
-  {
-  }
+  public:
+    RandomInitialPartitioner(const InitialPartitioningAlgorithm,
+                             ip_data_container_t *ip_data, const Context &context,
+                             const int seed, const int tag) :
+        _ip_data(ip::to_reference<TypeTraits>(ip_data)),
+        _context(context), _rng(seed), _tag(tag)
+    {
+    }
 
-private:
-  void partitionImpl() final;
+  private:
+    void partitionImpl() final;
 
-  bool fitsIntoBlock(PartitionedHypergraph &hypergraph, const HypernodeID hn,
-                     const PartitionID block) const
-  {
-    ASSERT(block != kInvalidPartition && block < _context.partition.k);
-    return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
-           _context.partition.perfect_balance_part_weights[block];
-  }
+    bool fitsIntoBlock(PartitionedHypergraph &hypergraph, const HypernodeID hn,
+                       const PartitionID block) const
+    {
+        ASSERT(block != kInvalidPartition && block < _context.partition.k);
+        return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
+               _context.partition.perfect_balance_part_weights[block];
+    }
 
-  InitialPartitioningDataContainer<TypeTraits> &_ip_data;
-  const Context &_context;
-  std::mt19937 _rng;
-  const int _tag;
+    InitialPartitioningDataContainer<TypeTraits> &_ip_data;
+    const Context &_context;
+    std::mt19937 _rng;
+    const int _tag;
 };
 
 } // namespace mt_kahypar

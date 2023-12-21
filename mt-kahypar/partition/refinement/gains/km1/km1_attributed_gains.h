@@ -37,11 +37,13 @@ namespace mt_kahypar {
  */
 struct Km1AttributedGains
 {
-  static HyperedgeWeight gain(const SynchronizedEdgeUpdate &sync_update)
-  {
-    return (sync_update.pin_count_in_to_part_after == 1 ? sync_update.edge_weight : 0) +
-           (sync_update.pin_count_in_from_part_after == 0 ? -sync_update.edge_weight : 0);
-  }
+    static HyperedgeWeight gain(const SynchronizedEdgeUpdate &sync_update)
+    {
+        return (sync_update.pin_count_in_to_part_after == 1 ? sync_update.edge_weight :
+                                                              0) +
+               (sync_update.pin_count_in_from_part_after == 0 ? -sync_update.edge_weight :
+                                                                0);
+    }
 };
 
 } // namespace mt_kahypar

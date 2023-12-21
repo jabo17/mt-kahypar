@@ -51,108 +51,111 @@ using PartitionedHypergraph = ds::PartitionedHypergraph<Hypergraph, ds::Connecti
 bool readPartitionFile(const std::string &partition_file,
                        PartitionedHypergraph &hypergraph)
 {
-  bool success = true;
-  std::vector<PartitionID> partition;
-  mt_kahypar::io::readPartitionFile(partition_file, partition);
-  for(const HypernodeID &hn : hypergraph.nodes())
-  {
-    if(partition[hn] == kInvalidPartition)
+    bool success = true;
+    std::vector<PartitionID> partition;
+    mt_kahypar::io::readPartitionFile(partition_file, partition);
+    for(const HypernodeID &hn : hypergraph.nodes())
     {
-      LOG << RED << "[ERROR]" << END << "Hypernode" << hn << "is not assigned to a block";
-      success = false;
+        if(partition[hn] == kInvalidPartition)
+        {
+            LOG << RED << "[ERROR]" << END << "Hypernode" << hn
+                << "is not assigned to a block";
+            success = false;
+        }
+        else if(partition[hn] >= hypergraph.k())
+        {
+            LOG << RED << "[ERROR]" << END << "Hypernode" << hn << "is assigned to block"
+                << (partition[hn] + 1) << ", but there are only" << hypergraph.k()
+                << "blocks";
+            success = false;
+        }
+        hypergraph.setOnlyNodePart(hn, partition[hn]);
     }
-    else if(partition[hn] >= hypergraph.k())
-    {
-      LOG << RED << "[ERROR]" << END << "Hypernode" << hn << "is assigned to block"
-          << (partition[hn] + 1) << ", but there are only" << hypergraph.k() << "blocks";
-      success = false;
-    }
-    hypergraph.setOnlyNodePart(hn, partition[hn]);
-  }
-  hypergraph.initializePartition();
-  return success;
+    hypergraph.initializePartition();
+    return success;
 }
 
 int main(int argc, char *argv[])
 {
-  Context context;
+    Context context;
 
-  po::options_description options("Options");
-  options.add_options()("hypergraph,h",
-                        po::value<std::string>(&context.partition.graph_filename)
-                            ->value_name("<string>")
-                            ->required(),
-                        "Hypergraph Filename")(
-      "partition-file,b",
-      po::value<std::string>(&context.partition.graph_partition_filename)
-          ->value_name("<string>")
-          ->required(),
-      "Partition Filename")(
-      "blocks,k",
-      po::value<PartitionID>(&context.partition.k)->value_name("<int>")->required(),
-      "Number of Blocks")(
-      "epsilon,e",
-      po::value<double>(&context.partition.epsilon)->value_name("<double>")->required(),
-      "Imbalance")("fixed-vertices,f",
-                   po::value<std::string>(&context.partition.fixed_vertex_filename)
-                       ->value_name("<string>"),
-                   "Fixed Vertex File");
+    po::options_description options("Options");
+    options.add_options()("hypergraph,h",
+                          po::value<std::string>(&context.partition.graph_filename)
+                              ->value_name("<string>")
+                              ->required(),
+                          "Hypergraph Filename")(
+        "partition-file,b",
+        po::value<std::string>(&context.partition.graph_partition_filename)
+            ->value_name("<string>")
+            ->required(),
+        "Partition Filename")(
+        "blocks,k",
+        po::value<PartitionID>(&context.partition.k)->value_name("<int>")->required(),
+        "Number of Blocks")(
+        "epsilon,e",
+        po::value<double>(&context.partition.epsilon)->value_name("<double>")->required(),
+        "Imbalance")("fixed-vertices,f",
+                     po::value<std::string>(&context.partition.fixed_vertex_filename)
+                         ->value_name("<string>"),
+                     "Fixed Vertex File");
 
-  po::variables_map cmd_vm;
-  po::store(po::parse_command_line(argc, argv, options), cmd_vm);
-  po::notify(cmd_vm);
+    po::variables_map cmd_vm;
+    po::store(po::parse_command_line(argc, argv, options), cmd_vm);
+    po::notify(cmd_vm);
 
-  // Read Hypergraph
-  mt_kahypar_hypergraph_t hypergraph = mt_kahypar::io::readInputFile(
-      context.partition.graph_filename, PresetType::default_preset,
-      InstanceType::hypergraph, FileFormat::hMetis, true);
-  Hypergraph &hg = utils::cast<Hypergraph>(hypergraph);
-  PartitionedHypergraph phg(context.partition.k, hg, parallel_tag_t());
+    // Read Hypergraph
+    mt_kahypar_hypergraph_t hypergraph = mt_kahypar::io::readInputFile(
+        context.partition.graph_filename, PresetType::default_preset,
+        InstanceType::hypergraph, FileFormat::hMetis, true);
+    Hypergraph &hg = utils::cast<Hypergraph>(hypergraph);
+    PartitionedHypergraph phg(context.partition.k, hg, parallel_tag_t());
 
-  // Add fixed vertices
-  if(context.partition.fixed_vertex_filename != "")
-  {
-    mt_kahypar::io::addFixedVerticesFromFile(
-        hypergraph, context.partition.fixed_vertex_filename, context.partition.k);
-  }
-
-  // Setup Context
-  context.setupPartWeights(hg.totalWeight());
-
-  // Read Partition File
-  bool success = readPartitionFile(context.partition.graph_partition_filename, phg);
-
-  for(PartitionID i = 0; i < context.partition.k; ++i)
-  {
-    if(phg.partWeight(i) == 0)
+    // Add fixed vertices
+    if(context.partition.fixed_vertex_filename != "")
     {
-      LOG << RED << "[ERROR]" << END << "Block" << (i + 1) << "is empty" << END;
-      success = false;
+        mt_kahypar::io::addFixedVerticesFromFile(
+            hypergraph, context.partition.fixed_vertex_filename, context.partition.k);
     }
-    else if(phg.partWeight(i) > context.partition.max_part_weights[i])
+
+    // Setup Context
+    context.setupPartWeights(hg.totalWeight());
+
+    // Read Partition File
+    bool success = readPartitionFile(context.partition.graph_partition_filename, phg);
+
+    for(PartitionID i = 0; i < context.partition.k; ++i)
     {
-      LOG << RED << "[ERROR]" << END << "Block" << (i + 1) << "has weight"
-          << phg.partWeight(i) << ", but maximum allowed block weight is"
-          << context.partition.max_part_weights[i] << END;
-      success = false;
+        if(phg.partWeight(i) == 0)
+        {
+            LOG << RED << "[ERROR]" << END << "Block" << (i + 1) << "is empty" << END;
+            success = false;
+        }
+        else if(phg.partWeight(i) > context.partition.max_part_weights[i])
+        {
+            LOG << RED << "[ERROR]" << END << "Block" << (i + 1) << "has weight"
+                << phg.partWeight(i) << ", but maximum allowed block weight is"
+                << context.partition.max_part_weights[i] << END;
+            success = false;
+        }
     }
-  }
 
-  // Check fixed vertices
-  if(phg.hasFixedVertices())
-  {
-    for(const HypernodeID &hn : phg.nodes())
+    // Check fixed vertices
+    if(phg.hasFixedVertices())
     {
-      if(phg.isFixed(hn) && phg.fixedVertexBlock(hn) != phg.partID(hn))
-      {
-        LOG << RED << "Node" << hn << "is fixed to block" << phg.fixedVertexBlock(hn)
-            << ", but assigned to block" << phg.partID(hn) << END;
-        success = false;
-      }
+        for(const HypernodeID &hn : phg.nodes())
+        {
+            if(phg.isFixed(hn) && phg.fixedVertexBlock(hn) != phg.partID(hn))
+            {
+                LOG << RED << "Node" << hn << "is fixed to block"
+                    << phg.fixedVertexBlock(hn) << ", but assigned to block"
+                    << phg.partID(hn) << END;
+                success = false;
+            }
+        }
     }
-  }
 
-  utils::delete_hypergraph(hypergraph);
+    utils::delete_hypergraph(hypergraph);
 
-  return success ? 0 : -1;
+    return success ? 0 : -1;
 }

@@ -34,37 +34,37 @@ namespace mt_kahypar::utils {
 
 enum class OutputType : uint8_t
 {
-  BYTES = 0,
-  KILOBYTE = 1,
-  MEGABYTE = 2,
-  PERCENTAGE = 3
+    BYTES = 0,
+    KILOBYTE = 1,
+    MEGABYTE = 2,
+    PERCENTAGE = 3
 };
 
 class MemoryTreeNode
 {
 
-  using map_type = std::map<std::string, std::unique_ptr<MemoryTreeNode> >;
+    using map_type = std::map<std::string, std::unique_ptr<MemoryTreeNode> >;
 
-public:
-  MemoryTreeNode(const std::string &name,
-                 const OutputType &output_type = OutputType::MEGABYTE);
+  public:
+    MemoryTreeNode(const std::string &name,
+                   const OutputType &output_type = OutputType::MEGABYTE);
 
-  MemoryTreeNode *addChild(const std::string &name, const size_t size_in_bytes = 0);
+    MemoryTreeNode *addChild(const std::string &name, const size_t size_in_bytes = 0);
 
-  void updateSize(const size_t delta) { _size_in_bytes += delta; }
+    void updateSize(const size_t delta) { _size_in_bytes += delta; }
 
-  void finalize();
+    void finalize();
 
-private:
-  void dfs(std::ostream &str, const size_t parent_size_in_bytes, int level) const;
-  void print(std::ostream &str, const size_t parent_size_in_bytes, int level) const;
+  private:
+    void dfs(std::ostream &str, const size_t parent_size_in_bytes, int level) const;
+    void print(std::ostream &str, const size_t parent_size_in_bytes, int level) const;
 
-  friend std::ostream &operator<<(std::ostream &str, const MemoryTreeNode &root);
+    friend std::ostream &operator<<(std::ostream &str, const MemoryTreeNode &root);
 
-  std::string _name;
-  size_t _size_in_bytes;
-  OutputType _output_type;
-  map_type _children;
+    std::string _name;
+    size_t _size_in_bytes;
+    OutputType _output_type;
+    map_type _children;
 };
 
 std::ostream &operator<<(std::ostream &str, const MemoryTreeNode &root);

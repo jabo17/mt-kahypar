@@ -35,23 +35,23 @@
 namespace mt_kahypar {
 class HeavyEdgeScore final : public kahypar::meta::PolicyBase
 {
-public:
-  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static RatingType
-  score(const HyperedgeWeight edge_weight, const HypernodeID edge_size)
-  {
-    return static_cast<RatingType>(edge_weight) / (edge_size - 1);
-  }
+  public:
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static RatingType
+    score(const HyperedgeWeight edge_weight, const HypernodeID edge_size)
+    {
+        return static_cast<RatingType>(edge_weight) / (edge_size - 1);
+    }
 };
 
 #ifdef KAHYPAR_ENABLE_EXPERIMENTAL_FEATURES
 class SamenessScore final : public kahypar::meta::PolicyBase
 {
-public:
-  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static RatingType
-  score(const HyperedgeWeight edge_weight, const HypernodeID)
-  {
-    return static_cast<RatingType>(edge_weight);
-  }
+  public:
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static RatingType
+    score(const HyperedgeWeight edge_weight, const HypernodeID)
+    {
+        return static_cast<RatingType>(edge_weight);
+    }
 };
 
 using RatingScorePolicies = kahypar::meta::Typelist<HeavyEdgeScore, SamenessScore>;

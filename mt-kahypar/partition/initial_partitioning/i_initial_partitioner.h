@@ -29,20 +29,20 @@
 namespace mt_kahypar {
 class IInitialPartitioner
 {
-public:
-  IInitialPartitioner(const IInitialPartitioner &) = delete;
-  IInitialPartitioner(IInitialPartitioner &&) = delete;
-  IInitialPartitioner &operator=(const IInitialPartitioner &) = delete;
-  IInitialPartitioner &operator=(IInitialPartitioner &&) = delete;
+  public:
+    IInitialPartitioner(const IInitialPartitioner &) = delete;
+    IInitialPartitioner(IInitialPartitioner &&) = delete;
+    IInitialPartitioner &operator=(const IInitialPartitioner &) = delete;
+    IInitialPartitioner &operator=(IInitialPartitioner &&) = delete;
 
-  void partition() { partitionImpl(); }
+    void partition() { partitionImpl(); }
 
-  virtual ~IInitialPartitioner() = default;
+    virtual ~IInitialPartitioner() = default;
 
-protected:
-  IInitialPartitioner() = default;
+  protected:
+    IInitialPartitioner() = default;
 
-private:
-  virtual void partitionImpl() = 0;
+  private:
+    virtual void partitionImpl() = 0;
 };
 } // namespace mt_kahypar

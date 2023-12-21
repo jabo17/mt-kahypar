@@ -40,48 +40,48 @@ using namespace mt_kahypar;
 
 int main(int argc, char *argv[])
 {
-  std::string partition_file;
-  double percentage = 0;
-  PartitionID k;
+    std::string partition_file;
+    double percentage = 0;
+    PartitionID k;
 
-  po::options_description options("Options");
-  options.add_options()(
-      "partition-file,p",
-      po::value<std::string>(&partition_file)->value_name("<string>")->required(),
-      "Partition file")("num-blocks,k",
-                        po::value<PartitionID>(&k)->value_name("<int32_t>")->required(),
-                        "Number of blocks")(
-      "fixed-vertex-percentage",
-      po::value<double>(&percentage)->value_name("<double>")->required(),
-      "Percentage of Fixed Vertices");
+    po::options_description options("Options");
+    options.add_options()(
+        "partition-file,p",
+        po::value<std::string>(&partition_file)->value_name("<string>")->required(),
+        "Partition file")("num-blocks,k",
+                          po::value<PartitionID>(&k)->value_name("<int32_t>")->required(),
+                          "Number of blocks")(
+        "fixed-vertex-percentage",
+        po::value<double>(&percentage)->value_name("<double>")->required(),
+        "Percentage of Fixed Vertices");
 
-  po::variables_map cmd_vm;
-  po::store(po::parse_command_line(argc, argv, options), cmd_vm);
-  po::notify(cmd_vm);
+    po::variables_map cmd_vm;
+    po::store(po::parse_command_line(argc, argv, options), cmd_vm);
+    po::notify(cmd_vm);
 
-  std::vector<PartitionID> partition;
-  io::readPartitionFile(partition_file, partition);
+    std::vector<PartitionID> partition;
+    io::readPartitionFile(partition_file, partition);
 
-  int threshold = percentage * 1000;
-  std::string fixed_vertex_file = partition_file;
-  fixed_vertex_file.erase(fixed_vertex_file.find_first_of("."), std::string::npos);
-  fixed_vertex_file = fixed_vertex_file + ".k" + std::to_string(k) + +".p" +
-                      std::to_string(threshold / 10) + ".fix";
-  std::ofstream out_stream(fixed_vertex_file.c_str());
-  utils::Randomize rand = utils::Randomize::instance();
-  for(size_t i = 0; i < partition.size(); ++i)
-  {
-    int num = rand.getRandomInt(0, 1000, THREAD_ID);
-    if(num < threshold)
+    int threshold = percentage * 1000;
+    std::string fixed_vertex_file = partition_file;
+    fixed_vertex_file.erase(fixed_vertex_file.find_first_of("."), std::string::npos);
+    fixed_vertex_file = fixed_vertex_file + ".k" + std::to_string(k) + +".p" +
+                        std::to_string(threshold / 10) + ".fix";
+    std::ofstream out_stream(fixed_vertex_file.c_str());
+    utils::Randomize rand = utils::Randomize::instance();
+    for(size_t i = 0; i < partition.size(); ++i)
     {
-      out_stream << partition[i] << std::endl;
+        int num = rand.getRandomInt(0, 1000, THREAD_ID);
+        if(num < threshold)
+        {
+            out_stream << partition[i] << std::endl;
+        }
+        else
+        {
+            out_stream << kInvalidPartition << std::endl;
+        }
     }
-    else
-    {
-      out_stream << kInvalidPartition << std::endl;
-    }
-  }
-  out_stream.close();
+    out_stream.close();
 
-  return 0;
+    return 0;
 }

@@ -36,51 +36,51 @@ namespace mt_kahypar {
 
 struct BipartitioningPolicy
 {
-  static bool useCutNetSplitting(const GainPolicy policy)
-  {
-    switch(policy)
+    static bool useCutNetSplitting(const GainPolicy policy)
     {
-    case GainPolicy::cut:
-      return false;
-    case GainPolicy::km1:
-      return true;
-    case GainPolicy::soed:
-      return true;
-    case GainPolicy::steiner_tree:
-      return true;
-    case GainPolicy::cut_for_graphs:
-      return false;
-    case GainPolicy::steiner_tree_for_graphs:
-      return false;
-    case GainPolicy::none:
-      throw InvalidParameterException("Gain policy is unknown");
+        switch(policy)
+        {
+        case GainPolicy::cut:
+            return false;
+        case GainPolicy::km1:
+            return true;
+        case GainPolicy::soed:
+            return true;
+        case GainPolicy::steiner_tree:
+            return true;
+        case GainPolicy::cut_for_graphs:
+            return false;
+        case GainPolicy::steiner_tree_for_graphs:
+            return false;
+        case GainPolicy::none:
+            throw InvalidParameterException("Gain policy is unknown");
+        }
+        throw InvalidParameterException("Gain policy is unknown");
+        return false;
     }
-    throw InvalidParameterException("Gain policy is unknown");
-    return false;
-  }
 
-  static HyperedgeWeight nonCutEdgeMultiplier(const GainPolicy policy)
-  {
-    switch(policy)
+    static HyperedgeWeight nonCutEdgeMultiplier(const GainPolicy policy)
     {
-    case GainPolicy::cut:
-      return 1;
-    case GainPolicy::km1:
-      return 1;
-    case GainPolicy::soed:
-      return 2;
-    case GainPolicy::steiner_tree:
-      return 1;
-    case GainPolicy::cut_for_graphs:
-      return 1;
-    case GainPolicy::steiner_tree_for_graphs:
-      return 1;
-    case GainPolicy::none:
-      throw InvalidParameterException("Gain policy is unknown");
+        switch(policy)
+        {
+        case GainPolicy::cut:
+            return 1;
+        case GainPolicy::km1:
+            return 1;
+        case GainPolicy::soed:
+            return 2;
+        case GainPolicy::steiner_tree:
+            return 1;
+        case GainPolicy::cut_for_graphs:
+            return 1;
+        case GainPolicy::steiner_tree_for_graphs:
+            return 1;
+        case GainPolicy::none:
+            throw InvalidParameterException("Gain policy is unknown");
+        }
+        throw InvalidParameterException("Gain policy is unknown");
+        return 0;
     }
-    throw InvalidParameterException("Gain policy is unknown");
-    return 0;
-  }
 };
 
 } // namespace mt_kahypar

@@ -49,75 +49,77 @@ namespace mt_kahypar {
 class Km1Rollback
 {
 
-public:
-  static constexpr bool supports_parallel_rollback = true;
+  public:
+    static constexpr bool supports_parallel_rollback = true;
 
-  /**
-   * This class stores for a hyperedge and block the correponding data required to
-   * recompute the gain values. It stores the move index of the pin that first moved into
-   * (first_in) resp. last moved out of the corresponding block (last_out) and the number
-   * of non-moved pins in the block (remaining_pins).
-   */
-  struct RecalculationData
-  {
-    MoveID first_in, last_out;
-    HypernodeID remaining_pins;
-    RecalculationData() :
-        first_in(std::numeric_limits<MoveID>::max()),
-        last_out(std::numeric_limits<MoveID>::min()), remaining_pins(0)
+    /**
+     * This class stores for a hyperedge and block the correponding data required to
+     * recompute the gain values. It stores the move index of the pin that first moved
+     * into (first_in) resp. last moved out of the corresponding block (last_out) and the
+     * number of non-moved pins in the block (remaining_pins).
+     */
+    struct RecalculationData
     {
+        MoveID first_in, last_out;
+        HypernodeID remaining_pins;
+        RecalculationData() :
+            first_in(std::numeric_limits<MoveID>::max()),
+            last_out(std::numeric_limits<MoveID>::min()), remaining_pins(0)
+        {
+        }
+
+        void reset()
+        {
+            first_in = std::numeric_limits<MoveID>::max();
+            last_out = std::numeric_limits<MoveID>::min();
+            remaining_pins = 0;
+        }
+    };
+
+    // Updates the auxilliary data for a node move m with index m_id.
+    static void updateMove(const MoveID m_id, const Move &m, vec<RecalculationData> &r)
+    {
+        r[m.to].first_in = std::min(r[m.to].first_in, m_id);
+        r[m.from].last_out = std::max(r[m.from].last_out, m_id);
     }
 
-    void reset()
+    // Updates the number of non-moved in a block.
+    static void updateNonMovedPinInBlock(const PartitionID block,
+                                         vec<RecalculationData> &r)
     {
-      first_in = std::numeric_limits<MoveID>::max();
-      last_out = std::numeric_limits<MoveID>::min();
-      remaining_pins = 0;
+        r[block].remaining_pins++;
     }
-  };
 
-  // Updates the auxilliary data for a node move m with index m_id.
-  static void updateMove(const MoveID m_id, const Move &m, vec<RecalculationData> &r)
-  {
-    r[m.to].first_in = std::min(r[m.to].first_in, m_id);
-    r[m.from].last_out = std::max(r[m.from].last_out, m_id);
-  }
+    template <typename PartitionedHypergraph>
+    static HyperedgeWeight benefit(const PartitionedHypergraph &phg, const HyperedgeID e,
+                                   const MoveID m_id, const Move &m,
+                                   vec<RecalculationData> &r)
+    {
+        // The node move reduces the connectivity of the currently considered hyperedge if
+        // m is the last node that moves out of its corresponding block, while the first
+        // node that moves into the correponding block is performed strictly after m.
+        // Furthermore, the move sequence has to move all nodes out of the correspodning
+        // block (r[m.from].remaining_pins == 0).
+        const bool has_benefit = r[m.from].last_out == m_id &&
+                                 r[m.from].first_in > m_id &&
+                                 r[m.from].remaining_pins == 0;
+        return has_benefit * phg.edgeWeight(e);
+    }
 
-  // Updates the number of non-moved in a block.
-  static void updateNonMovedPinInBlock(const PartitionID block, vec<RecalculationData> &r)
-  {
-    r[block].remaining_pins++;
-  }
-
-  template <typename PartitionedHypergraph>
-  static HyperedgeWeight benefit(const PartitionedHypergraph &phg, const HyperedgeID e,
-                                 const MoveID m_id, const Move &m,
-                                 vec<RecalculationData> &r)
-  {
-    // The node move reduces the connectivity of the currently considered hyperedge if m
-    // is the last node that moves out of its corresponding block, while the first node
-    // that moves into the correponding block is performed strictly after m. Furthermore,
-    // the move sequence has to move all nodes out of the correspodning block
-    // (r[m.from].remaining_pins == 0).
-    const bool has_benefit = r[m.from].last_out == m_id && r[m.from].first_in > m_id &&
-                             r[m.from].remaining_pins == 0;
-    return has_benefit * phg.edgeWeight(e);
-  }
-
-  template <typename PartitionedHypergraph>
-  static HyperedgeWeight penalty(const PartitionedHypergraph &phg, const HyperedgeID e,
-                                 const MoveID m_id, const Move &m,
-                                 vec<RecalculationData> &r)
-  {
-    // The node move increases the connectivity of the currently considered hyperedge if m
-    // is the first node that moves into the corresponding block, while the last node that
-    // moves out of the corresponding block is performed strictly before m. Furthermore,
-    // the move sequence has to move all nodes out of the correspodning block
-    // (r[m.to].remaining_pins == 0).
-    const bool has_penalty = r[m.to].first_in == m_id && r[m.to].last_out < m_id &&
-                             r[m.to].remaining_pins == 0;
-    return has_penalty * phg.edgeWeight(e);
-  }
+    template <typename PartitionedHypergraph>
+    static HyperedgeWeight penalty(const PartitionedHypergraph &phg, const HyperedgeID e,
+                                   const MoveID m_id, const Move &m,
+                                   vec<RecalculationData> &r)
+    {
+        // The node move increases the connectivity of the currently considered hyperedge
+        // if m is the first node that moves into the corresponding block, while the last
+        // node that moves out of the corresponding block is performed strictly before m.
+        // Furthermore, the move sequence has to move all nodes out of the correspodning
+        // block (r[m.to].remaining_pins == 0).
+        const bool has_penalty = r[m.to].first_in == m_id && r[m.to].last_out < m_id &&
+                                 r[m.to].remaining_pins == 0;
+        return has_penalty * phg.edgeWeight(e);
+    }
 };
 
 } // namespace mt_kahypar

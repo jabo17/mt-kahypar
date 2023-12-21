@@ -34,11 +34,11 @@ namespace mt_kahypar {
 class AllPairShortestPath
 {
 
-public:
-  static void compute(const ds::StaticGraph &graph, vec<HyperedgeWeight> &distances);
+  public:
+    static void compute(const ds::StaticGraph &graph, vec<HyperedgeWeight> &distances);
 
-private:
-  AllPairShortestPath() {}
+  private:
+    AllPairShortestPath() {}
 };
 
 } // namespace kahypar

@@ -37,83 +37,85 @@ template <typename TypeTraits>
 class DegreeZeroHypernodeRemover
 {
 
-  using Hypergraph = typename TypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using Hypergraph = typename TypeTraits::Hypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  DegreeZeroHypernodeRemover(const Context &context) : _context(context), _removed_hns()
-  {
-  }
-
-  DegreeZeroHypernodeRemover(const DegreeZeroHypernodeRemover &) = delete;
-  DegreeZeroHypernodeRemover &operator=(const DegreeZeroHypernodeRemover &) = delete;
-
-  DegreeZeroHypernodeRemover(DegreeZeroHypernodeRemover &&) = delete;
-  DegreeZeroHypernodeRemover &operator=(DegreeZeroHypernodeRemover &&) = delete;
-
-  // ! Remove all degree zero vertices
-  HypernodeID removeDegreeZeroHypernodes(Hypergraph &hypergraph)
-  {
-    const HypernodeID current_num_nodes =
-        hypergraph.initialNumNodes() - hypergraph.numRemovedHypernodes();
-    HypernodeID num_removed_degree_zero_hypernodes = 0;
-    for(const HypernodeID &hn : hypergraph.nodes())
+  public:
+    DegreeZeroHypernodeRemover(const Context &context) : _context(context), _removed_hns()
     {
-      if(current_num_nodes - num_removed_degree_zero_hypernodes <=
-         _context.coarsening.contraction_limit)
-      {
-        break;
-      }
-      if(hypergraph.nodeDegree(hn) == 0 && !hypergraph.isFixed(hn))
-      {
-        hypergraph.removeDegreeZeroHypernode(hn);
-        _removed_hns.push_back(hn);
-        ++num_removed_degree_zero_hypernodes;
-      }
     }
-    return num_removed_degree_zero_hypernodes;
-  }
 
-  // ! Restore degree-zero vertices
-  void restoreDegreeZeroHypernodes(PartitionedHypergraph &hypergraph)
-  {
-    // Sort degree-zero vertices in decreasing order of their weight
-    tbb::parallel_sort(
-        _removed_hns.begin(), _removed_hns.end(),
-        [&](const HypernodeID &lhs, const HypernodeID &rhs) {
-          return hypergraph.nodeWeight(lhs) > hypergraph.nodeWeight(rhs) ||
-                 (hypergraph.nodeWeight(lhs) == hypergraph.nodeWeight(rhs) && lhs > rhs);
-        });
-    // Sort blocks of partition in increasing order of their weight
-    auto distance_to_max = [&](const PartitionID block) {
-      return hypergraph.partWeight(block) - _context.partition.max_part_weights[block];
-    };
-    parallel::scalable_vector<PartitionID> blocks(_context.partition.k, 0);
-    std::iota(blocks.begin(), blocks.end(), 0);
-    std::sort(blocks.begin(), blocks.end(),
-              [&](const PartitionID &lhs, const PartitionID &rhs) {
-                return distance_to_max(lhs) < distance_to_max(rhs);
-              });
+    DegreeZeroHypernodeRemover(const DegreeZeroHypernodeRemover &) = delete;
+    DegreeZeroHypernodeRemover &operator=(const DegreeZeroHypernodeRemover &) = delete;
 
-    // Perform Bin-Packing
-    for(const HypernodeID &hn : _removed_hns)
+    DegreeZeroHypernodeRemover(DegreeZeroHypernodeRemover &&) = delete;
+    DegreeZeroHypernodeRemover &operator=(DegreeZeroHypernodeRemover &&) = delete;
+
+    // ! Remove all degree zero vertices
+    HypernodeID removeDegreeZeroHypernodes(Hypergraph &hypergraph)
     {
-      PartitionID to = blocks.front();
-      hypergraph.restoreDegreeZeroHypernode(hn, to);
-      PartitionID i = 0;
-      while(i + 1 < _context.partition.k &&
-            distance_to_max(blocks[i]) > distance_to_max(blocks[i + 1]))
-      {
-        std::swap(blocks[i], blocks[i + 1]);
-        ++i;
-      }
+        const HypernodeID current_num_nodes =
+            hypergraph.initialNumNodes() - hypergraph.numRemovedHypernodes();
+        HypernodeID num_removed_degree_zero_hypernodes = 0;
+        for(const HypernodeID &hn : hypergraph.nodes())
+        {
+            if(current_num_nodes - num_removed_degree_zero_hypernodes <=
+               _context.coarsening.contraction_limit)
+            {
+                break;
+            }
+            if(hypergraph.nodeDegree(hn) == 0 && !hypergraph.isFixed(hn))
+            {
+                hypergraph.removeDegreeZeroHypernode(hn);
+                _removed_hns.push_back(hn);
+                ++num_removed_degree_zero_hypernodes;
+            }
+        }
+        return num_removed_degree_zero_hypernodes;
     }
-    _removed_hns.clear();
-  }
 
-private:
-  const Context &_context;
-  parallel::scalable_vector<HypernodeID> _removed_hns;
+    // ! Restore degree-zero vertices
+    void restoreDegreeZeroHypernodes(PartitionedHypergraph &hypergraph)
+    {
+        // Sort degree-zero vertices in decreasing order of their weight
+        tbb::parallel_sort(
+            _removed_hns.begin(), _removed_hns.end(),
+            [&](const HypernodeID &lhs, const HypernodeID &rhs) {
+                return hypergraph.nodeWeight(lhs) > hypergraph.nodeWeight(rhs) ||
+                       (hypergraph.nodeWeight(lhs) == hypergraph.nodeWeight(rhs) &&
+                        lhs > rhs);
+            });
+        // Sort blocks of partition in increasing order of their weight
+        auto distance_to_max = [&](const PartitionID block) {
+            return hypergraph.partWeight(block) -
+                   _context.partition.max_part_weights[block];
+        };
+        parallel::scalable_vector<PartitionID> blocks(_context.partition.k, 0);
+        std::iota(blocks.begin(), blocks.end(), 0);
+        std::sort(blocks.begin(), blocks.end(),
+                  [&](const PartitionID &lhs, const PartitionID &rhs) {
+                      return distance_to_max(lhs) < distance_to_max(rhs);
+                  });
+
+        // Perform Bin-Packing
+        for(const HypernodeID &hn : _removed_hns)
+        {
+            PartitionID to = blocks.front();
+            hypergraph.restoreDegreeZeroHypernode(hn, to);
+            PartitionID i = 0;
+            while(i + 1 < _context.partition.k &&
+                  distance_to_max(blocks[i]) > distance_to_max(blocks[i + 1]))
+            {
+                std::swap(blocks[i], blocks[i + 1]);
+                ++i;
+            }
+        }
+        _removed_hns.clear();
+    }
+
+  private:
+    const Context &_context;
+    parallel::scalable_vector<HypernodeID> _removed_hns;
 };
 
 } // namespace mt_kahypar

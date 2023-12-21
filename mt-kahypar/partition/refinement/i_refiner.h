@@ -39,35 +39,36 @@ namespace mt_kahypar {
 class IRefiner
 {
 
-public:
-  IRefiner(const IRefiner &) = delete;
-  IRefiner(IRefiner &&) = delete;
-  IRefiner &operator=(const IRefiner &) = delete;
-  IRefiner &operator=(IRefiner &&) = delete;
+  public:
+    IRefiner(const IRefiner &) = delete;
+    IRefiner(IRefiner &&) = delete;
+    IRefiner &operator=(const IRefiner &) = delete;
+    IRefiner &operator=(IRefiner &&) = delete;
 
-  virtual ~IRefiner() = default;
+    virtual ~IRefiner() = default;
 
-  void initialize(mt_kahypar_partitioned_hypergraph_t &hypergraph)
-  {
-    initializeImpl(hypergraph);
-  }
+    void initialize(mt_kahypar_partitioned_hypergraph_t &hypergraph)
+    {
+        initializeImpl(hypergraph);
+    }
 
-  bool refine(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-              const parallel::scalable_vector<HypernodeID> &refinement_nodes,
-              Metrics &best_metrics, const double time_limit)
-  {
-    return refineImpl(hypergraph, refinement_nodes, best_metrics, time_limit);
-  }
+    bool refine(mt_kahypar_partitioned_hypergraph_t &hypergraph,
+                const parallel::scalable_vector<HypernodeID> &refinement_nodes,
+                Metrics &best_metrics, const double time_limit)
+    {
+        return refineImpl(hypergraph, refinement_nodes, best_metrics, time_limit);
+    }
 
-protected:
-  IRefiner() = default;
+  protected:
+    IRefiner() = default;
 
-private:
-  virtual void initializeImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph) = 0;
+  private:
+    virtual void initializeImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph) = 0;
 
-  virtual bool refineImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-                          const parallel::scalable_vector<HypernodeID> &refinement_nodes,
-                          Metrics &best_metrics, const double time_limit) = 0;
+    virtual bool
+    refineImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
+               const parallel::scalable_vector<HypernodeID> &refinement_nodes,
+               Metrics &best_metrics, const double time_limit) = 0;
 };
 
 } // namespace mt_kahypar

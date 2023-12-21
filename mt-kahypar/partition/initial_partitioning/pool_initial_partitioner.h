@@ -35,11 +35,11 @@ namespace mt_kahypar {
 template <typename TypeTraits>
 class Pool
 {
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  static void bipartition(PartitionedHypergraph &hypergraph, const Context &context,
-                          const bool run_parallel = true);
+  public:
+    static void bipartition(PartitionedHypergraph &hypergraph, const Context &context,
+                            const bool run_parallel = true);
 };
 
 } // namespace mt_kahypar

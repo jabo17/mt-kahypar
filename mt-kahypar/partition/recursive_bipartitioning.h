@@ -38,15 +38,15 @@ template <typename TypeTraits>
 class RecursiveBipartitioning
 {
 
-  using Hypergraph = typename TypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using Hypergraph = typename TypeTraits::Hypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  // ! Partitions a hypergraph using multilevel recursive bipartitioning.
-  static PartitionedHypergraph partition(Hypergraph &hypergraph, const Context &context,
-                                         const TargetGraph *target_graph = nullptr);
-  static void partition(PartitionedHypergraph &hypergraph, const Context &context,
-                        const TargetGraph *target_graph = nullptr);
+  public:
+    // ! Partitions a hypergraph using multilevel recursive bipartitioning.
+    static PartitionedHypergraph partition(Hypergraph &hypergraph, const Context &context,
+                                           const TargetGraph *target_graph = nullptr);
+    static void partition(PartitionedHypergraph &hypergraph, const Context &context,
+                          const TargetGraph *target_graph = nullptr);
 };
 
 } // namespace mt_kahypar

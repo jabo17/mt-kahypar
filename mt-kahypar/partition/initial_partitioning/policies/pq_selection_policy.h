@@ -37,40 +37,40 @@ template <typename TypeTraits>
 class RoundRobinPQSelectionPolicy
 {
 
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  static inline bool pop(const PartitionedHypergraph &hypergraph, KWayPriorityQueue &pq,
-                         HypernodeID &hn, PartitionID &to, Gain &gain, const bool)
-  {
-    ASSERT(to >= kInvalidPartition && to < hypergraph.k());
-    hn = kInvalidHypernode;
-    gain = kInvalidGain;
-
-    to = (to + 1) % hypergraph.k();
-    const PartitionID start_block = to;
-    while(!pq.isEnabled(to))
+  public:
+    static inline bool pop(const PartitionedHypergraph &hypergraph, KWayPriorityQueue &pq,
+                           HypernodeID &hn, PartitionID &to, Gain &gain, const bool)
     {
-      to = (to + 1) % hypergraph.k();
-      if(start_block == to)
-      {
-        to = kInvalidPartition;
-        return false;
-      }
+        ASSERT(to >= kInvalidPartition && to < hypergraph.k());
+        hn = kInvalidHypernode;
+        gain = kInvalidGain;
+
+        to = (to + 1) % hypergraph.k();
+        const PartitionID start_block = to;
+        while(!pq.isEnabled(to))
+        {
+            to = (to + 1) % hypergraph.k();
+            if(start_block == to)
+            {
+                to = kInvalidPartition;
+                return false;
+            }
+        }
+
+        ASSERT(to != kInvalidPartition && to < hypergraph.k());
+        ASSERT(pq.isEnabled(to));
+        pq.deleteMaxFromPartition(hn, gain, to);
+        ASSERT(hn != kInvalidHypernode);
+        return true;
     }
 
-    ASSERT(to != kInvalidPartition && to < hypergraph.k());
-    ASSERT(pq.isEnabled(to));
-    pq.deleteMaxFromPartition(hn, gain, to);
-    ASSERT(hn != kInvalidHypernode);
-    return true;
-  }
-
-  // As default block we define the block to which all vertices are assigned to
-  // before greedy initial partitioning. Experiments have shown that the greedy
-  // round robin variant performs best if we leave all vertices unassigned before
-  // greedy initial partitioning.
-  static inline PartitionID getDefaultBlock() { return kInvalidPartition; }
+    // As default block we define the block to which all vertices are assigned to
+    // before greedy initial partitioning. Experiments have shown that the greedy
+    // round robin variant performs best if we leave all vertices unassigned before
+    // greedy initial partitioning.
+    static inline PartitionID getDefaultBlock() { return kInvalidPartition; }
 };
 
 // ! Selects the PQ which contains the maximum gain move
@@ -78,33 +78,33 @@ template <typename TypeTraits>
 class GlobalPQSelectionPolicy
 {
 
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  static inline bool pop(const PartitionedHypergraph &, KWayPriorityQueue &pq,
-                         HypernodeID &hn, PartitionID &to, Gain &gain, const bool)
-  {
-    hn = kInvalidHypernode;
-    to = kInvalidPartition;
-    gain = kInvalidGain;
-
-    if(pq.numNonEmptyParts() > 0 && pq.numEnabledParts() > 0)
+  public:
+    static inline bool pop(const PartitionedHypergraph &, KWayPriorityQueue &pq,
+                           HypernodeID &hn, PartitionID &to, Gain &gain, const bool)
     {
-      pq.deleteMax(hn, gain, to);
-      ASSERT(hn != kInvalidHypernode);
-      return true;
-    }
-    else
-    {
-      return false;
-    }
-  }
+        hn = kInvalidHypernode;
+        to = kInvalidPartition;
+        gain = kInvalidGain;
 
-  // As default block we define the block to which all vertices are assigned to
-  // before greedy initial partitioning. Experiments have shown that the greedy
-  // global variant performs best if we assign all vertices to block 1 before
-  // greedy initial partitioning.
-  static inline PartitionID getDefaultBlock() { return 1; }
+        if(pq.numNonEmptyParts() > 0 && pq.numEnabledParts() > 0)
+        {
+            pq.deleteMax(hn, gain, to);
+            ASSERT(hn != kInvalidHypernode);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    // As default block we define the block to which all vertices are assigned to
+    // before greedy initial partitioning. Experiments have shown that the greedy
+    // global variant performs best if we assign all vertices to block 1 before
+    // greedy initial partitioning.
+    static inline PartitionID getDefaultBlock() { return 1; }
 };
 
 // ! Selects the PQs one by one until they are disabled
@@ -112,52 +112,52 @@ template <typename TypeTraits>
 class SequentialPQSelectionPolicy
 {
 
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  static inline bool pop(const PartitionedHypergraph &hypergraph, KWayPriorityQueue &pq,
-                         HypernodeID &hn, PartitionID &to, Gain &gain,
-                         const bool use_perfect_balanced_as_upper_bound)
-  {
-    hn = kInvalidHypernode;
-    gain = kInvalidGain;
-
-    if(use_perfect_balanced_as_upper_bound)
+  public:
+    static inline bool pop(const PartitionedHypergraph &hypergraph, KWayPriorityQueue &pq,
+                           HypernodeID &hn, PartitionID &to, Gain &gain,
+                           const bool use_perfect_balanced_as_upper_bound)
     {
-      if(to == kInvalidPartition)
-      {
-        to = 0;
-      }
+        hn = kInvalidHypernode;
+        gain = kInvalidGain;
 
-      while(to < hypergraph.k() && !pq.isEnabled(to))
-      {
-        ++to;
-      }
+        if(use_perfect_balanced_as_upper_bound)
+        {
+            if(to == kInvalidPartition)
+            {
+                to = 0;
+            }
 
-      if(to < hypergraph.k())
-      {
-        ASSERT(pq.size(to) > 0);
-        pq.deleteMaxFromPartition(hn, gain, to);
-        ASSERT(hn != kInvalidHypernode);
-        return true;
-      }
-      else
-      {
-        return false;
-      }
+            while(to < hypergraph.k() && !pq.isEnabled(to))
+            {
+                ++to;
+            }
+
+            if(to < hypergraph.k())
+            {
+                ASSERT(pq.size(to) > 0);
+                pq.deleteMaxFromPartition(hn, gain, to);
+                ASSERT(hn != kInvalidHypernode);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return GlobalPQSelectionPolicy<TypeTraits>::pop(
+                hypergraph, pq, hn, to, gain, use_perfect_balanced_as_upper_bound);
+        }
     }
-    else
-    {
-      return GlobalPQSelectionPolicy<TypeTraits>::pop(
-          hypergraph, pq, hn, to, gain, use_perfect_balanced_as_upper_bound);
-    }
-  }
 
-  // As default block we define the block to which all vertices are assigned to
-  // before greedy initial partitioning. Experiments have shown that the greedy
-  // sequential variant performs best if we assign all vertices to block 1 before
-  // greedy initial partitioning.
-  static inline PartitionID getDefaultBlock() { return 1; }
+    // As default block we define the block to which all vertices are assigned to
+    // before greedy initial partitioning. Experiments have shown that the greedy
+    // sequential variant performs best if we assign all vertices to block 1 before
+    // greedy initial partitioning.
+    static inline PartitionID getDefaultBlock() { return 1; }
 };
 
 } // namespace mt_kahypar

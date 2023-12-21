@@ -38,43 +38,44 @@ namespace mt_kahypar {
 namespace rebalancer {
 struct GuardedPQ
 {
-  GuardedPQ(PosT *handles, size_t num_nodes) : pq(handles, num_nodes) {}
-  SpinLock lock;
-  ds::MaxHeap<float, HypernodeID> pq;
-  float top_key = std::numeric_limits<float>::min();
-  void reset()
-  {
-    pq.clear();
-    top_key = std::numeric_limits<float>::min();
-  }
+    GuardedPQ(PosT *handles, size_t num_nodes) : pq(handles, num_nodes) {}
+    SpinLock lock;
+    ds::MaxHeap<float, HypernodeID> pq;
+    float top_key = std::numeric_limits<float>::min();
+    void reset()
+    {
+        pq.clear();
+        top_key = std::numeric_limits<float>::min();
+    }
 };
 
 struct NodeState
 {
-  uint8_t state = 0;
+    uint8_t state = 0;
 
-  bool canMove() const { return state == 1; }
+    bool canMove() const { return state == 1; }
 
-  bool isLocked() const { return state == 2; }
+    bool isLocked() const { return state == 2; }
 
-  bool wasMoved() const { return state == 3; }
+    bool wasMoved() const { return state == 3; }
 
-  // Returns true if the node is marked as movable, is not locked and taking the lock now
-  // succeeds
-  bool tryLock()
-  {
-    uint8_t expected = 1;
-    return state == 1 && __atomic_compare_exchange_n(&state, &expected, 2, false,
-                                                     __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
-  }
+    // Returns true if the node is marked as movable, is not locked and taking the lock
+    // now succeeds
+    bool tryLock()
+    {
+        uint8_t expected = 1;
+        return state == 1 &&
+               __atomic_compare_exchange_n(&state, &expected, 2, false, __ATOMIC_ACQUIRE,
+                                           __ATOMIC_RELAXED);
+    }
 
-  void unlock() { __atomic_store_n(&state, 1, __ATOMIC_RELEASE); }
+    void unlock() { __atomic_store_n(&state, 1, __ATOMIC_RELEASE); }
 
-  void markAsMovedAndUnlock() { __atomic_store_n(&state, 3, __ATOMIC_RELEASE); }
+    void markAsMovedAndUnlock() { __atomic_store_n(&state, 3, __ATOMIC_RELEASE); }
 
-  void markAsMovable() { state = 1; }
+    void markAsMovable() { state = 1; }
 
-  void reset() { state = 0; }
+    void reset() { state = 0; }
 };
 
 } // namespace rebalancer
@@ -82,59 +83,59 @@ struct NodeState
 template <typename GraphAndGainTypes>
 class AdvancedRebalancer final : public IRebalancer
 {
-private:
-  using PartitionedHypergraph = typename GraphAndGainTypes::PartitionedHypergraph;
-  using GainCache = typename GraphAndGainTypes::GainCache;
-  using GainCalculator = typename GraphAndGainTypes::GainComputation;
-  using AttributedGains = typename GraphAndGainTypes::AttributedGains;
+  private:
+    using PartitionedHypergraph = typename GraphAndGainTypes::PartitionedHypergraph;
+    using GainCache = typename GraphAndGainTypes::GainCache;
+    using GainCalculator = typename GraphAndGainTypes::GainComputation;
+    using AttributedGains = typename GraphAndGainTypes::AttributedGains;
 
-  static constexpr bool debug = false;
-  static constexpr bool enable_heavy_assert = false;
+    static constexpr bool debug = false;
+    static constexpr bool enable_heavy_assert = false;
 
-public:
-  explicit AdvancedRebalancer(HypernodeID num_nodes, const Context &context,
-                              GainCache &gain_cache);
+  public:
+    explicit AdvancedRebalancer(HypernodeID num_nodes, const Context &context,
+                                GainCache &gain_cache);
 
-  explicit AdvancedRebalancer(HypernodeID num_nodes, const Context &context,
-                              gain_cache_t gain_cache);
+    explicit AdvancedRebalancer(HypernodeID num_nodes, const Context &context,
+                                gain_cache_t gain_cache);
 
-private:
-  bool refineImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-                  const vec<HypernodeID> &refinement_nodes, Metrics &best_metrics,
-                  double);
+  private:
+    bool refineImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
+                    const vec<HypernodeID> &refinement_nodes, Metrics &best_metrics,
+                    double);
 
-  void initializeImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph) final;
+    void initializeImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph) final;
 
-  bool refineAndOutputMovesImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-                                const vec<HypernodeID> &refinement_nodes,
-                                vec<vec<Move> > &moves_by_part, Metrics &best_metrics,
-                                const double);
+    bool refineAndOutputMovesImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
+                                  const vec<HypernodeID> &refinement_nodes,
+                                  vec<vec<Move> > &moves_by_part, Metrics &best_metrics,
+                                  const double);
 
-  bool refineAndOutputMovesLinearImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-                                      const vec<HypernodeID> &refinement_nodes,
-                                      vec<Move> &moves, Metrics &best_metrics,
-                                      const double);
+    bool refineAndOutputMovesLinearImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
+                                        const vec<HypernodeID> &refinement_nodes,
+                                        vec<Move> &moves, Metrics &best_metrics,
+                                        const double);
 
-  bool refineInternalParallel(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-                              vec<vec<Move> > *moves_by_part, vec<Move> *moves_linear,
-                              Metrics &best_metric);
+    bool refineInternalParallel(mt_kahypar_partitioned_hypergraph_t &hypergraph,
+                                vec<vec<Move> > *moves_by_part, vec<Move> *moves_linear,
+                                Metrics &best_metric);
 
-  const Context &_context;
-  GainCache &_gain_cache;
-  PartitionID _current_k;
-  GainCalculator _gain;
+    const Context &_context;
+    GainCache &_gain_cache;
+    PartitionID _current_k;
+    GainCalculator _gain;
 
-  void insertNodesInOverloadedBlocks(mt_kahypar_partitioned_hypergraph_t &hypergraph);
-  std::pair<int64_t, size_t> findMoves(mt_kahypar_partitioned_hypergraph_t &hypergraph);
+    void insertNodesInOverloadedBlocks(mt_kahypar_partitioned_hypergraph_t &hypergraph);
+    std::pair<int64_t, size_t> findMoves(mt_kahypar_partitioned_hypergraph_t &hypergraph);
 
-  ds::Array<Move> _moves;
-  vec<rebalancer::GuardedPQ> _pqs;
-  vec<PartitionID> _overloaded_blocks;
-  vec<uint8_t> _is_overloaded;
-  ds::Array<PartitionID> _target_part;
-  ds::Array<PosT> _pq_handles;
-  ds::Array<int> _pq_id;
-  ds::Array<rebalancer::NodeState> _node_state;
+    ds::Array<Move> _moves;
+    vec<rebalancer::GuardedPQ> _pqs;
+    vec<PartitionID> _overloaded_blocks;
+    vec<uint8_t> _is_overloaded;
+    ds::Array<PartitionID> _target_part;
+    ds::Array<PosT> _pq_handles;
+    ds::Array<int> _pq_id;
+    ds::Array<rebalancer::NodeState> _node_state;
 };
 
 } // namespace mt_kahypar

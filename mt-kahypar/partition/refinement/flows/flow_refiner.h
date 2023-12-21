@@ -49,81 +49,83 @@ template <typename GraphAndGainTypes>
 class FlowRefiner final : public IFlowRefiner
 {
 
-  static constexpr bool debug = false;
+    static constexpr bool debug = false;
 
-  using PartitionedHypergraph = typename GraphAndGainTypes::PartitionedHypergraph;
+    using PartitionedHypergraph = typename GraphAndGainTypes::PartitionedHypergraph;
 
-public:
-  explicit FlowRefiner(const HyperedgeID num_hyperedges, const Context &context) :
-      _phg(nullptr), _context(context), _num_available_threads(0),
-      _block_0(kInvalidPartition), _block_1(kInvalidPartition), _flow_hg(),
-      _sequential_hfc(_flow_hg, context.partition.seed),
-      _parallel_hfc(_flow_hg, context.partition.seed), _whfc_to_node(),
-      _sequential_construction(num_hyperedges, _flow_hg, _sequential_hfc, context),
-      _parallel_construction(num_hyperedges, _flow_hg, _parallel_hfc, context)
-  {
-    _sequential_hfc.find_most_balanced = _context.refinement.flows.find_most_balanced_cut;
-    _sequential_hfc.timer.active = false;
-    _sequential_hfc.forceSequential(true);
-    _sequential_hfc.setBulkPiercing(context.refinement.flows.pierce_in_bulk);
+  public:
+    explicit FlowRefiner(const HyperedgeID num_hyperedges, const Context &context) :
+        _phg(nullptr), _context(context), _num_available_threads(0),
+        _block_0(kInvalidPartition), _block_1(kInvalidPartition), _flow_hg(),
+        _sequential_hfc(_flow_hg, context.partition.seed),
+        _parallel_hfc(_flow_hg, context.partition.seed), _whfc_to_node(),
+        _sequential_construction(num_hyperedges, _flow_hg, _sequential_hfc, context),
+        _parallel_construction(num_hyperedges, _flow_hg, _parallel_hfc, context)
+    {
+        _sequential_hfc.find_most_balanced =
+            _context.refinement.flows.find_most_balanced_cut;
+        _sequential_hfc.timer.active = false;
+        _sequential_hfc.forceSequential(true);
+        _sequential_hfc.setBulkPiercing(context.refinement.flows.pierce_in_bulk);
 
-    _parallel_hfc.find_most_balanced = _context.refinement.flows.find_most_balanced_cut;
-    _parallel_hfc.timer.active = false;
-    _parallel_hfc.forceSequential(false);
-    _sequential_hfc.setBulkPiercing(context.refinement.flows.pierce_in_bulk);
-  }
+        _parallel_hfc.find_most_balanced =
+            _context.refinement.flows.find_most_balanced_cut;
+        _parallel_hfc.timer.active = false;
+        _parallel_hfc.forceSequential(false);
+        _sequential_hfc.setBulkPiercing(context.refinement.flows.pierce_in_bulk);
+    }
 
-  FlowRefiner(const FlowRefiner &) = delete;
-  FlowRefiner(FlowRefiner &&) = delete;
-  FlowRefiner &operator=(const FlowRefiner &) = delete;
-  FlowRefiner &operator=(FlowRefiner &&) = delete;
+    FlowRefiner(const FlowRefiner &) = delete;
+    FlowRefiner(FlowRefiner &&) = delete;
+    FlowRefiner &operator=(const FlowRefiner &) = delete;
+    FlowRefiner &operator=(FlowRefiner &&) = delete;
 
-  virtual ~FlowRefiner() = default;
+    virtual ~FlowRefiner() = default;
 
-protected:
-private:
-  void initializeImpl(mt_kahypar_partitioned_hypergraph_const_t &hypergraph) override
-  {
-    const PartitionedHypergraph &phg =
-        utils::cast_const<PartitionedHypergraph>(hypergraph);
-    _phg = &phg;
-    _time_limit = std::numeric_limits<double>::max();
-    _block_0 = kInvalidPartition;
-    _block_1 = kInvalidPartition;
-    _flow_hg.clear();
-    _whfc_to_node.clear();
-  }
+  protected:
+  private:
+    void initializeImpl(mt_kahypar_partitioned_hypergraph_const_t &hypergraph) override
+    {
+        const PartitionedHypergraph &phg =
+            utils::cast_const<PartitionedHypergraph>(hypergraph);
+        _phg = &phg;
+        _time_limit = std::numeric_limits<double>::max();
+        _block_0 = kInvalidPartition;
+        _block_1 = kInvalidPartition;
+        _flow_hg.clear();
+        _whfc_to_node.clear();
+    }
 
-  MoveSequence refineImpl(mt_kahypar_partitioned_hypergraph_const_t &hypergraph,
-                          const Subhypergraph &sub_hg,
-                          const HighResClockTimepoint &start) override;
+    MoveSequence refineImpl(mt_kahypar_partitioned_hypergraph_const_t &hypergraph,
+                            const Subhypergraph &sub_hg,
+                            const HighResClockTimepoint &start) override;
 
-  bool runFlowCutter(const FlowProblem &flow_problem, const HighResClockTimepoint &start,
-                     bool &time_limit_reached);
+    bool runFlowCutter(const FlowProblem &flow_problem,
+                       const HighResClockTimepoint &start, bool &time_limit_reached);
 
-  FlowProblem constructFlowHypergraph(const PartitionedHypergraph &phg,
-                                      const Subhypergraph &sub_hg);
+    FlowProblem constructFlowHypergraph(const PartitionedHypergraph &phg,
+                                        const Subhypergraph &sub_hg);
 
-  PartitionID maxNumberOfBlocksPerSearchImpl() const override { return 2; }
+    PartitionID maxNumberOfBlocksPerSearchImpl() const override { return 2; }
 
-  void setNumThreadsForSearchImpl(const size_t num_threads) override
-  {
-    _num_available_threads = num_threads;
-  }
+    void setNumThreadsForSearchImpl(const size_t num_threads) override
+    {
+        _num_available_threads = num_threads;
+    }
 
-  const PartitionedHypergraph *_phg;
-  const Context &_context;
-  using IFlowRefiner::_time_limit;
-  size_t _num_available_threads;
+    const PartitionedHypergraph *_phg;
+    const Context &_context;
+    using IFlowRefiner::_time_limit;
+    size_t _num_available_threads;
 
-  mutable PartitionID _block_0;
-  mutable PartitionID _block_1;
-  FlowHypergraphBuilder _flow_hg;
-  whfc::HyperFlowCutter<whfc::SequentialPushRelabel> _sequential_hfc;
-  whfc::HyperFlowCutter<whfc::ParallelPushRelabel> _parallel_hfc;
+    mutable PartitionID _block_0;
+    mutable PartitionID _block_1;
+    FlowHypergraphBuilder _flow_hg;
+    whfc::HyperFlowCutter<whfc::SequentialPushRelabel> _sequential_hfc;
+    whfc::HyperFlowCutter<whfc::ParallelPushRelabel> _parallel_hfc;
 
-  vec<HypernodeID> _whfc_to_node;
-  SequentialConstruction<GraphAndGainTypes> _sequential_construction;
-  ParallelConstruction<GraphAndGainTypes> _parallel_construction;
+    vec<HypernodeID> _whfc_to_node;
+    SequentialConstruction<GraphAndGainTypes> _sequential_construction;
+    ParallelConstruction<GraphAndGainTypes> _parallel_construction;
 };
 } // namespace mt_kahypar

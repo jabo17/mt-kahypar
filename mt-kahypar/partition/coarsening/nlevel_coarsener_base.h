@@ -41,63 +41,63 @@ namespace mt_kahypar {
 template <typename TypeTraits>
 class NLevelCoarsenerBase
 {
-private:
-  static constexpr bool debug = false;
-  static constexpr bool enable_heavy_assert = false;
+  private:
+    static constexpr bool debug = false;
+    static constexpr bool enable_heavy_assert = false;
 
-  using Hypergraph = typename TypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
-  using ParallelHyperedge = typename Hypergraph::ParallelHyperedge;
-  using ParallelHyperedgeVector = vec<vec<ParallelHyperedge> >;
+    using Hypergraph = typename TypeTraits::Hypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using ParallelHyperedge = typename Hypergraph::ParallelHyperedge;
+    using ParallelHyperedgeVector = vec<vec<ParallelHyperedge> >;
 
-public:
-  NLevelCoarsenerBase(Hypergraph &hypergraph, const Context &context,
-                      UncoarseningData<TypeTraits> &uncoarseningData) :
-      _hg(hypergraph),
-      _context(context),
-      _timer(utils::Utilities::instance().getTimer(context.utility_id)),
-      _uncoarseningData(uncoarseningData)
-  {
-  }
+  public:
+    NLevelCoarsenerBase(Hypergraph &hypergraph, const Context &context,
+                        UncoarseningData<TypeTraits> &uncoarseningData) :
+        _hg(hypergraph),
+        _context(context),
+        _timer(utils::Utilities::instance().getTimer(context.utility_id)),
+        _uncoarseningData(uncoarseningData)
+    {
+    }
 
-  NLevelCoarsenerBase(const NLevelCoarsenerBase &) = delete;
-  NLevelCoarsenerBase(NLevelCoarsenerBase &&) = delete;
-  NLevelCoarsenerBase &operator=(const NLevelCoarsenerBase &) = delete;
-  NLevelCoarsenerBase &operator=(NLevelCoarsenerBase &&) = delete;
+    NLevelCoarsenerBase(const NLevelCoarsenerBase &) = delete;
+    NLevelCoarsenerBase(NLevelCoarsenerBase &&) = delete;
+    NLevelCoarsenerBase &operator=(const NLevelCoarsenerBase &) = delete;
+    NLevelCoarsenerBase &operator=(NLevelCoarsenerBase &&) = delete;
 
-  virtual ~NLevelCoarsenerBase() = default;
+    virtual ~NLevelCoarsenerBase() = default;
 
-protected:
-  Hypergraph &compactifiedHypergraph()
-  {
-    ASSERT(_uncoarseningData.is_finalized);
-    return *_uncoarseningData.compactified_hg;
-  }
+  protected:
+    Hypergraph &compactifiedHypergraph()
+    {
+        ASSERT(_uncoarseningData.is_finalized);
+        return *_uncoarseningData.compactified_hg;
+    }
 
-  PartitionedHypergraph &compactifiedPartitionedHypergraph()
-  {
-    ASSERT(_uncoarseningData.is_finalized);
-    return *_uncoarseningData.compactified_phg;
-  }
+    PartitionedHypergraph &compactifiedPartitionedHypergraph()
+    {
+        ASSERT(_uncoarseningData.is_finalized);
+        return *_uncoarseningData.compactified_phg;
+    }
 
-  void removeSinglePinAndParallelNets(const HighResClockTimepoint &round_start)
-  {
-    _timer.start_timer("remove_single_pin_and_parallel_nets",
-                       "Remove Single Pin and Parallel Nets");
-    _uncoarseningData.removed_hyperedges_batches.emplace_back(
-        _hg.removeSinglePinAndParallelHyperedges());
-    const HighResClockTimepoint round_end = std::chrono::high_resolution_clock::now();
-    const double elapsed_time =
-        std::chrono::duration<double>(round_end - round_start).count();
-    _uncoarseningData.round_coarsening_times.push_back(elapsed_time);
-    _timer.stop_timer("remove_single_pin_and_parallel_nets");
-  }
+    void removeSinglePinAndParallelNets(const HighResClockTimepoint &round_start)
+    {
+        _timer.start_timer("remove_single_pin_and_parallel_nets",
+                           "Remove Single Pin and Parallel Nets");
+        _uncoarseningData.removed_hyperedges_batches.emplace_back(
+            _hg.removeSinglePinAndParallelHyperedges());
+        const HighResClockTimepoint round_end = std::chrono::high_resolution_clock::now();
+        const double elapsed_time =
+            std::chrono::duration<double>(round_end - round_start).count();
+        _uncoarseningData.round_coarsening_times.push_back(elapsed_time);
+        _timer.stop_timer("remove_single_pin_and_parallel_nets");
+    }
 
-protected:
-  // ! Original hypergraph
-  Hypergraph &_hg;
-  const Context &_context;
-  utils::Timer &_timer;
-  UncoarseningData<TypeTraits> &_uncoarseningData;
+  protected:
+    // ! Original hypergraph
+    Hypergraph &_hg;
+    const Context &_context;
+    utils::Timer &_timer;
+    UncoarseningData<TypeTraits> &_uncoarseningData;
 };
 } // namespace mt_kahypar

@@ -38,25 +38,25 @@ template <typename CommunicationHypergraph>
 class KerninghanLin
 {
 
-  static constexpr bool debug = false;
+    static constexpr bool debug = false;
 
-  // Number of rounds without improvements after which we
-  // terminate the search (prevents oscillation).
-  static constexpr size_t MAX_NUMBER_OF_FRUITLESS_ROUNDS = 2;
+    // Number of rounds without improvements after which we
+    // terminate the search (prevents oscillation).
+    static constexpr size_t MAX_NUMBER_OF_FRUITLESS_ROUNDS = 2;
 
-public:
-  // ! This function implements the Kerninghan-Lin algorithm to
-  // ! improve a given mapping onto a target graph. The algorithm
-  // ! performs in each step a swap operation of two nodes that results
-  // ! in largest reduction of the objective function. After each node
-  // ! node is swapped at most once, the algorithm rolls back to the
-  // ! best seen solution. This is repeated several times until no
-  // ! further improvements are possible.
-  static void improve(CommunicationHypergraph &communication_hg,
-                      const TargetGraph &target_graph);
+  public:
+    // ! This function implements the Kerninghan-Lin algorithm to
+    // ! improve a given mapping onto a target graph. The algorithm
+    // ! performs in each step a swap operation of two nodes that results
+    // ! in largest reduction of the objective function. After each node
+    // ! node is swapped at most once, the algorithm rolls back to the
+    // ! best seen solution. This is repeated several times until no
+    // ! further improvements are possible.
+    static void improve(CommunicationHypergraph &communication_hg,
+                        const TargetGraph &target_graph);
 
-private:
-  KerninghanLin() {}
+  private:
+    KerninghanLin() {}
 };
 
 } // namespace kahypar

@@ -36,81 +36,81 @@ template <typename TypeTraits>
 class LargeHyperedgeRemover
 {
 
-  using Hypergraph = typename TypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using Hypergraph = typename TypeTraits::Hypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  LargeHyperedgeRemover(const Context &context) : _context(context), _removed_hes() {}
+  public:
+    LargeHyperedgeRemover(const Context &context) : _context(context), _removed_hes() {}
 
-  LargeHyperedgeRemover(const LargeHyperedgeRemover &) = delete;
-  LargeHyperedgeRemover &operator=(const LargeHyperedgeRemover &) = delete;
+    LargeHyperedgeRemover(const LargeHyperedgeRemover &) = delete;
+    LargeHyperedgeRemover &operator=(const LargeHyperedgeRemover &) = delete;
 
-  LargeHyperedgeRemover(LargeHyperedgeRemover &&) = delete;
-  LargeHyperedgeRemover &operator=(LargeHyperedgeRemover &&) = delete;
+    LargeHyperedgeRemover(LargeHyperedgeRemover &&) = delete;
+    LargeHyperedgeRemover &operator=(LargeHyperedgeRemover &&) = delete;
 
-  // ! Removes large hyperedges from the hypergraph
-  // ! Returns the number of removed large hyperedges.
-  HypernodeID removeLargeHyperedges(Hypergraph &hypergraph)
-  {
-    HypernodeID num_removed_large_hyperedges = 0;
-    if constexpr(!Hypergraph::is_graph)
+    // ! Removes large hyperedges from the hypergraph
+    // ! Returns the number of removed large hyperedges.
+    HypernodeID removeLargeHyperedges(Hypergraph &hypergraph)
     {
-      for(const HyperedgeID &he : hypergraph.edges())
-      {
-        if(hypergraph.edgeSize(he) > largeHyperedgeThreshold())
+        HypernodeID num_removed_large_hyperedges = 0;
+        if constexpr(!Hypergraph::is_graph)
         {
-          hypergraph.removeLargeEdge(he);
-          _removed_hes.push_back(he);
-          ++num_removed_large_hyperedges;
+            for(const HyperedgeID &he : hypergraph.edges())
+            {
+                if(hypergraph.edgeSize(he) > largeHyperedgeThreshold())
+                {
+                    hypergraph.removeLargeEdge(he);
+                    _removed_hes.push_back(he);
+                    ++num_removed_large_hyperedges;
+                }
+            }
+            std::reverse(_removed_hes.begin(), _removed_hes.end());
         }
-      }
-      std::reverse(_removed_hes.begin(), _removed_hes.end());
+        return num_removed_large_hyperedges;
     }
-    return num_removed_large_hyperedges;
-  }
 
-  // ! Before we start a v-cycle, we reset the hypergraph data structure.
-  // ! This causes that all removed hyperedges in the dynamic hypergraph are
-  // ! reinserted to the incident nets of each vertex. By simply calling this
-  // ! function, we remove all large hyperedges again.
-  void removeLargeHyperedgesInNLevelVCycle(Hypergraph &hypergraph)
-  {
-    for(const HyperedgeID &he : _removed_hes)
+    // ! Before we start a v-cycle, we reset the hypergraph data structure.
+    // ! This causes that all removed hyperedges in the dynamic hypergraph are
+    // ! reinserted to the incident nets of each vertex. By simply calling this
+    // ! function, we remove all large hyperedges again.
+    void removeLargeHyperedgesInNLevelVCycle(Hypergraph &hypergraph)
     {
-      hypergraph.enableHyperedge(he);
-      hypergraph.removeLargeEdge(he);
+        for(const HyperedgeID &he : _removed_hes)
+        {
+            hypergraph.enableHyperedge(he);
+            hypergraph.removeLargeEdge(he);
+        }
     }
-  }
 
-  // ! Restores all previously removed large hyperedges
-  void restoreLargeHyperedges(PartitionedHypergraph &hypergraph)
-  {
-    HyperedgeWeight delta = 0;
-    for(const HyperedgeID &he : _removed_hes)
+    // ! Restores all previously removed large hyperedges
+    void restoreLargeHyperedges(PartitionedHypergraph &hypergraph)
     {
-      hypergraph.restoreLargeEdge(he);
-      delta += metrics::contribution(hypergraph, he, _context.partition.objective);
+        HyperedgeWeight delta = 0;
+        for(const HyperedgeID &he : _removed_hes)
+        {
+            hypergraph.restoreLargeEdge(he);
+            delta += metrics::contribution(hypergraph, he, _context.partition.objective);
+        }
+
+        if(_context.partition.verbose_output && delta > 0)
+        {
+            LOG << RED << "Restoring of" << _removed_hes.size()
+                << "large hyperedges (|e| >" << largeHyperedgeThreshold() << ") increased"
+                << _context.partition.objective << "by" << delta << END;
+        }
     }
 
-    if(_context.partition.verbose_output && delta > 0)
+    HypernodeID largeHyperedgeThreshold() const
     {
-      LOG << RED << "Restoring of" << _removed_hes.size() << "large hyperedges (|e| >"
-          << largeHyperedgeThreshold() << ") increased" << _context.partition.objective
-          << "by" << delta << END;
+        return std::max(_context.partition.large_hyperedge_size_threshold,
+                        _context.partition.smallest_large_he_size_threshold);
     }
-  }
 
-  HypernodeID largeHyperedgeThreshold() const
-  {
-    return std::max(_context.partition.large_hyperedge_size_threshold,
-                    _context.partition.smallest_large_he_size_threshold);
-  }
+    void reset() { _removed_hes.clear(); }
 
-  void reset() { _removed_hes.clear(); }
-
-private:
-  const Context &_context;
-  parallel::scalable_vector<HypernodeID> _removed_hes;
+  private:
+    const Context &_context;
+    parallel::scalable_vector<HypernodeID> _removed_hes;
 };
 
 } // namespace mt_kahypar

@@ -69,12 +69,12 @@ using ArcWeight = double;
 
 struct Arc
 {
-  NodeID head;
-  ArcWeight weight;
+    NodeID head;
+    ArcWeight weight;
 
-  Arc() : head(0), weight(0) {}
+    Arc() : head(0), weight(0) {}
 
-  Arc(NodeID head, ArcWeight weight) : head(head), weight(weight) {}
+    Arc(NodeID head, ArcWeight weight) : head(head), weight(weight) {}
 };
 
 // Constant Declarations
@@ -93,28 +93,28 @@ using Clustering = vec<PartitionID>;
 
 struct Move
 {
-  PartitionID from = kInvalidPartition;
-  PartitionID to = kInvalidPartition;
-  HypernodeID node = invalidNode;
-  Gain gain = invalidGain;
+    PartitionID from = kInvalidPartition;
+    PartitionID to = kInvalidPartition;
+    HypernodeID node = invalidNode;
+    Gain gain = invalidGain;
 
-  bool isValid() const { return from != kInvalidPartition; }
+    bool isValid() const { return from != kInvalidPartition; }
 
-  void invalidate() { from = kInvalidPartition; }
+    void invalidate() { from = kInvalidPartition; }
 };
 
 struct Memento
 {
-  HypernodeID u; // representative
-  HypernodeID v; // contraction partner
+    HypernodeID u; // representative
+    HypernodeID v; // contraction partner
 };
 
 template <typename Hypergraph>
 struct ExtractedHypergraph
 {
-  Hypergraph hg;
-  vec<HypernodeID> hn_mapping;
-  vec<uint8_t> already_cut;
+    Hypergraph hg;
+    vec<HypernodeID> hn_mapping;
+    vec<uint8_t> already_cut;
 };
 
 using Batch = parallel::scalable_vector<Memento>;
@@ -139,65 +139,66 @@ class SparseConnectivityInfo;
 
 struct SynchronizedEdgeUpdate
 {
-  HyperedgeID he = kInvalidHyperedge;
-  PartitionID from = kInvalidPartition;
-  PartitionID to = kInvalidPartition;
-  HyperedgeID edge_weight = 0;
-  HypernodeID edge_size = 0;
-  HypernodeID pin_count_in_from_part_after = kInvalidHypernode;
-  HypernodeID pin_count_in_to_part_after = kInvalidHypernode;
-  PartitionID block_of_other_node = kInvalidPartition;
-  mutable ds::Bitset *connectivity_set_after = nullptr;
-  mutable ds::PinCountSnapshot *pin_counts_after = nullptr;
-  const TargetGraph *target_graph = nullptr;
-  ds::Array<SpinLock> *edge_locks = nullptr;
+    HyperedgeID he = kInvalidHyperedge;
+    PartitionID from = kInvalidPartition;
+    PartitionID to = kInvalidPartition;
+    HyperedgeID edge_weight = 0;
+    HypernodeID edge_size = 0;
+    HypernodeID pin_count_in_from_part_after = kInvalidHypernode;
+    HypernodeID pin_count_in_to_part_after = kInvalidHypernode;
+    PartitionID block_of_other_node = kInvalidPartition;
+    mutable ds::Bitset *connectivity_set_after = nullptr;
+    mutable ds::PinCountSnapshot *pin_counts_after = nullptr;
+    const TargetGraph *target_graph = nullptr;
+    ds::Array<SpinLock> *edge_locks = nullptr;
 };
 
 struct NoOpDeltaFunc
 {
-  void operator()(const SynchronizedEdgeUpdate &) {}
+    void operator()(const SynchronizedEdgeUpdate &) {}
 };
 
 template <typename Hypergraph, typename ConInfo>
 struct PartitionedHypergraphType
 {
-  static constexpr mt_kahypar_partition_type_t TYPE = NULLPTR_PARTITION;
+    static constexpr mt_kahypar_partition_type_t TYPE = NULLPTR_PARTITION;
 };
 
 template <>
 struct PartitionedHypergraphType<ds::StaticHypergraph, ds::ConnectivityInfo>
 {
-  static constexpr mt_kahypar_partition_type_t TYPE = MULTILEVEL_HYPERGRAPH_PARTITIONING;
+    static constexpr mt_kahypar_partition_type_t TYPE =
+        MULTILEVEL_HYPERGRAPH_PARTITIONING;
 };
 
 template <>
 struct PartitionedHypergraphType<ds::StaticHypergraph, ds::SparseConnectivityInfo>
 {
-  static constexpr mt_kahypar_partition_type_t TYPE = LARGE_K_PARTITIONING;
+    static constexpr mt_kahypar_partition_type_t TYPE = LARGE_K_PARTITIONING;
 };
 
 template <>
 struct PartitionedHypergraphType<ds::DynamicHypergraph, ds::ConnectivityInfo>
 {
-  static constexpr mt_kahypar_partition_type_t TYPE = N_LEVEL_HYPERGRAPH_PARTITIONING;
+    static constexpr mt_kahypar_partition_type_t TYPE = N_LEVEL_HYPERGRAPH_PARTITIONING;
 };
 
 template <typename Graph>
 struct PartitionedGraphType
 {
-  static constexpr mt_kahypar_partition_type_t TYPE = NULLPTR_PARTITION;
+    static constexpr mt_kahypar_partition_type_t TYPE = NULLPTR_PARTITION;
 };
 
 template <>
 struct PartitionedGraphType<ds::StaticGraph>
 {
-  static constexpr mt_kahypar_partition_type_t TYPE = MULTILEVEL_GRAPH_PARTITIONING;
+    static constexpr mt_kahypar_partition_type_t TYPE = MULTILEVEL_GRAPH_PARTITIONING;
 };
 
 template <>
 struct PartitionedGraphType<ds::DynamicGraph>
 {
-  static constexpr mt_kahypar_partition_type_t TYPE = N_LEVEL_GRAPH_PARTITIONING;
+    static constexpr mt_kahypar_partition_type_t TYPE = N_LEVEL_GRAPH_PARTITIONING;
 };
 
 } // namespace mt_kahypar

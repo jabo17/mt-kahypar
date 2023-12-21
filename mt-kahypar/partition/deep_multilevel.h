@@ -35,12 +35,13 @@ template <typename TypeTraits>
 class DeepMultilevel
 {
 
-  using Hypergraph = typename TypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using Hypergraph = typename TypeTraits::Hypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  static PartitionedHypergraph partition(Hypergraph &hypergraph, const Context &context);
-  static void partition(PartitionedHypergraph &hypergraph, const Context &context);
+  public:
+    static PartitionedHypergraph partition(Hypergraph &hypergraph,
+                                           const Context &context);
+    static void partition(PartitionedHypergraph &hypergraph, const Context &context);
 };
 
 } // namespace mt_kahypar

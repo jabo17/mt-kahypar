@@ -35,11 +35,15 @@ namespace mt_kahypar {
  * for each incident hyperedge of the node based on which we then compute an
  * attributed gain value.
  */
-struct GraphCutAttributedGains {
-  static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update) {
-    return (sync_update.pin_count_in_to_part_after == 1 ? sync_update.edge_weight : 0) +
-      (sync_update.pin_count_in_from_part_after == 0 ? -sync_update.edge_weight : 0);
-  }
+struct GraphCutAttributedGains
+{
+    static HyperedgeWeight gain(const SynchronizedEdgeUpdate &sync_update)
+    {
+        return (sync_update.pin_count_in_to_part_after == 1 ? sync_update.edge_weight :
+                                                              0) +
+               (sync_update.pin_count_in_from_part_after == 0 ? -sync_update.edge_weight :
+                                                                0);
+    }
 };
 
-}  // namespace mt_kahypar
+} // namespace mt_kahypar

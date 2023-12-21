@@ -37,7 +37,7 @@ namespace parallel {
 template <typename T>
 struct tbb_deleter
 {
-  void operator()(T *p) { scalable_free(p); }
+    void operator()(T *p) { scalable_free(p); }
 };
 
 template <typename T>
@@ -46,8 +46,8 @@ using tbb_unique_ptr = std::unique_ptr<T, tbb_deleter<T> >;
 template <typename T>
 static tbb_unique_ptr<T> make_unique(const size_t size)
 {
-  T *ptr = (T *)scalable_malloc(sizeof(T) * size);
-  return tbb_unique_ptr<T>(ptr, parallel::tbb_deleter<T>());
+    T *ptr = (T *)scalable_malloc(sizeof(T) * size);
+    return tbb_unique_ptr<T>(ptr, parallel::tbb_deleter<T>());
 }
 
 } // namespace parallel

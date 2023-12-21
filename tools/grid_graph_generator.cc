@@ -39,72 +39,72 @@ namespace po = boost::program_options;
 
 int main(int argc, char *argv[])
 {
-  int N, M, MAX_WEIGHT;
-  std::string out_filename;
-  po::options_description options("Options");
-  options.add_options()(
-      "out-file,o",
-      po::value<std::string>(&out_filename)->value_name("<string>")->required(),
-      "Target Graph Output Filename")(
-      "n", po::value<int>(&N)->value_name("<int>")->required(), "Number of rows")(
-      "m", po::value<int>(&M)->value_name("<int>")->required(), "Number of columns")(
-      "max-weight", po::value<int>(&MAX_WEIGHT)->value_name("<int>")->required(),
-      "Maximum weight of an edge in the target graph");
+    int N, M, MAX_WEIGHT;
+    std::string out_filename;
+    po::options_description options("Options");
+    options.add_options()(
+        "out-file,o",
+        po::value<std::string>(&out_filename)->value_name("<string>")->required(),
+        "Target Graph Output Filename")(
+        "n", po::value<int>(&N)->value_name("<int>")->required(), "Number of rows")(
+        "m", po::value<int>(&M)->value_name("<int>")->required(), "Number of columns")(
+        "max-weight", po::value<int>(&MAX_WEIGHT)->value_name("<int>")->required(),
+        "Maximum weight of an edge in the target graph");
 
-  po::variables_map cmd_vm;
-  po::store(po::parse_command_line(argc, argv, options), cmd_vm);
-  po::notify(cmd_vm);
+    po::variables_map cmd_vm;
+    po::store(po::parse_command_line(argc, argv, options), cmd_vm);
+    po::notify(cmd_vm);
 
-  const PartitionID k = N * M;
-  out_filename = out_filename + ".k" + std::to_string(k);
+    const PartitionID k = N * M;
+    out_filename = out_filename + ".k" + std::to_string(k);
 
-  auto up = [&](const PartitionID &u) {
-    PartitionID v = u - M;
-    return v >= 0 ? v : kInvalidPartition;
-  };
+    auto up = [&](const PartitionID &u) {
+        PartitionID v = u - M;
+        return v >= 0 ? v : kInvalidPartition;
+    };
 
-  auto down = [&](const PartitionID &u) {
-    PartitionID v = u + M;
-    return v < k ? v : kInvalidPartition;
-  };
+    auto down = [&](const PartitionID &u) {
+        PartitionID v = u + M;
+        return v < k ? v : kInvalidPartition;
+    };
 
-  auto left = [&](const PartitionID &u) {
-    PartitionID v = u - 1;
-    return (u / M) == (v / M) ? v : kInvalidPartition;
-  };
+    auto left = [&](const PartitionID &u) {
+        PartitionID v = u - 1;
+        return (u / M) == (v / M) ? v : kInvalidPartition;
+    };
 
-  auto right = [&](const PartitionID &u) {
-    PartitionID v = u + 1;
-    return (u / M) == (v / M) ? v : kInvalidPartition;
-  };
+    auto right = [&](const PartitionID &u) {
+        PartitionID v = u + 1;
+        return (u / M) == (v / M) ? v : kInvalidPartition;
+    };
 
-  std::ofstream out(out_filename.c_str());
-  int num_nodes = k, num_edges = 0;
-  for(PartitionID u = 0; u < k; ++u)
-  {
-    num_edges += (up(u) != kInvalidPartition);
-    num_edges += (right(u) != kInvalidPartition);
-    num_edges += (down(u) != kInvalidPartition);
-    num_edges += (left(u) != kInvalidPartition);
-  }
-  out << num_nodes << " " << (num_edges / 2) << " 1" << std::endl;
-
-  utils::Randomize &rand = utils::Randomize::instance();
-  rand.setSeed(std::hash<std::string>{}(out_filename));
-  for(PartitionID u = 0; u < k; ++u)
-  {
-    std::vector<PartitionID> neighbors = { up(u), right(u), down(u), left(u) };
-    std::sort(neighbors.begin(), neighbors.end());
-    for(const PartitionID v : neighbors)
+    std::ofstream out(out_filename.c_str());
+    int num_nodes = k, num_edges = 0;
+    for(PartitionID u = 0; u < k; ++u)
     {
-      if(v != kInvalidPartition)
-      {
-        out << (v + 1) << " " << rand.getRandomInt(1, MAX_WEIGHT, 0) << " ";
-      }
+        num_edges += (up(u) != kInvalidPartition);
+        num_edges += (right(u) != kInvalidPartition);
+        num_edges += (down(u) != kInvalidPartition);
+        num_edges += (left(u) != kInvalidPartition);
     }
-    out << std::endl;
-  }
-  out.close();
+    out << num_nodes << " " << (num_edges / 2) << " 1" << std::endl;
 
-  return 0;
+    utils::Randomize &rand = utils::Randomize::instance();
+    rand.setSeed(std::hash<std::string>{}(out_filename));
+    for(PartitionID u = 0; u < k; ++u)
+    {
+        std::vector<PartitionID> neighbors = { up(u), right(u), down(u), left(u) };
+        std::sort(neighbors.begin(), neighbors.end());
+        for(const PartitionID v : neighbors)
+        {
+            if(v != kInvalidPartition)
+            {
+                out << (v + 1) << " " << rand.getRandomInt(1, MAX_WEIGHT, 0) << " ";
+            }
+        }
+        out << std::endl;
+    }
+    out.close();
+
+    return 0;
 }

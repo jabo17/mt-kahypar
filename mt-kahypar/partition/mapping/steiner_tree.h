@@ -34,12 +34,12 @@ namespace mt_kahypar {
 class SteinerTree
 {
 
-public:
-  static void compute(const ds::StaticGraph &graph, const size_t max_set_size,
-                      vec<HyperedgeWeight> &distances);
+  public:
+    static void compute(const ds::StaticGraph &graph, const size_t max_set_size,
+                        vec<HyperedgeWeight> &distances);
 
-private:
-  SteinerTree() {}
+  private:
+    SteinerTree() {}
 };
 
 } // namespace kahypar

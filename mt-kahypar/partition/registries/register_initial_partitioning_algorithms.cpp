@@ -41,12 +41,14 @@
 #include "mt-kahypar/partition/initial_partitioning/random_initial_partitioner.h"
 
 #define REGISTER_DISPATCHED_INITIAL_PARTITIONER(id, dispatcher, ...)                     \
-  static kahypar::meta::Registrar<InitialPartitionerFactory> register_##dispatcher(      \
-      id, [](const InitialPartitioningAlgorithm algorithm, ip_data_container_t *ip_data, \
-             const Context &context, const int seed, const int tag) {                    \
-        return dispatcher::create(                                                       \
-            std::forward_as_tuple(algorithm, ip_data, context, seed, tag), __VA_ARGS__); \
-      })
+    static kahypar::meta::Registrar<InitialPartitionerFactory> register_##dispatcher(    \
+        id,                                                                              \
+        [](const InitialPartitioningAlgorithm algorithm, ip_data_container_t *ip_data,   \
+           const Context &context, const int seed, const int tag) {                      \
+            return dispatcher::create(                                                   \
+                std::forward_as_tuple(algorithm, ip_data, context, seed, tag),           \
+                __VA_ARGS__);                                                            \
+        })
 
 namespace mt_kahypar {
 

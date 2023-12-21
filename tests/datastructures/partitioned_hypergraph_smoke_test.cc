@@ -48,39 +48,39 @@ namespace ds {
 template <typename TypeTraitsT, PartitionID k, Objective objective>
 struct TestConfig
 {
-  using TypeTraits = TypeTraitsT;
-  static constexpr PartitionID K = k;
-  static constexpr Objective OBJECTIVE = objective;
+    using TypeTraits = TypeTraitsT;
+    static constexpr PartitionID K = k;
+    static constexpr Objective OBJECTIVE = objective;
 };
 
 template <typename Config>
 class AConcurrentHypergraph : public Test
 {
 
-  using Hypergraph = typename Config::TypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename Config::TypeTraits::PartitionedHypergraph;
+    using Hypergraph = typename Config::TypeTraits::Hypergraph;
+    using PartitionedHypergraph = typename Config::TypeTraits::PartitionedHypergraph;
 
-public:
-  AConcurrentHypergraph() :
-      k(Config::K), objective(Config::OBJECTIVE), underlying_hypergraph(), hypergraph()
-  {
-    int cpu_id = THREAD_ID;
-    underlying_hypergraph = io::readInputFile<Hypergraph>(
-        "../tests/instances/contracted_ibm01.hgr", FileFormat::hMetis, true);
-    hypergraph = PartitionedHypergraph(k, underlying_hypergraph, parallel_tag_t());
-    for(const HypernodeID &hn : hypergraph.nodes())
+  public:
+    AConcurrentHypergraph() :
+        k(Config::K), objective(Config::OBJECTIVE), underlying_hypergraph(), hypergraph()
     {
-      PartitionID id = utils::Randomize::instance().getRandomInt(0, k - 1, cpu_id);
-      hypergraph.setNodePart(hn, id);
+        int cpu_id = THREAD_ID;
+        underlying_hypergraph = io::readInputFile<Hypergraph>(
+            "../tests/instances/contracted_ibm01.hgr", FileFormat::hMetis, true);
+        hypergraph = PartitionedHypergraph(k, underlying_hypergraph, parallel_tag_t());
+        for(const HypernodeID &hn : hypergraph.nodes())
+        {
+            PartitionID id = utils::Randomize::instance().getRandomInt(0, k - 1, cpu_id);
+            hypergraph.setNodePart(hn, id);
+        }
     }
-  }
 
-  static void SetUpTestSuite() { utils::Randomize::instance().setSeed(0); }
+    static void SetUpTestSuite() { utils::Randomize::instance().setSeed(0); }
 
-  PartitionID k;
-  Objective objective;
-  Hypergraph underlying_hypergraph;
-  PartitionedHypergraph hypergraph;
+    PartitionID k;
+    Objective objective;
+    Hypergraph underlying_hypergraph;
+    PartitionedHypergraph hypergraph;
 };
 
 typedef ::testing::Types<
@@ -149,156 +149,156 @@ void moveAllNodesOfHypergraphRandom(HyperGraph &hypergraph, const PartitionID k,
                                     const Objective objective, const bool show_timings)
 {
 
-  tbb::enumerable_thread_specific<HyperedgeWeight> deltas(0);
+    tbb::enumerable_thread_specific<HyperedgeWeight> deltas(0);
 
-  auto objective_delta = [&](const SynchronizedEdgeUpdate &sync_update) {
-    if(objective == Objective::km1)
+    auto objective_delta = [&](const SynchronizedEdgeUpdate &sync_update) {
+        if(objective == Objective::km1)
+        {
+            deltas.local() += Km1AttributedGains::gain(sync_update);
+        }
+        else if(objective == Objective::cut)
+        {
+            deltas.local() += CutAttributedGains::gain(sync_update);
+        }
+    };
+
+    HyperedgeWeight metric_before = metrics::quality(hypergraph, objective);
+    HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
+    tbb::parallel_for(ID(0), hypergraph.initialNumNodes(), [&](const HypernodeID &hn) {
+        int cpu_id = THREAD_ID;
+        const PartitionID from = hypergraph.partID(hn);
+        PartitionID to = -1;
+        while(to == -1 || to == from)
+        {
+            to = utils::Randomize::instance().getRandomInt(0, k - 1, cpu_id);
+        }
+        ASSERT((to >= 0 && to < k) && to != from);
+        hypergraph.changeNodePart(hn, from, to, objective_delta);
+    });
+
+    hypergraph.recomputePartWeights();
+
+    HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
+    double timing = std::chrono::duration<double>(end - start).count();
+
+    HyperedgeWeight delta = 0;
+    for(const HyperedgeWeight &local_delta : deltas)
     {
-      deltas.local() += Km1AttributedGains::gain(sync_update);
+        delta += local_delta;
     }
-    else if(objective == Objective::cut)
+
+    HyperedgeWeight metric_after = metrics::quality(hypergraph, objective);
+    ASSERT_EQ(metric_after, metric_before + delta) << V(metric_before) << V(delta);
+    if(show_timings)
     {
-      deltas.local() += CutAttributedGains::gain(sync_update);
+        LOG << V(k) << V(objective) << V(metric_before) << V(delta) << V(metric_after)
+            << V(timing);
     }
-  };
-
-  HyperedgeWeight metric_before = metrics::quality(hypergraph, objective);
-  HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
-  tbb::parallel_for(ID(0), hypergraph.initialNumNodes(), [&](const HypernodeID &hn) {
-    int cpu_id = THREAD_ID;
-    const PartitionID from = hypergraph.partID(hn);
-    PartitionID to = -1;
-    while(to == -1 || to == from)
-    {
-      to = utils::Randomize::instance().getRandomInt(0, k - 1, cpu_id);
-    }
-    ASSERT((to >= 0 && to < k) && to != from);
-    hypergraph.changeNodePart(hn, from, to, objective_delta);
-  });
-
-  hypergraph.recomputePartWeights();
-
-  HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
-  double timing = std::chrono::duration<double>(end - start).count();
-
-  HyperedgeWeight delta = 0;
-  for(const HyperedgeWeight &local_delta : deltas)
-  {
-    delta += local_delta;
-  }
-
-  HyperedgeWeight metric_after = metrics::quality(hypergraph, objective);
-  ASSERT_EQ(metric_after, metric_before + delta) << V(metric_before) << V(delta);
-  if(show_timings)
-  {
-    LOG << V(k) << V(objective) << V(metric_before) << V(delta) << V(metric_after)
-        << V(timing);
-  }
 }
 
 template <typename HyperGraph>
 void verifyBlockWeightsAndSizes(HyperGraph &hypergraph, const PartitionID k)
 {
-  std::vector<HypernodeWeight> block_weight(k, 0);
-  for(const HypernodeID &hn : hypergraph.nodes())
-  {
-    block_weight[hypergraph.partID(hn)] += hypergraph.nodeWeight(hn);
-  }
+    std::vector<HypernodeWeight> block_weight(k, 0);
+    for(const HypernodeID &hn : hypergraph.nodes())
+    {
+        block_weight[hypergraph.partID(hn)] += hypergraph.nodeWeight(hn);
+    }
 
-  for(PartitionID i = 0; i < k; ++i)
-  {
-    ASSERT_EQ(block_weight[i], hypergraph.partWeight(i));
-  }
+    for(PartitionID i = 0; i < k; ++i)
+    {
+        ASSERT_EQ(block_weight[i], hypergraph.partWeight(i));
+    }
 }
 
 template <typename HyperGraph>
 void verifyPinCountsInParts(HyperGraph &hypergraph, const PartitionID k)
 {
-  for(const HyperedgeID &he : hypergraph.edges())
-  {
-    std::vector<HypernodeID> pin_count_in_part(k, 0);
-    for(const HypernodeID &pin : hypergraph.pins(he))
+    for(const HyperedgeID &he : hypergraph.edges())
     {
-      ++pin_count_in_part[hypergraph.partID(pin)];
-    }
+        std::vector<HypernodeID> pin_count_in_part(k, 0);
+        for(const HypernodeID &pin : hypergraph.pins(he))
+        {
+            ++pin_count_in_part[hypergraph.partID(pin)];
+        }
 
-    for(PartitionID i = 0; i < k; ++i)
-    {
-      ASSERT_EQ(pin_count_in_part[i], hypergraph.pinCountInPart(he, i));
+        for(PartitionID i = 0; i < k; ++i)
+        {
+            ASSERT_EQ(pin_count_in_part[i], hypergraph.pinCountInPart(he, i));
+        }
     }
-  }
 }
 
 template <typename HyperGraph>
 void verifyConnectivitySet(HyperGraph &hypergraph, const PartitionID k)
 {
-  for(const HyperedgeID &he : hypergraph.edges())
-  {
-    std::vector<HypernodeID> pin_count_in_part(k, 0);
-    std::set<PartitionID> recomputed_connectivity_set;
-    for(const HypernodeID &pin : hypergraph.pins(he))
+    for(const HyperedgeID &he : hypergraph.edges())
     {
-      PartitionID id = hypergraph.partID(pin);
-      HypernodeID pin_count_before = pin_count_in_part[id]++;
-      if(pin_count_before == 0)
-      {
-        recomputed_connectivity_set.insert(id);
-      }
-    }
+        std::vector<HypernodeID> pin_count_in_part(k, 0);
+        std::set<PartitionID> recomputed_connectivity_set;
+        for(const HypernodeID &pin : hypergraph.pins(he))
+        {
+            PartitionID id = hypergraph.partID(pin);
+            HypernodeID pin_count_before = pin_count_in_part[id]++;
+            if(pin_count_before == 0)
+            {
+                recomputed_connectivity_set.insert(id);
+            }
+        }
 
-    std::set<PartitionID> connectivity_set;
-    for(const PartitionID id : hypergraph.connectivitySet(he))
-    {
-      ASSERT(id < k && id >= 0);
-      connectivity_set.insert(id);
-    }
+        std::set<PartitionID> connectivity_set;
+        for(const PartitionID id : hypergraph.connectivitySet(he))
+        {
+            ASSERT(id < k && id >= 0);
+            connectivity_set.insert(id);
+        }
 
-    ASSERT_EQ(hypergraph.connectivity(he), connectivity_set.size());
-    ASSERT_EQ(connectivity_set.size(), recomputed_connectivity_set.size());
-    ASSERT_EQ(connectivity_set, recomputed_connectivity_set);
-  }
+        ASSERT_EQ(hypergraph.connectivity(he), connectivity_set.size());
+        ASSERT_EQ(connectivity_set.size(), recomputed_connectivity_set.size());
+        ASSERT_EQ(connectivity_set, recomputed_connectivity_set);
+    }
 }
 
 template <typename HyperGraph>
 void verifyBorderNodes(HyperGraph &hypergraph)
 {
-  for(const HypernodeID &hn : hypergraph.nodes())
-  {
-    bool is_border_node = false;
-    for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
+    for(const HypernodeID &hn : hypergraph.nodes())
     {
-      if(hypergraph.connectivity(he) > 1)
-      {
-        is_border_node = true;
-        break;
-      }
+        bool is_border_node = false;
+        for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
+        {
+            if(hypergraph.connectivity(he) > 1)
+            {
+                is_border_node = true;
+                break;
+            }
+        }
+        ASSERT_EQ(is_border_node, hypergraph.isBorderNode(hn));
     }
-    ASSERT_EQ(is_border_node, hypergraph.isBorderNode(hn));
-  }
 }
 
 TYPED_TEST(AConcurrentHypergraph, VerifyBlockWeightsSmokeTest)
 {
-  moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
-  verifyBlockWeightsAndSizes(this->hypergraph, this->k);
+    moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
+    verifyBlockWeightsAndSizes(this->hypergraph, this->k);
 }
 
 TYPED_TEST(AConcurrentHypergraph, VerifyPinCountsInPartsSmokeTest)
 {
-  moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
-  verifyPinCountsInParts(this->hypergraph, this->k);
+    moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
+    verifyPinCountsInParts(this->hypergraph, this->k);
 }
 
 TYPED_TEST(AConcurrentHypergraph, VerifyConnectivitySetSmokeTest)
 {
-  moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
-  verifyConnectivitySet(this->hypergraph, this->k);
+    moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
+    verifyConnectivitySet(this->hypergraph, this->k);
 }
 
 TYPED_TEST(AConcurrentHypergraph, VerifyBorderNodesSmokeTest)
 {
-  moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
-  verifyBorderNodes(this->hypergraph);
+    moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
+    verifyBorderNodes(this->hypergraph);
 }
 
 } // namespace ds

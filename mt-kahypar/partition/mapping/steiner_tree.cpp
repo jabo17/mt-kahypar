@@ -35,24 +35,24 @@ namespace {
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t index(const ds::StaticBitset &set,
                                                 const PartitionID k)
 {
-  ASSERT(set.popcount() > 0);
-  size_t index = 0;
-  PartitionID multiplier = 1;
-  PartitionID last_block = kInvalidPartition;
-  for(const PartitionID block : set)
-  {
-    index += multiplier * block;
-    multiplier *= k;
-    last_block = block;
-  }
-  return index + (multiplier == k ? last_block * k : 0);
+    ASSERT(set.popcount() > 0);
+    size_t index = 0;
+    PartitionID multiplier = 1;
+    PartitionID last_block = kInvalidPartition;
+    for(const PartitionID block : set)
+    {
+        index += multiplier * block;
+        multiplier *= k;
+        last_block = block;
+    }
+    return index + (multiplier == k ? last_block * k : 0);
 }
 
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t index(const HypernodeID u, const HypernodeID v,
                                                 const HypernodeID n)
 {
-  ASSERT(u < n && v < n);
-  return u + v * n;
+    ASSERT(u < n && v < n);
+    return u + v * n;
 }
 } // namespace
 
@@ -97,69 +97,71 @@ MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t index(const HypernodeID u, const Hyper
 void SteinerTree::compute(const ds::StaticGraph &graph, const size_t max_set_size,
                           vec<HyperedgeWeight> &distances)
 {
-  const PartitionID n = graph.initialNumNodes();
-  // Floyds All-Pair Shortest Path Algorithm -> O(n^3)
-  AllPairShortestPath::compute(graph, distances);
+    const PartitionID n = graph.initialNumNodes();
+    // Floyds All-Pair Shortest Path Algorithm -> O(n^3)
+    AllPairShortestPath::compute(graph, distances);
 
-  /**
-   * The following pseudocode is a more readable description of the algorithm below:
-   *
-   * S = distances
-   * for m = 2 to max_set_size - 1 do
-   *   for all subsets D of V with |D| = m do
-   *     for each u in V do
-   *       min_dist = inf
-   *       for each proper subset E c D do
-   *         F = D \ E
-   *         // This computes the min_{E c D} S_u(E) term from the description above
-   *         min_dist = min( min_dist, S[ E u { u } ] + S[ F u { u } ] )
-   *       for each v in V do
-   *         S[ D u { v } ] = min( S[ D u { v } ], S[ {u, v} ] + min_dist )
-   */
-  for(size_t m = 2; m < max_set_size; ++m)
-  { // k - 2 steps -> k := max_set_size
-    SetEnumerator subsets_of_size_m(n, m);
-    // We compute for each subset D c V of size m the optimal steiner tree here
-    for(const ds::StaticBitset &d_tmp : subsets_of_size_m)
-    { // O(binom(n,k)) = O(n! / (k!*(n - k)!)) steps
-      ds::Bitset d_set = d_tmp.copy();
-      ds::StaticBitset d(d_set.numBlocks(), d_set.data());
-      ASSERT(static_cast<size_t>(d.popcount()) == m);
-      for(const HypernodeID &u : graph.nodes())
-      { // O(n) steps
-        HyperedgeWeight min_dist = std::numeric_limits<HyperedgeWeight>::max();
-        SubsetEnumerator proper_subsets_of_d(n, d);
-        for(const ds::StaticBitset &e_tmp : proper_subsets_of_d)
-        { // O(2^k) steps
-          // Here, we iterate over all subsets E c D and compute the optimal steiner tree
-          // for D with the assumption that u is the junction node of the steiner tree.
-          ds::Bitset e_set = e_tmp.copy();
-          ds::StaticBitset e(e_set.numBlocks(), e_set.data());
-          ds::Bitset f_set = d ^ e; // F = D \ E -> compliment
-          ds::StaticBitset f(f_set.numBlocks(), f_set.data());
-          e_set.set(u); // Add u to E -> E u { u }
-          f_set.set(u); // Add u to F -> F u { u }
-          min_dist = std::min(min_dist, distances[index(e, n)] + distances[index(f, n)]);
+    /**
+     * The following pseudocode is a more readable description of the algorithm below:
+     *
+     * S = distances
+     * for m = 2 to max_set_size - 1 do
+     *   for all subsets D of V with |D| = m do
+     *     for each u in V do
+     *       min_dist = inf
+     *       for each proper subset E c D do
+     *         F = D \ E
+     *         // This computes the min_{E c D} S_u(E) term from the description above
+     *         min_dist = min( min_dist, S[ E u { u } ] + S[ F u { u } ] )
+     *       for each v in V do
+     *         S[ D u { v } ] = min( S[ D u { v } ], S[ {u, v} ] + min_dist )
+     */
+    for(size_t m = 2; m < max_set_size; ++m)
+    { // k - 2 steps -> k := max_set_size
+        SetEnumerator subsets_of_size_m(n, m);
+        // We compute for each subset D c V of size m the optimal steiner tree here
+        for(const ds::StaticBitset &d_tmp : subsets_of_size_m)
+        { // O(binom(n,k)) = O(n! / (k!*(n - k)!)) steps
+            ds::Bitset d_set = d_tmp.copy();
+            ds::StaticBitset d(d_set.numBlocks(), d_set.data());
+            ASSERT(static_cast<size_t>(d.popcount()) == m);
+            for(const HypernodeID &u : graph.nodes())
+            { // O(n) steps
+                HyperedgeWeight min_dist = std::numeric_limits<HyperedgeWeight>::max();
+                SubsetEnumerator proper_subsets_of_d(n, d);
+                for(const ds::StaticBitset &e_tmp : proper_subsets_of_d)
+                { // O(2^k) steps
+                    // Here, we iterate over all subsets E c D and compute the optimal
+                    // steiner tree for D with the assumption that u is the junction node
+                    // of the steiner tree.
+                    ds::Bitset e_set = e_tmp.copy();
+                    ds::StaticBitset e(e_set.numBlocks(), e_set.data());
+                    ds::Bitset f_set = d ^ e; // F = D \ E -> compliment
+                    ds::StaticBitset f(f_set.numBlocks(), f_set.data());
+                    e_set.set(u); // Add u to E -> E u { u }
+                    f_set.set(u); // Add u to F -> F u { u }
+                    min_dist = std::min(min_dist,
+                                        distances[index(e, n)] + distances[index(f, n)]);
+                }
+                for(const HypernodeID &v : graph.nodes())
+                { // O(n) steps
+                    // Compute optimal steiner tree for D u { v } with the assumption that
+                    // u is the junction node of the optimal steiner tree. Since the outer
+                    // loop iterates over all u \in V, this will compute the optimal
+                    // steiner tree for D u { v } at the end.
+                    const bool was_set = d_set.isSet(v);
+                    d_set.set(v); // Add v to set D -> D u { v }
+                    const size_t idx_d = index(d, n);
+                    distances[idx_d] =
+                        std::min(distances[idx_d], distances[index(u, v, n)] + min_dist);
+                    if(!was_set)
+                    {
+                        d_set.unset(v);
+                    }
+                }
+            }
         }
-        for(const HypernodeID &v : graph.nodes())
-        { // O(n) steps
-          // Compute optimal steiner tree for D u { v } with the assumption that
-          // u is the junction node of the optimal steiner tree. Since the outer
-          // loop iterates over all u \in V, this will compute the optimal steiner
-          // tree for D u { v } at the end.
-          const bool was_set = d_set.isSet(v);
-          d_set.set(v); // Add v to set D -> D u { v }
-          const size_t idx_d = index(d, n);
-          distances[idx_d] =
-              std::min(distances[idx_d], distances[index(u, v, n)] + min_dist);
-          if(!was_set)
-          {
-            d_set.unset(v);
-          }
-        }
-      }
     }
-  }
 }
 
 } // namespace kahypar

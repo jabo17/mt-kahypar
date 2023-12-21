@@ -53,201 +53,202 @@ namespace mt_kahypar {
 struct gain_cache_s;
 typedef struct
 {
-  gain_cache_s *gain_cache;
-  GainPolicy type;
+    gain_cache_s *gain_cache;
+    GainPolicy type;
 } gain_cache_t;
 
 class GainCachePtr
 {
 
-public:
-  template <typename F>
-  static auto applyWithConcreteGainCache(F function, gain_cache_t gain_cache)
-  {
-    switch(gain_cache.type)
+  public:
+    template <typename F>
+    static auto applyWithConcreteGainCache(F function, gain_cache_t gain_cache)
     {
-    case GainPolicy::cut:
-      return function(cast<CutGainCache>(gain_cache));
-    case GainPolicy::km1:
-      return function(cast<Km1GainCache>(gain_cache));
-    case GainPolicy::soed:
+        switch(gain_cache.type)
+        {
+        case GainPolicy::cut:
+            return function(cast<CutGainCache>(gain_cache));
+        case GainPolicy::km1:
+            return function(cast<Km1GainCache>(gain_cache));
+        case GainPolicy::soed:
 #ifdef KAHYPAR_ENABLE_SOED_METRIC
-      return function(cast<SoedGainCache>(gain_cache));
+            return function(cast<SoedGainCache>(gain_cache));
 #endif
-    case GainPolicy::steiner_tree:
+        case GainPolicy::steiner_tree:
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
-      return function(cast<SteinerTreeGainCache>(gain_cache));
+            return function(cast<SteinerTreeGainCache>(gain_cache));
 #endif
-    case GainPolicy::cut_for_graphs:
+        case GainPolicy::cut_for_graphs:
 #ifdef KAHYPAR_ENABLE_GRAPH_PARTITIONING_FEATURES
-      return function(cast<GraphCutGainCache>(gain_cache));
+            return function(cast<GraphCutGainCache>(gain_cache));
 #endif
-    case GainPolicy::steiner_tree_for_graphs:
+        case GainPolicy::steiner_tree_for_graphs:
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
 #ifdef KAHYPAR_ENABLE_GRAPH_PARTITIONING_FEATURES
-      return function(cast<GraphSteinerTreeGainCache>(gain_cache));
+            return function(cast<GraphSteinerTreeGainCache>(gain_cache));
 #endif
 #endif
-    case GainPolicy::none:
-      break;
+        case GainPolicy::none:
+            break;
+        }
+        ERR("No gain policy set");
     }
-    ERR("No gain policy set");
-  }
 
-  template <typename Hypergraph, typename F>
-  static auto applyWithConcreteGainCacheForHG(F function, gain_cache_t gain_cache)
-  {
-    if constexpr(Hypergraph::is_graph)
+    template <typename Hypergraph, typename F>
+    static auto applyWithConcreteGainCacheForHG(F function, gain_cache_t gain_cache)
     {
-      switch(gain_cache.type)
-      {
+        if constexpr(Hypergraph::is_graph)
+        {
+            switch(gain_cache.type)
+            {
 #ifdef KAHYPAR_ENABLE_GRAPH_PARTITIONING_FEATURES
-      case GainPolicy::cut_for_graphs:
-        return function(cast<GraphCutGainCache>(gain_cache));
+            case GainPolicy::cut_for_graphs:
+                return function(cast<GraphCutGainCache>(gain_cache));
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
-      case GainPolicy::steiner_tree_for_graphs:
-        return function(cast<GraphSteinerTreeGainCache>(gain_cache));
+            case GainPolicy::steiner_tree_for_graphs:
+                return function(cast<GraphSteinerTreeGainCache>(gain_cache));
 #endif
 #endif
-      default:
-        break;
-      }
-    }
-    else
-    {
-      switch(gain_cache.type)
-      {
-      case GainPolicy::cut:
-        return function(cast<CutGainCache>(gain_cache));
-      case GainPolicy::km1:
-        return function(cast<Km1GainCache>(gain_cache));
+            default:
+                break;
+            }
+        }
+        else
+        {
+            switch(gain_cache.type)
+            {
+            case GainPolicy::cut:
+                return function(cast<CutGainCache>(gain_cache));
+            case GainPolicy::km1:
+                return function(cast<Km1GainCache>(gain_cache));
 #ifdef KAHYPAR_ENABLE_SOED_METRIC
-      case GainPolicy::soed:
-        return function(cast<SoedGainCache>(gain_cache));
+            case GainPolicy::soed:
+                return function(cast<SoedGainCache>(gain_cache));
 #endif
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
-      case GainPolicy::steiner_tree:
-        return function(cast<SteinerTreeGainCache>(gain_cache));
+            case GainPolicy::steiner_tree:
+                return function(cast<SteinerTreeGainCache>(gain_cache));
 #endif
-      default:
-        break;
-      }
+            default:
+                break;
+            }
+        }
+        ERR("No gain policy set");
     }
-    ERR("No gain policy set");
-  }
 
-  static gain_cache_t constructGainCache(const Context &context)
-  {
-    switch(context.partition.gain_policy)
+    static gain_cache_t constructGainCache(const Context &context)
     {
-    case GainPolicy::cut:
-      return constructGainCache<CutGainCache>(context);
-    case GainPolicy::km1:
-      return constructGainCache<Km1GainCache>(context);
+        switch(context.partition.gain_policy)
+        {
+        case GainPolicy::cut:
+            return constructGainCache<CutGainCache>(context);
+        case GainPolicy::km1:
+            return constructGainCache<Km1GainCache>(context);
 #ifdef KAHYPAR_ENABLE_SOED_METRIC
-    case GainPolicy::soed:
-      return constructGainCache<SoedGainCache>(context);
+        case GainPolicy::soed:
+            return constructGainCache<SoedGainCache>(context);
 #endif
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
-    case GainPolicy::steiner_tree:
-      return constructGainCache<SteinerTreeGainCache>(context);
+        case GainPolicy::steiner_tree:
+            return constructGainCache<SteinerTreeGainCache>(context);
 #endif
-      ENABLE_GRAPHS(case GainPolicy::cut_for_graphs
-                    : return constructGainCache<GraphCutGainCache>(context);)
+            ENABLE_GRAPHS(case GainPolicy::cut_for_graphs
+                          : return constructGainCache<GraphCutGainCache>(context);)
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
-      ENABLE_GRAPHS(case GainPolicy::steiner_tree_for_graphs
-                    : return constructGainCache<GraphSteinerTreeGainCache>(context);)
+            ENABLE_GRAPHS(
+                case GainPolicy::steiner_tree_for_graphs
+                : return constructGainCache<GraphSteinerTreeGainCache>(context);)
 #endif
-    case GainPolicy::none:
-      throw InvalidParameterException("No gain policy set");
-    default:
-      break;
+        case GainPolicy::none:
+            throw InvalidParameterException("No gain policy set");
+        default:
+            break;
+        }
+        return gain_cache_t{ nullptr, GainPolicy::none };
     }
-    return gain_cache_t{ nullptr, GainPolicy::none };
-  }
 
-  static void deleteGainCache(gain_cache_t gain_cache)
-  {
-    if(gain_cache.type != GainPolicy::none)
+    static void deleteGainCache(gain_cache_t gain_cache)
     {
-      applyWithConcreteGainCache([&](auto &gc) { delete &gc; }, gain_cache);
+        if(gain_cache.type != GainPolicy::none)
+        {
+            applyWithConcreteGainCache([&](auto &gc) { delete &gc; }, gain_cache);
+        }
     }
-  }
 
-  template <typename PartitionedHypergraph>
-  static void initializeGainCache(const PartitionedHypergraph &partitioned_hg,
-                                  gain_cache_t gain_cache)
-  {
-    if(gain_cache.type != GainPolicy::none)
+    template <typename PartitionedHypergraph>
+    static void initializeGainCache(const PartitionedHypergraph &partitioned_hg,
+                                    gain_cache_t gain_cache)
     {
-      applyWithConcreteGainCacheForHG<PartitionedHypergraph>(
-          [&](auto &gc) { gc.initializeGainCache(partitioned_hg); }, gain_cache);
+        if(gain_cache.type != GainPolicy::none)
+        {
+            applyWithConcreteGainCacheForHG<PartitionedHypergraph>(
+                [&](auto &gc) { gc.initializeGainCache(partitioned_hg); }, gain_cache);
+        }
     }
-  }
 
-  static void resetGainCache(gain_cache_t gain_cache)
-  {
-    if(gain_cache.type != GainPolicy::none)
+    static void resetGainCache(gain_cache_t gain_cache)
     {
-      applyWithConcreteGainCache([&](auto &gc) { gc.reset(); }, gain_cache);
+        if(gain_cache.type != GainPolicy::none)
+        {
+            applyWithConcreteGainCache([&](auto &gc) { gc.reset(); }, gain_cache);
+        }
     }
-  }
 
-  template <typename PartitionedHypergraph>
-  static void uncontract(PartitionedHypergraph &partitioned_hg, const Batch &batch,
-                         gain_cache_t gain_cache)
-  {
-    if(gain_cache.type != GainPolicy::none)
+    template <typename PartitionedHypergraph>
+    static void uncontract(PartitionedHypergraph &partitioned_hg, const Batch &batch,
+                           gain_cache_t gain_cache)
     {
-      applyWithConcreteGainCacheForHG<PartitionedHypergraph>(
-          [&](auto &gc) { partitioned_hg.uncontract(batch, gc); }, gain_cache);
+        if(gain_cache.type != GainPolicy::none)
+        {
+            applyWithConcreteGainCacheForHG<PartitionedHypergraph>(
+                [&](auto &gc) { partitioned_hg.uncontract(batch, gc); }, gain_cache);
+        }
     }
-  }
 
-  template <typename PartitionedHypergraph, typename ParallelHyperedge>
-  static void
-  restoreSinglePinAndParallelNets(PartitionedHypergraph &partitioned_hg,
-                                  const vec<ParallelHyperedge> &hes_to_restore,
-                                  gain_cache_t gain_cache)
-  {
-    if(gain_cache.type != GainPolicy::none)
+    template <typename PartitionedHypergraph, typename ParallelHyperedge>
+    static void
+    restoreSinglePinAndParallelNets(PartitionedHypergraph &partitioned_hg,
+                                    const vec<ParallelHyperedge> &hes_to_restore,
+                                    gain_cache_t gain_cache)
     {
-      applyWithConcreteGainCacheForHG<PartitionedHypergraph>(
-          [&](auto &gc) {
-            partitioned_hg.restoreSinglePinAndParallelNets(hes_to_restore, gc);
-          },
-          gain_cache);
+        if(gain_cache.type != GainPolicy::none)
+        {
+            applyWithConcreteGainCacheForHG<PartitionedHypergraph>(
+                [&](auto &gc) {
+                    partitioned_hg.restoreSinglePinAndParallelNets(hes_to_restore, gc);
+                },
+                gain_cache);
+        }
     }
-  }
 
-  template <typename PartitionedHypergraph>
-  static bool checkTrackedPartitionInformation(PartitionedHypergraph &partitioned_hg,
-                                               gain_cache_t gain_cache)
-  {
-    return applyWithConcreteGainCacheForHG<PartitionedHypergraph>(
-        [&](auto &gc) { return partitioned_hg.checkTrackedPartitionInformation(gc); },
-        gain_cache);
-  }
-
-  template <typename GainCache>
-  static GainCache &cast(gain_cache_t gain_cache)
-  {
-    if(gain_cache.type != GainCache::TYPE)
+    template <typename PartitionedHypergraph>
+    static bool checkTrackedPartitionInformation(PartitionedHypergraph &partitioned_hg,
+                                                 gain_cache_t gain_cache)
     {
-      std::stringstream ss;
-      ss << "Cannot cast" << gain_cache.type << "to" << GainCache::TYPE;
-      throw InvalidInputException(ss.str());
+        return applyWithConcreteGainCacheForHG<PartitionedHypergraph>(
+            [&](auto &gc) { return partitioned_hg.checkTrackedPartitionInformation(gc); },
+            gain_cache);
     }
-    return *reinterpret_cast<GainCache *>(gain_cache.gain_cache);
-  }
 
-private:
-  template <typename GainCache>
-  static gain_cache_t constructGainCache(const Context &context)
-  {
-    return gain_cache_t{ reinterpret_cast<gain_cache_s *>(new GainCache(context)),
-                         GainCache::TYPE };
-  }
+    template <typename GainCache>
+    static GainCache &cast(gain_cache_t gain_cache)
+    {
+        if(gain_cache.type != GainCache::TYPE)
+        {
+            std::stringstream ss;
+            ss << "Cannot cast" << gain_cache.type << "to" << GainCache::TYPE;
+            throw InvalidInputException(ss.str());
+        }
+        return *reinterpret_cast<GainCache *>(gain_cache.gain_cache);
+    }
+
+  private:
+    template <typename GainCache>
+    static gain_cache_t constructGainCache(const Context &context)
+    {
+        return gain_cache_t{ reinterpret_cast<gain_cache_s *>(new GainCache(context)),
+                             GainCache::TYPE };
+    }
 };
 
 } // namespace mt_kahypar

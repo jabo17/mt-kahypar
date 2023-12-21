@@ -44,68 +44,67 @@ class MultilevelUncoarsener : public IUncoarsener<TypeTraits>,
                               private UncoarsenerBase<TypeTraits>
 {
 
-  using Base = UncoarsenerBase<TypeTraits>;
-  using Hypergraph = typename TypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using Base = UncoarsenerBase<TypeTraits>;
+    using Hypergraph = typename TypeTraits::Hypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-  static constexpr bool debug = false;
-  static constexpr bool enable_heavy_assert = false;
+    static constexpr bool debug = false;
+    static constexpr bool enable_heavy_assert = false;
 
-public:
-  MultilevelUncoarsener(Hypergraph &hypergraph, const Context &context,
-                        UncoarseningData<TypeTraits> &uncoarseningData,
-                        const TargetGraph *target_graph) :
-      Base(hypergraph, context, uncoarseningData),
-      _target_graph(target_graph), _current_level(0), _num_levels(0),
-      _block_ids(hypergraph.initialNumNodes(), kInvalidPartition), _current_metrics(),
-      _progress(hypergraph.initialNumNodes(), 0, false)
-  {
-  }
+  public:
+    MultilevelUncoarsener(Hypergraph &hypergraph, const Context &context,
+                          UncoarseningData<TypeTraits> &uncoarseningData,
+                          const TargetGraph *target_graph) :
+        Base(hypergraph, context, uncoarseningData),
+        _target_graph(target_graph), _current_level(0), _num_levels(0),
+        _block_ids(hypergraph.initialNumNodes(), kInvalidPartition), _current_metrics(),
+        _progress(hypergraph.initialNumNodes(), 0, false)
+    {
+    }
 
-  MultilevelUncoarsener(const MultilevelUncoarsener &) = delete;
-  MultilevelUncoarsener(MultilevelUncoarsener &&) = delete;
-  MultilevelUncoarsener &operator=(const MultilevelUncoarsener &) = delete;
-  MultilevelUncoarsener &operator=(MultilevelUncoarsener &&) = delete;
+    MultilevelUncoarsener(const MultilevelUncoarsener &) = delete;
+    MultilevelUncoarsener(MultilevelUncoarsener &&) = delete;
+    MultilevelUncoarsener &operator=(const MultilevelUncoarsener &) = delete;
+    MultilevelUncoarsener &operator=(MultilevelUncoarsener &&) = delete;
 
-private:
-  void initializeImpl() override;
+  private:
+    void initializeImpl() override;
 
-  bool isTopLevelImpl() const override;
+    bool isTopLevelImpl() const override;
 
-  void projectToNextLevelAndRefineImpl() override;
+    void projectToNextLevelAndRefineImpl() override;
 
-  void refineImpl() override;
+    void refineImpl() override;
 
-  void rebalancingImpl() override;
+    void rebalancingImpl() override;
 
-  gain_cache_t getGainCacheImpl() override { return _gain_cache; }
+    gain_cache_t getGainCacheImpl() override { return _gain_cache; }
 
-  HyperedgeWeight getObjectiveImpl() const override;
+    HyperedgeWeight getObjectiveImpl() const override;
 
-  void updateMetricsImpl() override;
+    void updateMetricsImpl() override;
 
-  PartitionedHypergraph &currentPartitionedHypergraphImpl() override;
+    PartitionedHypergraph &currentPartitionedHypergraphImpl() override;
 
-  HypernodeID currentNumberOfNodesImpl() const override;
+    HypernodeID currentNumberOfNodesImpl() const override;
 
-  PartitionedHypergraph &&movePartitionedHypergraphImpl() override;
+    PartitionedHypergraph &&movePartitionedHypergraphImpl() override;
 
-  using Base::_context;
-  using Base::_flows;
-  using Base::_fm;
-  using Base::_gain_cache;
-  using Base::_hg;
-  using Base::_label_propagation;
-  using Base::_rebalancer;
-  using Base::_timer;
-  using Base::_uncoarseningData;
+    using Base::_context;
+    using Base::_flows;
+    using Base::_fm;
+    using Base::_gain_cache;
+    using Base::_hg;
+    using Base::_label_propagation;
+    using Base::_rebalancer;
+    using Base::_timer;
+    using Base::_uncoarseningData;
 
-  const TargetGraph *_target_graph;
-  int _current_level;
-  int _num_levels;
-  ds::Array<PartitionID> _block_ids;
-  Metrics _current_metrics;
-  utils::ProgressBar _progress;
+    const TargetGraph *_target_graph;
+    int _current_level;
+    int _num_levels;
+    ds::Array<PartitionID> _block_ids;
+    Metrics _current_metrics;
+    utils::ProgressBar _progress;
 };
-
 }

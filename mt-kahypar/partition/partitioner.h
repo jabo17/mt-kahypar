@@ -38,15 +38,15 @@ template <typename TypeTraits>
 class Partitioner
 {
 
-  using Hypergraph = typename TypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using Hypergraph = typename TypeTraits::Hypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  static PartitionedHypergraph partition(Hypergraph &hypergraph, Context &context,
-                                         TargetGraph *target_graph = nullptr);
+  public:
+    static PartitionedHypergraph partition(Hypergraph &hypergraph, Context &context,
+                                           TargetGraph *target_graph = nullptr);
 
-  static void partitionVCycle(PartitionedHypergraph &partitioned_hg, Context &context,
-                              TargetGraph *target_graph = nullptr);
+    static void partitionVCycle(PartitionedHypergraph &partitioned_hg, Context &context,
+                                TargetGraph *target_graph = nullptr);
 };
 
 } // namespace mt_kahypar

@@ -36,8 +36,8 @@
 #include "mt-kahypar/partition/refinement/gains/gain_definitions.h"
 
 #define REGISTER_POLICY(policy, id, policy_class)                                        \
-  static kahypar::meta::Registrar<kahypar::meta::PolicyRegistry<policy> >                \
-      register_##policy_class(id, new policy_class())
+    static kahypar::meta::Registrar<kahypar::meta::PolicyRegistry<policy> >              \
+        register_##policy_class(id, new policy_class())
 
 namespace mt_kahypar {
 // //////////////////////////////////////////////////////////////////////////////

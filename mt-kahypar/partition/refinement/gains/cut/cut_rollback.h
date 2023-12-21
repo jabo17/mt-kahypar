@@ -47,78 +47,79 @@ namespace mt_kahypar {
 class CutRollback
 {
 
-  /**
-   * This class stores for a hyperedge and block the correponding data required to
-   * recompute the gain values. It stores the move index of the pin that first moved out
-   * (first_in) resp. last moved into the corresponding block (last_out) and the number
-   * of moved pins that moved out of the block (moved_out).
-   */
-public:
-  static constexpr bool supports_parallel_rollback = true;
+    /**
+     * This class stores for a hyperedge and block the correponding data required to
+     * recompute the gain values. It stores the move index of the pin that first moved out
+     * (first_in) resp. last moved into the corresponding block (last_out) and the number
+     * of moved pins that moved out of the block (moved_out).
+     */
+  public:
+    static constexpr bool supports_parallel_rollback = true;
 
-  struct RecalculationData
-  {
-    MoveID first_out, last_in;
-    HypernodeID moved_out;
-    RecalculationData() :
-        first_out(std::numeric_limits<MoveID>::max()),
-        last_in(std::numeric_limits<MoveID>::min()), moved_out(0)
+    struct RecalculationData
     {
+        MoveID first_out, last_in;
+        HypernodeID moved_out;
+        RecalculationData() :
+            first_out(std::numeric_limits<MoveID>::max()),
+            last_in(std::numeric_limits<MoveID>::min()), moved_out(0)
+        {
+        }
+
+        void reset()
+        {
+            first_out = std::numeric_limits<MoveID>::max();
+            last_in = std::numeric_limits<MoveID>::min();
+            moved_out = 0;
+        }
+    };
+
+    // Updates the auxilliary data for a node move m with index m_id.
+    static void updateMove(const MoveID m_id, const Move &m, vec<RecalculationData> &r)
+    {
+        r[m.from].first_out = std::min(r[m.from].first_out, m_id);
+        r[m.to].last_in = std::max(r[m.to].last_in, m_id);
+        ++r[m.from].moved_out;
     }
 
-    void reset()
+    static void updateNonMovedPinInBlock(const PartitionID, vec<RecalculationData> &)
     {
-      first_out = std::numeric_limits<MoveID>::max();
-      last_in = std::numeric_limits<MoveID>::min();
-      moved_out = 0;
+        // Do nothing here
     }
-  };
 
-  // Updates the auxilliary data for a node move m with index m_id.
-  static void updateMove(const MoveID m_id, const Move &m, vec<RecalculationData> &r)
-  {
-    r[m.from].first_out = std::min(r[m.from].first_out, m_id);
-    r[m.to].last_in = std::max(r[m.to].last_in, m_id);
-    ++r[m.from].moved_out;
-  }
+    template <typename PartitionedHypergraph>
+    static HyperedgeWeight benefit(const PartitionedHypergraph &phg, const HyperedgeID e,
+                                   const MoveID m_id, const Move &m,
+                                   vec<RecalculationData> &r)
+    {
+        const HypernodeID edge_size = phg.edgeSize(e);
+        // If the hyperedge was potentially a non-cut edge at some point and m is the last
+        // node that moves into the corresponding block, while the first node that moves
+        // out of the corresponding block is performed strictly after m, then m removes e
+        // from the cut.
+        const bool was_potentially_non_cut_edge_at_some_point =
+            phg.pinCountInPart(e, m.to) + r[m.to].moved_out == edge_size;
+        const bool has_benefit = was_potentially_non_cut_edge_at_some_point &&
+                                 r[m.to].last_in == m_id && m_id < r[m.to].first_out;
+        return has_benefit * phg.edgeWeight(e);
+    }
 
-  static void updateNonMovedPinInBlock(const PartitionID, vec<RecalculationData> &)
-  {
-    // Do nothing here
-  }
-
-  template <typename PartitionedHypergraph>
-  static HyperedgeWeight benefit(const PartitionedHypergraph &phg, const HyperedgeID e,
-                                 const MoveID m_id, const Move &m,
-                                 vec<RecalculationData> &r)
-  {
-    const HypernodeID edge_size = phg.edgeSize(e);
-    // If the hyperedge was potentially a non-cut edge at some point and m is the last
-    // node that moves into the corresponding block, while the first node that moves out
-    // of the corresponding block is performed strictly after m, then m removes e from the
-    // cut.
-    const bool was_potentially_non_cut_edge_at_some_point =
-        phg.pinCountInPart(e, m.to) + r[m.to].moved_out == edge_size;
-    const bool has_benefit = was_potentially_non_cut_edge_at_some_point &&
-                             r[m.to].last_in == m_id && m_id < r[m.to].first_out;
-    return has_benefit * phg.edgeWeight(e);
-  }
-
-  template <typename PartitionedHypergraph>
-  static HyperedgeWeight penalty(const PartitionedHypergraph &phg, const HyperedgeID e,
-                                 const MoveID m_id, const Move &m,
-                                 vec<RecalculationData> &r)
-  {
-    const HypernodeID edge_size = phg.edgeSize(e);
-    // If the hyperedge was potentially a non-cut edge at some point and m is the first
-    // node that moves out of the corresponding block, while the last node that moves into
-    // the corresponding block is performed strictly before m, then m makes e a cut edge.
-    const bool was_potentially_non_cut_edge_at_some_point =
-        phg.pinCountInPart(e, m.from) + r[m.from].moved_out == edge_size;
-    const bool has_penalty = was_potentially_non_cut_edge_at_some_point &&
-                             r[m.from].first_out == m_id && m_id > r[m.from].last_in;
-    return has_penalty * phg.edgeWeight(e);
-  }
+    template <typename PartitionedHypergraph>
+    static HyperedgeWeight penalty(const PartitionedHypergraph &phg, const HyperedgeID e,
+                                   const MoveID m_id, const Move &m,
+                                   vec<RecalculationData> &r)
+    {
+        const HypernodeID edge_size = phg.edgeSize(e);
+        // If the hyperedge was potentially a non-cut edge at some point and m is the
+        // first node that moves out of the corresponding block, while the last node that
+        // moves into the corresponding block is performed strictly before m, then m makes
+        // e a cut edge.
+        const bool was_potentially_non_cut_edge_at_some_point =
+            phg.pinCountInPart(e, m.from) + r[m.from].moved_out == edge_size;
+        const bool has_penalty = was_potentially_non_cut_edge_at_some_point &&
+                                 r[m.from].first_out == m_id && m_id > r[m.from].last_in;
+        return has_penalty * phg.edgeWeight(e);
+    }
 };
 
 } // namespace mt_kahypar

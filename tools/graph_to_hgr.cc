@@ -40,69 +40,69 @@ namespace po = boost::program_options;
 
 int main(int argc, char *argv[])
 {
-  std::string graph_filename;
-  std::string hgr_filename;
+    std::string graph_filename;
+    std::string hgr_filename;
 
-  po::options_description options("Options");
-  options.add_options()(
-      "graph,g",
-      po::value<std::string>(&graph_filename)->value_name("<string>")->required(),
-      "Graph filename")(
-      "hypergraph,h",
-      po::value<std::string>(&hgr_filename)->value_name("<string>")->required(),
-      "Hypergraph filename");
+    po::options_description options("Options");
+    options.add_options()(
+        "graph,g",
+        po::value<std::string>(&graph_filename)->value_name("<string>")->required(),
+        "Graph filename")(
+        "hypergraph,h",
+        po::value<std::string>(&hgr_filename)->value_name("<string>")->required(),
+        "Hypergraph filename");
 
-  po::variables_map cmd_vm;
-  po::store(po::parse_command_line(argc, argv, options), cmd_vm);
-  po::notify(cmd_vm);
+    po::variables_map cmd_vm;
+    po::store(po::parse_command_line(argc, argv, options), cmd_vm);
+    po::notify(cmd_vm);
 
-  std::ofstream out_stream(hgr_filename.c_str());
+    std::ofstream out_stream(hgr_filename.c_str());
 
-  // Read Hypergraph
-  HyperedgeID num_edges = 0;
-  HypernodeID num_nodes = 0;
-  io::HyperedgeVector hyperedges;
-  vec<HyperedgeWeight> hyperedges_weight;
-  vec<HypernodeWeight> hypernodes_weight;
+    // Read Hypergraph
+    HyperedgeID num_edges = 0;
+    HypernodeID num_nodes = 0;
+    io::HyperedgeVector hyperedges;
+    vec<HyperedgeWeight> hyperedges_weight;
+    vec<HypernodeWeight> hypernodes_weight;
 
-  io::readGraphFile(graph_filename, num_edges, num_nodes, hyperedges, hyperedges_weight,
-                    hypernodes_weight);
-  ALWAYS_ASSERT(hyperedges.size() == num_edges);
+    io::readGraphFile(graph_filename, num_edges, num_nodes, hyperedges, hyperedges_weight,
+                      hypernodes_weight);
+    ALWAYS_ASSERT(hyperedges.size() == num_edges);
 
-  // Write header
-  out_stream << num_edges << " " << num_nodes << " ";
-  if(hyperedges_weight.empty() && hypernodes_weight.empty())
-  {
-    out_stream << "0" /* Unweighted */ << std::endl;
-  }
-  else
-  {
-    out_stream << (hypernodes_weight.empty() ? "0" : "1");
-    out_stream << (hyperedges_weight.empty() ? "0" : "1") << std::endl;
-  }
-
-  // Write hyperedges
-  for(size_t i = 0; i < hyperedges.size(); ++i)
-  {
-    const auto &pins = hyperedges[i];
-    ALWAYS_ASSERT(pins.size() == 2);
-    HypernodeID u = pins[0] + 1;
-    HypernodeID v = pins[1] + 1;
-    if(hyperedges_weight.size() > 0)
+    // Write header
+    out_stream << num_edges << " " << num_nodes << " ";
+    if(hyperedges_weight.empty() && hypernodes_weight.empty())
     {
-      out_stream << " " << hyperedges_weight[i];
+        out_stream << "0" /* Unweighted */ << std::endl;
     }
-    out_stream << u << " " << v;
-    out_stream << std::endl;
-  }
+    else
+    {
+        out_stream << (hypernodes_weight.empty() ? "0" : "1");
+        out_stream << (hyperedges_weight.empty() ? "0" : "1") << std::endl;
+    }
 
-  // Write node weights
-  for(HypernodeWeight weight : hypernodes_weight)
-  {
-    out_stream << weight << std::endl;
-  }
+    // Write hyperedges
+    for(size_t i = 0; i < hyperedges.size(); ++i)
+    {
+        const auto &pins = hyperedges[i];
+        ALWAYS_ASSERT(pins.size() == 2);
+        HypernodeID u = pins[0] + 1;
+        HypernodeID v = pins[1] + 1;
+        if(hyperedges_weight.size() > 0)
+        {
+            out_stream << " " << hyperedges_weight[i];
+        }
+        out_stream << u << " " << v;
+        out_stream << std::endl;
+    }
 
-  out_stream.close();
+    // Write node weights
+    for(HypernodeWeight weight : hypernodes_weight)
+    {
+        out_stream << weight << std::endl;
+    }
 
-  return 0;
+    out_stream.close();
+
+    return 0;
 }

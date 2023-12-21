@@ -51,79 +51,79 @@ using PartitionedHypergraph = ds::PartitionedHypergraph<Hypergraph, ds::Connecti
 void readBipartPartitionFile(const std::string &bipart_partition_file,
                              PartitionedHypergraph &hypergraph, const PartitionID k)
 {
-  ASSERT(!bipart_partition_file.empty(), "No filename for partition file specified");
-  std::ifstream file(bipart_partition_file);
-  if(file)
-  {
-    for(PartitionID block = 0; block < k; ++block)
+    ASSERT(!bipart_partition_file.empty(), "No filename for partition file specified");
+    std::ifstream file(bipart_partition_file);
+    if(file)
     {
-      std::string line;
-      std::getline(file, line);
-      std::istringstream line_stream(line);
-      HypernodeID hn = 0;
-      PartitionID bipart_block = 0;
-      line_stream >> bipart_block;
-      ASSERT(block == bipart_block - 1);
-      while(line_stream >> hn)
-      {
-        hypergraph.setOnlyNodePart(hn - 1, block);
-      }
+        for(PartitionID block = 0; block < k; ++block)
+        {
+            std::string line;
+            std::getline(file, line);
+            std::istringstream line_stream(line);
+            HypernodeID hn = 0;
+            PartitionID bipart_block = 0;
+            line_stream >> bipart_block;
+            ASSERT(block == bipart_block - 1);
+            while(line_stream >> hn)
+            {
+                hypergraph.setOnlyNodePart(hn - 1, block);
+            }
+        }
+        hypergraph.initializePartition();
+        file.close();
     }
-    hypergraph.initializePartition();
-    file.close();
-  }
-  else
-  {
-    std::cerr << "Error: File not found: " << std::endl;
-  }
+    else
+    {
+        std::cerr << "Error: File not found: " << std::endl;
+    }
 }
 
 int main(int argc, char *argv[])
 {
-  Context context;
+    Context context;
 
-  po::options_description options("Options");
-  options.add_options()("hypergraph,h",
-                        po::value<std::string>(&context.partition.graph_filename)
-                            ->value_name("<string>")
-                            ->required(),
-                        "Hypergraph Filename")(
-      "bipart-partition-file,b",
-      po::value<std::string>(&context.partition.graph_partition_filename)
-          ->value_name("<string>")
-          ->required(),
-      "BiPart Partition Filename")(
-      "blocks,k",
-      po::value<PartitionID>(&context.partition.k)->value_name("<int>")->required(),
-      "Number of Blocks");
+    po::options_description options("Options");
+    options.add_options()("hypergraph,h",
+                          po::value<std::string>(&context.partition.graph_filename)
+                              ->value_name("<string>")
+                              ->required(),
+                          "Hypergraph Filename")(
+        "bipart-partition-file,b",
+        po::value<std::string>(&context.partition.graph_partition_filename)
+            ->value_name("<string>")
+            ->required(),
+        "BiPart Partition Filename")(
+        "blocks,k",
+        po::value<PartitionID>(&context.partition.k)->value_name("<int>")->required(),
+        "Number of Blocks");
 
-  po::variables_map cmd_vm;
-  po::store(po::parse_command_line(argc, argv, options), cmd_vm);
-  po::notify(cmd_vm);
+    po::variables_map cmd_vm;
+    po::store(po::parse_command_line(argc, argv, options), cmd_vm);
+    po::notify(cmd_vm);
 
-  // Read Hypergraph
-  mt_kahypar_hypergraph_t hypergraph = mt_kahypar::io::readInputFile(
-      context.partition.graph_filename, PresetType::default_preset,
-      InstanceType::hypergraph, FileFormat::hMetis, true);
-  Hypergraph &hg = utils::cast<Hypergraph>(hypergraph);
-  PartitionedHypergraph phg(context.partition.k, hg, parallel_tag_t());
+    // Read Hypergraph
+    mt_kahypar_hypergraph_t hypergraph = mt_kahypar::io::readInputFile(
+        context.partition.graph_filename, PresetType::default_preset,
+        InstanceType::hypergraph, FileFormat::hMetis, true);
+    Hypergraph &hg = utils::cast<Hypergraph>(hypergraph);
+    PartitionedHypergraph phg(context.partition.k, hg, parallel_tag_t());
 
-  // Setup Context
-  context.partition.epsilon = 0.03;
-  context.setupPartWeights(hg.totalWeight());
+    // Setup Context
+    context.partition.epsilon = 0.03;
+    context.setupPartWeights(hg.totalWeight());
 
-  // Read Bipart Partition File
-  readBipartPartitionFile(context.partition.graph_partition_filename, phg,
-                          context.partition.k);
+    // Read Bipart Partition File
+    readBipartPartitionFile(context.partition.graph_partition_filename, phg,
+                            context.partition.k);
 
-  std::cout << "RESULT"
-            << " graph=" << context.partition.graph_filename
-            << " k=" << context.partition.k
-            << " imbalance=" << metrics::imbalance(phg, context)
-            << " cut=" << metrics::quality(phg, Objective::cut)
-            << " km1=" << metrics::quality(phg, Objective::km1) << std::endl;
+    std::cout << "RESULT"
+              << " graph=" << context.partition.graph_filename
+              << " k=" << context.partition.k
+              << " imbalance=" << metrics::imbalance(phg, context)
+              << " cut=" << metrics::quality(phg, Objective::cut)
+              << " km1=" << metrics::quality(phg, Objective::km1) << std::endl;
 
-  utils::delete_hypergraph(hypergraph);
+    utils::delete_hypergraph(hypergraph);
 
-  return 0;
+    return 0;
 }

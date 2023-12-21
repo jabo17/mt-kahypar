@@ -40,61 +40,61 @@ namespace utils {
 
 class Utilities
 {
-  static constexpr bool debug = false;
+    static constexpr bool debug = false;
 
-  struct UtilityObjects
-  {
-    UtilityObjects() : stats(), ip_stats(), timer() {}
+    struct UtilityObjects
+    {
+        UtilityObjects() : stats(), ip_stats(), timer() {}
 
-    Stats stats;
-    InitialPartitioningStats ip_stats;
-    Timer timer;
-  };
+        Stats stats;
+        InitialPartitioningStats ip_stats;
+        Timer timer;
+    };
 
-public:
-  Utilities(const Utilities &) = delete;
-  Utilities &operator=(const Utilities &) = delete;
+  public:
+    Utilities(const Utilities &) = delete;
+    Utilities &operator=(const Utilities &) = delete;
 
-  Utilities(Utilities &&) = delete;
-  Utilities &operator=(Utilities &&) = delete;
+    Utilities(Utilities &&) = delete;
+    Utilities &operator=(Utilities &&) = delete;
 
-  static Utilities &instance()
-  {
-    static Utilities instance;
-    return instance;
-  }
+    static Utilities &instance()
+    {
+        static Utilities instance;
+        return instance;
+    }
 
-  size_t registerNewUtilityObjects()
-  {
-    std::lock_guard<std::mutex> lock(_utility_mutex);
-    const size_t id = _utilities.size();
-    _utilities.emplace_back();
-    return id;
-  }
+    size_t registerNewUtilityObjects()
+    {
+        std::lock_guard<std::mutex> lock(_utility_mutex);
+        const size_t id = _utilities.size();
+        _utilities.emplace_back();
+        return id;
+    }
 
-  Stats &getStats(const size_t id)
-  {
-    ASSERT(id < _utilities.size());
-    return _utilities[id].stats;
-  }
+    Stats &getStats(const size_t id)
+    {
+        ASSERT(id < _utilities.size());
+        return _utilities[id].stats;
+    }
 
-  InitialPartitioningStats &getInitialPartitioningStats(const size_t id)
-  {
-    ASSERT(id < _utilities.size());
-    return _utilities[id].ip_stats;
-  }
+    InitialPartitioningStats &getInitialPartitioningStats(const size_t id)
+    {
+        ASSERT(id < _utilities.size());
+        return _utilities[id].ip_stats;
+    }
 
-  Timer &getTimer(const size_t id)
-  {
-    ASSERT(id < _utilities.size());
-    return _utilities[id].timer;
-  }
+    Timer &getTimer(const size_t id)
+    {
+        ASSERT(id < _utilities.size());
+        return _utilities[id].timer;
+    }
 
-private:
-  explicit Utilities() : _utility_mutex(), _utilities() {}
+  private:
+    explicit Utilities() : _utility_mutex(), _utilities() {}
 
-  std::mutex _utility_mutex;
-  tbb::concurrent_vector<UtilityObjects> _utilities;
+    std::mutex _utility_mutex;
+    tbb::concurrent_vector<UtilityObjects> _utilities;
 };
 
 } // namespace utils

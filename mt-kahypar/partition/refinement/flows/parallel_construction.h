@@ -49,133 +49,135 @@ template <typename GraphAndGainTypes>
 class ParallelConstruction
 {
 
-  static constexpr bool debug = false;
+    static constexpr bool debug = false;
 
-  static constexpr size_t NUM_CSR_BUCKETS = 1024;
+    static constexpr size_t NUM_CSR_BUCKETS = 1024;
 
-  using PartitionedHypergraph = typename GraphAndGainTypes::PartitionedHypergraph;
-  using FlowNetworkConstruction = typename GraphAndGainTypes::FlowNetworkConstruction;
+    using PartitionedHypergraph = typename GraphAndGainTypes::PartitionedHypergraph;
+    using FlowNetworkConstruction = typename GraphAndGainTypes::FlowNetworkConstruction;
 
-  struct TmpPin
-  {
-    HyperedgeID e;
-    whfc::Node pin;
-    PartitionID block;
-  };
-
-  struct TmpHyperedge
-  {
-    const size_t hash;
-    const size_t bucket;
-    const whfc::Hyperedge e;
-  };
-
-  class DynamicIdenticalNetDetection
-  {
-
-    struct ThresholdHyperedge
+    struct TmpPin
     {
-      const TmpHyperedge e;
-      const uint32_t threshold;
+        HyperedgeID e;
+        whfc::Node pin;
+        PartitionID block;
     };
 
-    using IdenticalNetVector =
-        tbb::concurrent_vector<ThresholdHyperedge,
-                               parallel::zero_allocator<ThresholdHyperedge> >;
-
-    struct HashBucket
+    struct TmpHyperedge
     {
-      HashBucket() : identical_nets(), threshold(0) {}
+        const size_t hash;
+        const size_t bucket;
+        const whfc::Hyperedge e;
+    };
 
-      IdenticalNetVector identical_nets;
-      uint32_t threshold;
+    class DynamicIdenticalNetDetection
+    {
+
+        struct ThresholdHyperedge
+        {
+            const TmpHyperedge e;
+            const uint32_t threshold;
+        };
+
+        using IdenticalNetVector =
+            tbb::concurrent_vector<ThresholdHyperedge,
+                                   parallel::zero_allocator<ThresholdHyperedge> >;
+
+        struct HashBucket
+        {
+            HashBucket() : identical_nets(), threshold(0) {}
+
+            IdenticalNetVector identical_nets;
+            uint32_t threshold;
+        };
+
+      public:
+        explicit DynamicIdenticalNetDetection(const HyperedgeID num_hyperedges,
+                                              FlowHypergraphBuilder &flow_hg,
+                                              const Context &context) :
+            _flow_hg(flow_hg),
+            _hash_buckets(), _threshold(2)
+        {
+            _hash_buckets.resize(
+                std::max(UL(1024), num_hyperedges /
+                                       context.refinement.flows.num_parallel_searches));
+        }
+
+        TmpHyperedge get(const size_t he_hash, const vec<whfc::Node> &pins);
+
+        void add(const TmpHyperedge &tmp_he);
+
+        void reset() { _threshold += 2; }
+
+      private:
+        FlowHypergraphBuilder &_flow_hg;
+        vec<HashBucket> _hash_buckets;
+        uint32_t _threshold;
     };
 
   public:
-    explicit DynamicIdenticalNetDetection(const HyperedgeID num_hyperedges,
-                                          FlowHypergraphBuilder &flow_hg,
-                                          const Context &context) :
-        _flow_hg(flow_hg),
-        _hash_buckets(), _threshold(2)
+    explicit ParallelConstruction(const HyperedgeID num_hyperedges,
+                                  FlowHypergraphBuilder &flow_hg,
+                                  whfc::HyperFlowCutter<whfc::ParallelPushRelabel> &hfc,
+                                  const Context &context) :
+        _context(context),
+        _flow_hg(flow_hg), _hfc(hfc), _node_to_whfc(), _visited_hns(), _tmp_pins(),
+        _cut_hes(), _pins(), _he_to_whfc(),
+        _identical_nets(num_hyperedges, flow_hg, context)
     {
-      _hash_buckets.resize(std::max(
-          UL(1024), num_hyperedges / context.refinement.flows.num_parallel_searches));
     }
 
-    TmpHyperedge get(const size_t he_hash, const vec<whfc::Node> &pins);
+    ParallelConstruction(const ParallelConstruction &) = delete;
+    ParallelConstruction(ParallelConstruction &&) = delete;
+    ParallelConstruction &operator=(const ParallelConstruction &) = delete;
+    ParallelConstruction &operator=(ParallelConstruction &&) = delete;
 
-    void add(const TmpHyperedge &tmp_he);
+    virtual ~ParallelConstruction() = default;
 
-    void reset() { _threshold += 2; }
+    FlowProblem constructFlowHypergraph(const PartitionedHypergraph &phg,
+                                        const Subhypergraph &sub_hg,
+                                        const PartitionID block_0,
+                                        const PartitionID block_1,
+                                        vec<HypernodeID> &whfc_to_node);
+
+    // ! Only for testing
+    FlowProblem constructFlowHypergraph(const PartitionedHypergraph &phg,
+                                        const Subhypergraph &sub_hg,
+                                        const PartitionID block_0,
+                                        const PartitionID block_1,
+                                        vec<HypernodeID> &whfc_to_node,
+                                        const bool default_construction);
 
   private:
+    FlowProblem constructDefault(const PartitionedHypergraph &phg,
+                                 const Subhypergraph &sub_hg, const PartitionID block_0,
+                                 const PartitionID block_1,
+                                 vec<HypernodeID> &whfc_to_node);
+
+    FlowProblem constructOptimizedForLargeHEs(const PartitionedHypergraph &phg,
+                                              const Subhypergraph &sub_hg,
+                                              const PartitionID block_0,
+                                              const PartitionID block_1,
+                                              vec<HypernodeID> &whfc_to_node);
+
+    void determineDistanceFromCut(const PartitionedHypergraph &phg,
+                                  const whfc::Node source, const whfc::Node sink,
+                                  const PartitionID block_0, const PartitionID block_1,
+                                  const vec<HypernodeID> &whfc_to_node);
+
+    const Context &_context;
+
     FlowHypergraphBuilder &_flow_hg;
-    vec<HashBucket> _hash_buckets;
-    uint32_t _threshold;
-  };
+    whfc::HyperFlowCutter<whfc::ParallelPushRelabel> &_hfc;
 
-public:
-  explicit ParallelConstruction(const HyperedgeID num_hyperedges,
-                                FlowHypergraphBuilder &flow_hg,
-                                whfc::HyperFlowCutter<whfc::ParallelPushRelabel> &hfc,
-                                const Context &context) :
-      _context(context),
-      _flow_hg(flow_hg), _hfc(hfc), _node_to_whfc(), _visited_hns(), _tmp_pins(),
-      _cut_hes(), _pins(), _he_to_whfc(),
-      _identical_nets(num_hyperedges, flow_hg, context)
-  {
-  }
+    ds::ConcurrentFlatMap<HypernodeID, whfc::Node> _node_to_whfc;
+    ds::ThreadSafeFastResetFlagArray<> _visited_hns;
+    tbb::enumerable_thread_specific<vec<whfc::Node> > _tmp_pins;
+    tbb::concurrent_vector<TmpHyperedge> _cut_hes;
 
-  ParallelConstruction(const ParallelConstruction &) = delete;
-  ParallelConstruction(ParallelConstruction &&) = delete;
-  ParallelConstruction &operator=(const ParallelConstruction &) = delete;
-  ParallelConstruction &operator=(ParallelConstruction &&) = delete;
+    ds::ConcurrentBucketMap<TmpPin> _pins;
+    ds::ConcurrentFlatMap<HyperedgeID, HyperedgeID> _he_to_whfc;
 
-  virtual ~ParallelConstruction() = default;
-
-  FlowProblem constructFlowHypergraph(const PartitionedHypergraph &phg,
-                                      const Subhypergraph &sub_hg,
-                                      const PartitionID block_0,
-                                      const PartitionID block_1,
-                                      vec<HypernodeID> &whfc_to_node);
-
-  // ! Only for testing
-  FlowProblem constructFlowHypergraph(const PartitionedHypergraph &phg,
-                                      const Subhypergraph &sub_hg,
-                                      const PartitionID block_0,
-                                      const PartitionID block_1,
-                                      vec<HypernodeID> &whfc_to_node,
-                                      const bool default_construction);
-
-private:
-  FlowProblem constructDefault(const PartitionedHypergraph &phg,
-                               const Subhypergraph &sub_hg, const PartitionID block_0,
-                               const PartitionID block_1, vec<HypernodeID> &whfc_to_node);
-
-  FlowProblem constructOptimizedForLargeHEs(const PartitionedHypergraph &phg,
-                                            const Subhypergraph &sub_hg,
-                                            const PartitionID block_0,
-                                            const PartitionID block_1,
-                                            vec<HypernodeID> &whfc_to_node);
-
-  void determineDistanceFromCut(const PartitionedHypergraph &phg, const whfc::Node source,
-                                const whfc::Node sink, const PartitionID block_0,
-                                const PartitionID block_1,
-                                const vec<HypernodeID> &whfc_to_node);
-
-  const Context &_context;
-
-  FlowHypergraphBuilder &_flow_hg;
-  whfc::HyperFlowCutter<whfc::ParallelPushRelabel> &_hfc;
-
-  ds::ConcurrentFlatMap<HypernodeID, whfc::Node> _node_to_whfc;
-  ds::ThreadSafeFastResetFlagArray<> _visited_hns;
-  tbb::enumerable_thread_specific<vec<whfc::Node> > _tmp_pins;
-  tbb::concurrent_vector<TmpHyperedge> _cut_hes;
-
-  ds::ConcurrentBucketMap<TmpPin> _pins;
-  ds::ConcurrentFlatMap<HyperedgeID, HyperedgeID> _he_to_whfc;
-
-  DynamicIdenticalNetDetection _identical_nets;
+    DynamicIdenticalNetDetection _identical_nets;
 };
 } // namespace mt_kahypar

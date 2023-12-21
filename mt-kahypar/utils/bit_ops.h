@@ -31,8 +31,8 @@ namespace mt_kahypar::utils {
 
 inline int popcount_64(const uint64_t x)
 {
-  // this should be GCC specific
-  return __builtin_popcountll(x);
+    // this should be GCC specific
+    return __builtin_popcountll(x);
 }
 
 inline int lowest_set_bit_64(const uint64_t x) { return __builtin_ctzll(x); }

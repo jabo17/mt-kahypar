@@ -53,106 +53,108 @@ using PartitionedHypergraph = ds::PartitionedHypergraph<Hypergraph, ds::Connecti
 
 int main(int argc, char *argv[])
 {
-  Context context;
-  po::options_description options("Options");
-  options.add_options()("hypergraph,h",
-                        po::value<std::string>(&context.partition.graph_filename)
-                            ->value_name("<string>")
-                            ->required(),
-                        "Hypergraph Filename")(
-      "partition-file,b",
-      po::value<std::string>(&context.partition.graph_partition_filename)
-          ->value_name("<string>")
-          ->required(),
-      "Partition Filename")("process-graph-file,p",
-                            po::value<std::string>(&context.mapping.target_graph_file)
-                                ->value_name("<string>")
-                                ->required(),
-                            "Target Graph Filename")(
-      "input-file-format",
-      po::value<std::string>()
-          ->value_name("<string>")
-          ->notifier([&](const std::string &s) {
-            if(s == "hmetis")
-            {
-              context.partition.file_format = FileFormat::hMetis;
-            }
-            else if(s == "metis")
-            {
-              context.partition.file_format = FileFormat::Metis;
-            }
-          }),
-      "Input file format: \n"
-      " - hmetis : hMETIS hypergraph file format \n"
-      " - metis : METIS graph file format")(
-      "verbose,v",
-      po::value<bool>(&context.partition.verbose_output)
-          ->value_name("<bool>")
-          ->default_value(false),
-      "Enables logging");
+    Context context;
+    po::options_description options("Options");
+    options.add_options()("hypergraph,h",
+                          po::value<std::string>(&context.partition.graph_filename)
+                              ->value_name("<string>")
+                              ->required(),
+                          "Hypergraph Filename")(
+        "partition-file,b",
+        po::value<std::string>(&context.partition.graph_partition_filename)
+            ->value_name("<string>")
+            ->required(),
+        "Partition Filename")("process-graph-file,p",
+                              po::value<std::string>(&context.mapping.target_graph_file)
+                                  ->value_name("<string>")
+                                  ->required(),
+                              "Target Graph Filename")(
+        "input-file-format",
+        po::value<std::string>()
+            ->value_name("<string>")
+            ->notifier([&](const std::string &s) {
+                if(s == "hmetis")
+                {
+                    context.partition.file_format = FileFormat::hMetis;
+                }
+                else if(s == "metis")
+                {
+                    context.partition.file_format = FileFormat::Metis;
+                }
+            }),
+        "Input file format: \n"
+        " - hmetis : hMETIS hypergraph file format \n"
+        " - metis : METIS graph file format")(
+        "verbose,v",
+        po::value<bool>(&context.partition.verbose_output)
+            ->value_name("<bool>")
+            ->default_value(false),
+        "Enables logging");
 
-  po::variables_map cmd_vm;
-  po::store(po::parse_command_line(argc, argv, options), cmd_vm);
-  po::notify(cmd_vm);
+    po::variables_map cmd_vm;
+    po::store(po::parse_command_line(argc, argv, options), cmd_vm);
+    po::notify(cmd_vm);
 
-  // Setup context
-  context.partition.objective = Objective::steiner_tree;
-  context.partition.epsilon = 0.03;
-  context.shared_memory.num_threads = std::thread::hardware_concurrency();
-  context.mapping.max_steiner_tree_size = 4;
-  TBBInitializer::instance(context.shared_memory.num_threads);
+    // Setup context
+    context.partition.objective = Objective::steiner_tree;
+    context.partition.epsilon = 0.03;
+    context.shared_memory.num_threads = std::thread::hardware_concurrency();
+    context.mapping.max_steiner_tree_size = 4;
+    TBBInitializer::instance(context.shared_memory.num_threads);
 
-  // Read Hypergraph
-  Hypergraph hg = io::readInputFile<Hypergraph>(
-      context.partition.graph_filename, context.partition.file_format, true, true);
+    // Read Hypergraph
+    Hypergraph hg = io::readInputFile<Hypergraph>(
+        context.partition.graph_filename, context.partition.file_format, true, true);
 
-  // Read Target Graph
-  TargetGraph target_graph(io::readInputFile<Graph>(context.mapping.target_graph_file,
-                                                    FileFormat::Metis, true, true));
-  context.partition.k = target_graph.numBlocks();
-  context.setupPartWeights(hg.totalWeight());
+    // Read Target Graph
+    TargetGraph target_graph(io::readInputFile<Graph>(context.mapping.target_graph_file,
+                                                      FileFormat::Metis, true, true));
+    context.partition.k = target_graph.numBlocks();
+    context.setupPartWeights(hg.totalWeight());
 
-  // Read Partition
-  std::vector<PartitionID> partition;
-  io::readPartitionFile(context.partition.graph_partition_filename, partition);
-  PartitionedHypergraph partitioned_hg(context.partition.k, hg, parallel_tag_t{});
-  partitioned_hg.doParallelForAllNodes(
-      [&](const HypernodeID &hn) { partitioned_hg.setOnlyNodePart(hn, partition[hn]); });
-  partitioned_hg.initializePartition();
-  partitioned_hg.setTargetGraph(&target_graph);
+    // Read Partition
+    std::vector<PartitionID> partition;
+    io::readPartitionFile(context.partition.graph_partition_filename, partition);
+    PartitionedHypergraph partitioned_hg(context.partition.k, hg, parallel_tag_t{});
+    partitioned_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
+        partitioned_hg.setOnlyNodePart(hn, partition[hn]);
+    });
+    partitioned_hg.initializePartition();
+    partitioned_hg.setTargetGraph(&target_graph);
 
-  // Precompute Steiner Trees
-  HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
-  target_graph.precomputeDistances(std::min(context.mapping.max_steiner_tree_size,
-                                            static_cast<size_t>(hg.maxEdgeSize())));
-  HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
+    // Precompute Steiner Trees
+    HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
+    target_graph.precomputeDistances(std::min(context.mapping.max_steiner_tree_size,
+                                              static_cast<size_t>(hg.maxEdgeSize())));
+    HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
 
-  if(context.partition.verbose_output)
-  {
-    std::chrono::duration<double> elapsed_seconds(end - start);
-    io::printPartitioningResults(partitioned_hg, context, elapsed_seconds);
-  }
+    if(context.partition.verbose_output)
+    {
+        std::chrono::duration<double> elapsed_seconds(end - start);
+        io::printPartitioningResults(partitioned_hg, context, elapsed_seconds);
+    }
 
-  std::cout << "RESULT"
-            << " graph="
-            << context.partition.graph_filename.substr(
-                   context.partition.graph_filename.find_last_of('/') + 1)
-            << " partition_file="
-            << context.partition.graph_partition_filename.substr(
-                   context.partition.graph_partition_filename.find_last_of('/') + 1)
-            << " target_graph_file="
-            << context.mapping.target_graph_file.substr(
-                   context.mapping.target_graph_file.find_last_of('/') + 1)
-            << " objective=" << context.partition.objective
-            << " k=" << context.partition.k << " epsilon=" << context.partition.epsilon
-            << " imbalance=" << metrics::imbalance(partitioned_hg, context)
-            << " steiner_tree="
-            << metrics::quality(partitioned_hg, Objective::steiner_tree)
-            << " approximation_factor="
-            << metrics::approximationFactorForProcessMapping(partitioned_hg, context)
-            << " cut=" << metrics::quality(partitioned_hg, Objective::cut)
-            << " km1=" << metrics::quality(partitioned_hg, Objective::km1)
-            << " soed=" << metrics::quality(partitioned_hg, Objective::soed) << std::endl;
+    std::cout << "RESULT"
+              << " graph="
+              << context.partition.graph_filename.substr(
+                     context.partition.graph_filename.find_last_of('/') + 1)
+              << " partition_file="
+              << context.partition.graph_partition_filename.substr(
+                     context.partition.graph_partition_filename.find_last_of('/') + 1)
+              << " target_graph_file="
+              << context.mapping.target_graph_file.substr(
+                     context.mapping.target_graph_file.find_last_of('/') + 1)
+              << " objective=" << context.partition.objective
+              << " k=" << context.partition.k << " epsilon=" << context.partition.epsilon
+              << " imbalance=" << metrics::imbalance(partitioned_hg, context)
+              << " steiner_tree="
+              << metrics::quality(partitioned_hg, Objective::steiner_tree)
+              << " approximation_factor="
+              << metrics::approximationFactorForProcessMapping(partitioned_hg, context)
+              << " cut=" << metrics::quality(partitioned_hg, Objective::cut)
+              << " km1=" << metrics::quality(partitioned_hg, Objective::km1)
+              << " soed=" << metrics::quality(partitioned_hg, Objective::soed)
+              << std::endl;
 
-  return 0;
+    return 0;
 }

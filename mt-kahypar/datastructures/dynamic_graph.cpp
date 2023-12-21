@@ -45,36 +45,36 @@ namespace ds {
 // ! Recomputes the total weight of the hypergraph (parallel)
 void DynamicGraph::updateTotalWeight(parallel_tag_t)
 {
-  _total_weight =
-      tbb::parallel_reduce(
-          tbb::blocked_range<HypernodeID>(ID(0), numNodes()), 0,
-          [this](const tbb::blocked_range<HypernodeID> &range, HypernodeWeight init) {
-            HypernodeWeight weight = init;
-            for(HypernodeID hn = range.begin(); hn < range.end(); ++hn)
-            {
-              if(nodeIsEnabled(hn))
-              {
-                weight += this->_nodes[hn].weight();
-              }
-            }
-            return weight;
-          },
-          std::plus<HypernodeWeight>()) +
-      _removed_degree_zero_hn_weight;
+    _total_weight =
+        tbb::parallel_reduce(
+            tbb::blocked_range<HypernodeID>(ID(0), numNodes()), 0,
+            [this](const tbb::blocked_range<HypernodeID> &range, HypernodeWeight init) {
+                HypernodeWeight weight = init;
+                for(HypernodeID hn = range.begin(); hn < range.end(); ++hn)
+                {
+                    if(nodeIsEnabled(hn))
+                    {
+                        weight += this->_nodes[hn].weight();
+                    }
+                }
+                return weight;
+            },
+            std::plus<HypernodeWeight>()) +
+        _removed_degree_zero_hn_weight;
 }
 
 // ! Recomputes the total weight of the hypergraph (sequential)
 void DynamicGraph::updateTotalWeight()
 {
-  _total_weight = 0;
-  for(const HypernodeID &hn : nodes())
-  {
-    if(nodeIsEnabled(hn))
+    _total_weight = 0;
+    for(const HypernodeID &hn : nodes())
     {
-      _total_weight += nodeWeight(hn);
+        if(nodeIsEnabled(hn))
+        {
+            _total_weight += nodeWeight(hn);
+        }
     }
-  }
-  _total_weight += _removed_degree_zero_hn_weight;
+    _total_weight += _removed_degree_zero_hn_weight;
 }
 
 /**!
@@ -87,9 +87,9 @@ void DynamicGraph::updateTotalWeight()
  */
 bool DynamicGraph::registerContraction(const HypernodeID u, const HypernodeID v)
 {
-  return _contraction_tree.registerContraction(
-      u, v, _version, [&](HypernodeID u) { acquireHypernode(u); },
-      [&](HypernodeID u) { releaseHypernode(u); });
+    return _contraction_tree.registerContraction(
+        u, v, _version, [&](HypernodeID u) { acquireHypernode(u); },
+        [&](HypernodeID u) { releaseHypernode(u); });
 }
 
 /**!
@@ -102,26 +102,26 @@ bool DynamicGraph::registerContraction(const HypernodeID u, const HypernodeID v)
  */
 size_t DynamicGraph::contract(const HypernodeID v, const HypernodeWeight max_node_weight)
 {
-  ASSERT(_contraction_tree.parent(v) != v, "No contraction registered for node " << v);
+    ASSERT(_contraction_tree.parent(v) != v, "No contraction registered for node " << v);
 
-  HypernodeID x = _contraction_tree.parent(v);
-  HypernodeID y = v;
-  ContractionResult res = ContractionResult::CONTRACTED;
-  size_t num_contractions = 0;
-  // We perform all contractions registered in the contraction tree
-  // as long as there are no pending contractions
-  while(x != y && res != ContractionResult::PENDING_CONTRACTIONS)
-  {
-    // Perform Contraction
-    res = contract(x, y, max_node_weight);
-    if(res == ContractionResult::CONTRACTED)
+    HypernodeID x = _contraction_tree.parent(v);
+    HypernodeID y = v;
+    ContractionResult res = ContractionResult::CONTRACTED;
+    size_t num_contractions = 0;
+    // We perform all contractions registered in the contraction tree
+    // as long as there are no pending contractions
+    while(x != y && res != ContractionResult::PENDING_CONTRACTIONS)
     {
-      ++num_contractions;
+        // Perform Contraction
+        res = contract(x, y, max_node_weight);
+        if(res == ContractionResult::CONTRACTED)
+        {
+            ++num_contractions;
+        }
+        y = x;
+        x = _contraction_tree.parent(y);
     }
-    y = x;
-    x = _contraction_tree.parent(y);
-  }
-  return num_contractions;
+    return num_contractions;
 }
 
 /**!
@@ -138,71 +138,71 @@ DynamicGraph::contract(const HypernodeID u, const HypernodeID v,
                        const HypernodeWeight max_node_weight)
 {
 
-  // Acquire ownership in correct order to prevent deadlocks
-  if(u < v)
-  {
-    acquireHypernode(u);
-    acquireHypernode(v);
-  }
-  else
-  {
-    acquireHypernode(v);
-    acquireHypernode(u);
-  }
-
-  // Contraction is valid if
-  //  1.) Contraction partner v is enabled
-  //  2.) There are no pending contractions on v
-  //  3.) Resulting node weight is less or equal than a predefined upper bound
-  //  4.) Fixed Vertex Contraction is valid
-  const bool contraction_partner_valid =
-      nodeIsEnabled(v) && _contraction_tree.pendingContractions(v) == 0;
-  const bool less_or_equal_than_max_node_weight =
-      hypernode(u).weight() + hypernode(v).weight() <= max_node_weight;
-  const bool valid_contraction =
-      contraction_partner_valid && less_or_equal_than_max_node_weight &&
-      (!hasFixedVertices() ||
-       /** only run this if all previous checks were successful */ _fixed_vertices
-           .contract(u, v));
-  if(valid_contraction)
-  {
-    ASSERT(nodeIsEnabled(u), "Hypernode" << u << "is disabled!");
-    hypernode(u).setWeight(nodeWeight(u) + nodeWeight(v));
-    hypernode(v).disable();
-    releaseHypernode(u);
-    releaseHypernode(v);
-
-    HypernodeID contraction_start = _contraction_index.load();
-
-    // Contract incident net lists of u and v
-    _adjacency_array.contract(
-        u, v, [&](const HypernodeID u) { acquireHypernode(u); },
-        [&](const HypernodeID u) { releaseHypernode(u); });
-
-    HypernodeID contraction_end = ++_contraction_index;
-    acquireHypernode(u);
-    _contraction_tree.unregisterContraction(u, v, contraction_start, contraction_end);
-    releaseHypernode(u);
-    return ContractionResult::CONTRACTED;
-  }
-  else
-  {
-    ContractionResult res = ContractionResult::PENDING_CONTRACTIONS;
-    const bool fixed_vertex_contraction_failed =
-        contraction_partner_valid && less_or_equal_than_max_node_weight;
-    if((!less_or_equal_than_max_node_weight || fixed_vertex_contraction_failed) &&
-       nodeIsEnabled(v) && _contraction_tree.parent(v) == u)
+    // Acquire ownership in correct order to prevent deadlocks
+    if(u < v)
     {
-      _contraction_tree.unregisterContraction(u, v, kInvalidHypernode, kInvalidHypernode,
-                                              true /* failed */);
-      res = fixed_vertex_contraction_failed ?
-                ContractionResult::INVALID_FIXED_VERTEX_CONTRACTION :
-                ContractionResult::WEIGHT_LIMIT_REACHED;
+        acquireHypernode(u);
+        acquireHypernode(v);
     }
-    releaseHypernode(u);
-    releaseHypernode(v);
-    return res;
-  }
+    else
+    {
+        acquireHypernode(v);
+        acquireHypernode(u);
+    }
+
+    // Contraction is valid if
+    //  1.) Contraction partner v is enabled
+    //  2.) There are no pending contractions on v
+    //  3.) Resulting node weight is less or equal than a predefined upper bound
+    //  4.) Fixed Vertex Contraction is valid
+    const bool contraction_partner_valid =
+        nodeIsEnabled(v) && _contraction_tree.pendingContractions(v) == 0;
+    const bool less_or_equal_than_max_node_weight =
+        hypernode(u).weight() + hypernode(v).weight() <= max_node_weight;
+    const bool valid_contraction =
+        contraction_partner_valid && less_or_equal_than_max_node_weight &&
+        (!hasFixedVertices() ||
+         /** only run this if all previous checks were successful */ _fixed_vertices
+             .contract(u, v));
+    if(valid_contraction)
+    {
+        ASSERT(nodeIsEnabled(u), "Hypernode" << u << "is disabled!");
+        hypernode(u).setWeight(nodeWeight(u) + nodeWeight(v));
+        hypernode(v).disable();
+        releaseHypernode(u);
+        releaseHypernode(v);
+
+        HypernodeID contraction_start = _contraction_index.load();
+
+        // Contract incident net lists of u and v
+        _adjacency_array.contract(
+            u, v, [&](const HypernodeID u) { acquireHypernode(u); },
+            [&](const HypernodeID u) { releaseHypernode(u); });
+
+        HypernodeID contraction_end = ++_contraction_index;
+        acquireHypernode(u);
+        _contraction_tree.unregisterContraction(u, v, contraction_start, contraction_end);
+        releaseHypernode(u);
+        return ContractionResult::CONTRACTED;
+    }
+    else
+    {
+        ContractionResult res = ContractionResult::PENDING_CONTRACTIONS;
+        const bool fixed_vertex_contraction_failed =
+            contraction_partner_valid && less_or_equal_than_max_node_weight;
+        if((!less_or_equal_than_max_node_weight || fixed_vertex_contraction_failed) &&
+           nodeIsEnabled(v) && _contraction_tree.parent(v) == u)
+        {
+            _contraction_tree.unregisterContraction(u, v, kInvalidHypernode,
+                                                    kInvalidHypernode, true /* failed */);
+            res = fixed_vertex_contraction_failed ?
+                      ContractionResult::INVALID_FIXED_VERTEX_CONTRACTION :
+                      ContractionResult::WEIGHT_LIMIT_REACHED;
+        }
+        releaseHypernode(u);
+        releaseHypernode(v);
+        return res;
+    }
 }
 
 /**
@@ -215,61 +215,63 @@ void DynamicGraph::uncontract(const Batch &batch, const MarkEdgeFunc &mark_edge,
                               const UncontractionFunction &case_one_func,
                               const UncontractionFunction &case_two_func)
 {
-  ASSERT(batch.size() > UL(0));
-  ASSERT(
-      [&] {
-        const HypernodeID expected_batch_index = hypernode(batch[0].v).batchIndex();
-        for(const Memento &memento : batch)
+    ASSERT(batch.size() > UL(0));
+    ASSERT(
+        [&] {
+            const HypernodeID expected_batch_index = hypernode(batch[0].v).batchIndex();
+            for(const Memento &memento : batch)
+            {
+                if(hypernode(memento.v).batchIndex() != expected_batch_index)
+                {
+                    LOG << "Batch contains uncontraction from different batches."
+                        << "Hypernode" << memento.v << "with version"
+                        << hypernode(memento.v).batchIndex() << "but expected is"
+                        << expected_batch_index;
+                    return false;
+                }
+                if(_contraction_tree.version(memento.v) != _version)
+                {
+                    LOG << "Batch contains uncontraction from a different version."
+                        << "Hypernode" << memento.v << "with version"
+                        << _contraction_tree.version(memento.v) << "but expected is"
+                        << _version;
+                    return false;
+                }
+            }
+            return true;
+        }(),
+        "Batch contains uncontractions from different batches or from a different "
+        "hypergraph version");
+
+    tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
+        const Memento &memento = batch[i];
+        ASSERT(!hypernode(memento.u).isDisabled(),
+               "Hypernode" << memento.u << "is disabled");
+        ASSERT(hypernode(memento.v).isDisabled(),
+               "Hypernode" << memento.v << "is not invalid");
+
+        // Restore incident net list of u and v
+        _adjacency_array.uncontract(
+            memento.u, memento.v, mark_edge,
+            [&](const HyperedgeID e) { case_one_func(memento.u, memento.v, e); },
+            [&](const HyperedgeID e) { case_two_func(memento.u, memento.v, e); },
+            [&](const HypernodeID u) { acquireHypernode(u); },
+            [&](const HypernodeID u) { releaseHypernode(u); });
+
+        acquireHypernode(memento.u);
+        // Restore hypernode v which includes enabling it and subtract its weight
+        // from its representative
+        hypernode(memento.v).enable();
+        hypernode(memento.u).setWeight(hypernode(memento.u).weight() -
+                                       hypernode(memento.v).weight());
+        releaseHypernode(memento.u);
+
+        // Revert contraction in fixed vertex support
+        if(hasFixedVertices())
         {
-          if(hypernode(memento.v).batchIndex() != expected_batch_index)
-          {
-            LOG << "Batch contains uncontraction from different batches."
-                << "Hypernode" << memento.v << "with version"
-                << hypernode(memento.v).batchIndex() << "but expected is"
-                << expected_batch_index;
-            return false;
-          }
-          if(_contraction_tree.version(memento.v) != _version)
-          {
-            LOG << "Batch contains uncontraction from a different version."
-                << "Hypernode" << memento.v << "with version"
-                << _contraction_tree.version(memento.v) << "but expected is" << _version;
-            return false;
-          }
+            _fixed_vertices.uncontract(memento.u, memento.v);
         }
-        return true;
-      }(),
-      "Batch contains uncontractions from different batches or from a different "
-      "hypergraph version");
-
-  tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
-    const Memento &memento = batch[i];
-    ASSERT(!hypernode(memento.u).isDisabled(), "Hypernode" << memento.u << "is disabled");
-    ASSERT(hypernode(memento.v).isDisabled(),
-           "Hypernode" << memento.v << "is not invalid");
-
-    // Restore incident net list of u and v
-    _adjacency_array.uncontract(
-        memento.u, memento.v, mark_edge,
-        [&](const HyperedgeID e) { case_one_func(memento.u, memento.v, e); },
-        [&](const HyperedgeID e) { case_two_func(memento.u, memento.v, e); },
-        [&](const HypernodeID u) { acquireHypernode(u); },
-        [&](const HypernodeID u) { releaseHypernode(u); });
-
-    acquireHypernode(memento.u);
-    // Restore hypernode v which includes enabling it and subtract its weight
-    // from its representative
-    hypernode(memento.v).enable();
-    hypernode(memento.u).setWeight(hypernode(memento.u).weight() -
-                                   hypernode(memento.v).weight());
-    releaseHypernode(memento.u);
-
-    // Revert contraction in fixed vertex support
-    if(hasFixedVertices())
-    {
-      _fixed_vertices.uncontract(memento.u, memento.v);
-    }
-  });
+    });
 }
 
 /**
@@ -285,28 +287,28 @@ void DynamicGraph::uncontract(const Batch &batch, const MarkEdgeFunc &mark_edge,
 VersionedBatchVector
 DynamicGraph::createBatchUncontractionHierarchy(const size_t batch_size)
 {
-  const size_t num_versions = _version + 1;
-  // Finalizes the contraction tree such that it is traversable in a top-down fashion
-  // and contains subtree size for each  tree node
-  _contraction_tree.finalize(num_versions);
+    const size_t num_versions = _version + 1;
+    // Finalizes the contraction tree such that it is traversable in a top-down fashion
+    // and contains subtree size for each  tree node
+    _contraction_tree.finalize(num_versions);
 
-  VersionedBatchVector versioned_batches(num_versions);
-  parallel::scalable_vector<size_t> batch_sizes_prefix_sum(num_versions, 0);
-  BatchIndexAssigner batch_index_assigner(numNodes(), batch_size);
-  for(size_t version = 0; version < num_versions; ++version)
-  {
-    versioned_batches[version] =
-        _contraction_tree.createBatchUncontractionHierarchyForVersion(
-            batch_index_assigner, version);
-    if(version > 0)
+    VersionedBatchVector versioned_batches(num_versions);
+    parallel::scalable_vector<size_t> batch_sizes_prefix_sum(num_versions, 0);
+    BatchIndexAssigner batch_index_assigner(numNodes(), batch_size);
+    for(size_t version = 0; version < num_versions; ++version)
     {
-      batch_sizes_prefix_sum[version] =
-          batch_sizes_prefix_sum[version - 1] + versioned_batches[version - 1].size();
+        versioned_batches[version] =
+            _contraction_tree.createBatchUncontractionHierarchyForVersion(
+                batch_index_assigner, version);
+        if(version > 0)
+        {
+            batch_sizes_prefix_sum[version] = batch_sizes_prefix_sum[version - 1] +
+                                              versioned_batches[version - 1].size();
+        }
+        batch_index_assigner.reset(versioned_batches[version].size());
     }
-    batch_index_assigner.reset(versioned_batches[version].size());
-  }
 
-  return versioned_batches;
+    return versioned_batches;
 }
 
 /**
@@ -317,8 +319,8 @@ DynamicGraph::createBatchUncontractionHierarchy(const size_t batch_size)
 parallel::scalable_vector<DynamicGraph::ParallelHyperedge>
 DynamicGraph::removeSinglePinAndParallelHyperedges()
 {
-  ++_version;
-  return _adjacency_array.removeSinglePinAndParallelEdges();
+    ++_version;
+    return _adjacency_array.removeSinglePinAndParallelEdges();
 }
 
 /**
@@ -329,131 +331,131 @@ DynamicGraph::removeSinglePinAndParallelHyperedges()
 void DynamicGraph::restoreSinglePinAndParallelNets(
     const parallel::scalable_vector<ParallelHyperedge> &hes_to_restore)
 {
-  _adjacency_array.restoreSinglePinAndParallelEdges(hes_to_restore);
-  --_version;
+    _adjacency_array.restoreSinglePinAndParallelEdges(hes_to_restore);
+    --_version;
 }
 
 // ! Copy dynamic hypergraph in parallel
 DynamicGraph DynamicGraph::copy(parallel_tag_t) const
 {
-  DynamicGraph hypergraph;
+    DynamicGraph hypergraph;
 
-  hypergraph._num_removed_nodes = _num_removed_nodes;
-  hypergraph._removed_degree_zero_hn_weight = _removed_degree_zero_hn_weight;
-  hypergraph._num_edges = _num_edges;
-  hypergraph._total_weight = _total_weight;
-  hypergraph._version = _version;
-  hypergraph._contraction_index.store(_contraction_index.load());
+    hypergraph._num_removed_nodes = _num_removed_nodes;
+    hypergraph._removed_degree_zero_hn_weight = _removed_degree_zero_hn_weight;
+    hypergraph._num_edges = _num_edges;
+    hypergraph._total_weight = _total_weight;
+    hypergraph._version = _version;
+    hypergraph._contraction_index.store(_contraction_index.load());
 
-  tbb::parallel_invoke(
-      [&] {
-        hypergraph._nodes.resize(_nodes.size());
-        memcpy(hypergraph._nodes.data(), _nodes.data(), sizeof(Node) * _nodes.size());
-      },
-      [&] { hypergraph._adjacency_array = _adjacency_array.copy(parallel_tag_t()); },
-      [&] {
-        hypergraph._acquired_nodes.resize(_acquired_nodes.size());
-        tbb::parallel_for(ID(0), numNodes(), [&](const HypernodeID &hn) {
-          hypergraph._acquired_nodes[hn] = _acquired_nodes[hn];
+    tbb::parallel_invoke(
+        [&] {
+            hypergraph._nodes.resize(_nodes.size());
+            memcpy(hypergraph._nodes.data(), _nodes.data(), sizeof(Node) * _nodes.size());
+        },
+        [&] { hypergraph._adjacency_array = _adjacency_array.copy(parallel_tag_t()); },
+        [&] {
+            hypergraph._acquired_nodes.resize(_acquired_nodes.size());
+            tbb::parallel_for(ID(0), numNodes(), [&](const HypernodeID &hn) {
+                hypergraph._acquired_nodes[hn] = _acquired_nodes[hn];
+            });
+        },
+        [&] { hypergraph._contraction_tree = _contraction_tree.copy(parallel_tag_t()); },
+        [&] {
+            hypergraph._fixed_vertices = _fixed_vertices.copy();
+            hypergraph._fixed_vertices.setHypergraph(&hypergraph);
         });
-      },
-      [&] { hypergraph._contraction_tree = _contraction_tree.copy(parallel_tag_t()); },
-      [&] {
-        hypergraph._fixed_vertices = _fixed_vertices.copy();
-        hypergraph._fixed_vertices.setHypergraph(&hypergraph);
-      });
-  return hypergraph;
+    return hypergraph;
 }
 
 // ! Copy dynamic hypergraph sequential
 DynamicGraph DynamicGraph::copy() const
 {
-  DynamicGraph hypergraph;
+    DynamicGraph hypergraph;
 
-  hypergraph._num_removed_nodes = _num_removed_nodes;
-  hypergraph._removed_degree_zero_hn_weight = _removed_degree_zero_hn_weight;
-  hypergraph._num_edges = _num_edges;
-  hypergraph._total_weight = _total_weight;
-  hypergraph._version = _version;
-  hypergraph._contraction_index.store(_contraction_index.load());
+    hypergraph._num_removed_nodes = _num_removed_nodes;
+    hypergraph._removed_degree_zero_hn_weight = _removed_degree_zero_hn_weight;
+    hypergraph._num_edges = _num_edges;
+    hypergraph._total_weight = _total_weight;
+    hypergraph._version = _version;
+    hypergraph._contraction_index.store(_contraction_index.load());
 
-  hypergraph._nodes.resize(_nodes.size());
-  memcpy(hypergraph._nodes.data(), _nodes.data(), sizeof(Node) * _nodes.size());
-  hypergraph._adjacency_array = _adjacency_array.copy(parallel_tag_t());
-  hypergraph._acquired_nodes.resize(numNodes());
-  for(HypernodeID hn = 0; hn < numNodes(); ++hn)
-  {
-    hypergraph._acquired_nodes[hn] = _acquired_nodes[hn];
-  }
-  hypergraph._contraction_tree = _contraction_tree.copy();
-  hypergraph._fixed_vertices = _fixed_vertices.copy();
-  hypergraph._fixed_vertices.setHypergraph(&hypergraph);
+    hypergraph._nodes.resize(_nodes.size());
+    memcpy(hypergraph._nodes.data(), _nodes.data(), sizeof(Node) * _nodes.size());
+    hypergraph._adjacency_array = _adjacency_array.copy(parallel_tag_t());
+    hypergraph._acquired_nodes.resize(numNodes());
+    for(HypernodeID hn = 0; hn < numNodes(); ++hn)
+    {
+        hypergraph._acquired_nodes[hn] = _acquired_nodes[hn];
+    }
+    hypergraph._contraction_tree = _contraction_tree.copy();
+    hypergraph._fixed_vertices = _fixed_vertices.copy();
+    hypergraph._fixed_vertices.setHypergraph(&hypergraph);
 
-  return hypergraph;
+    return hypergraph;
 }
 
 void DynamicGraph::memoryConsumption(utils::MemoryTreeNode *parent) const
 {
-  ASSERT(parent);
+    ASSERT(parent);
 
-  parent->addChild("Hypernodes", sizeof(Node) * _nodes.size());
-  parent->addChild("Incident Nets", _adjacency_array.size_in_bytes());
-  parent->addChild("Hypernode Ownership Vector", sizeof(bool) * _acquired_nodes.size());
+    parent->addChild("Hypernodes", sizeof(Node) * _nodes.size());
+    parent->addChild("Incident Nets", _adjacency_array.size_in_bytes());
+    parent->addChild("Hypernode Ownership Vector", sizeof(bool) * _acquired_nodes.size());
 
-  utils::MemoryTreeNode *contraction_tree_node = parent->addChild("Contraction Tree");
-  _contraction_tree.memoryConsumption(contraction_tree_node);
+    utils::MemoryTreeNode *contraction_tree_node = parent->addChild("Contraction Tree");
+    _contraction_tree.memoryConsumption(contraction_tree_node);
 
-  if(hasFixedVertices())
-  {
-    parent->addChild("Fixed Vertex Support", _fixed_vertices.size_in_bytes());
-  }
+    if(hasFixedVertices())
+    {
+        parent->addChild("Fixed Vertex Support", _fixed_vertices.size_in_bytes());
+    }
 }
 
 // ! Only for testing
 bool DynamicGraph::verifyIncidenceArrayAndIncidentNets()
 {
-  bool success = true;
-  tbb::parallel_invoke(
-      [&] {
-        doParallelForAllNodes([&](const HypernodeID &hn) {
-          for(const HyperedgeID &he : incidentEdges(hn))
-          {
-            if(edgeSource(he) != hn)
-            {
-              LOG << "Edge" << he << "has source" << edgeSource(he) << "but should be"
-                  << hn;
-              success = false;
-            }
-            const HypernodeID back_target = edge(edge(he).back_edge).target;
-            if(back_target != hn)
-            {
-              LOG << "Backedge" << edge(he).back_edge << "(of edge" << he
-                  << ") has target" << back_target << "but should be" << hn;
-              success = false;
-            }
-          }
+    bool success = true;
+    tbb::parallel_invoke(
+        [&] {
+            doParallelForAllNodes([&](const HypernodeID &hn) {
+                for(const HyperedgeID &he : incidentEdges(hn))
+                {
+                    if(edgeSource(he) != hn)
+                    {
+                        LOG << "Edge" << he << "has source" << edgeSource(he)
+                            << "but should be" << hn;
+                        success = false;
+                    }
+                    const HypernodeID back_target = edge(edge(he).back_edge).target;
+                    if(back_target != hn)
+                    {
+                        LOG << "Backedge" << edge(he).back_edge << "(of edge" << he
+                            << ") has target" << back_target << "but should be" << hn;
+                        success = false;
+                    }
+                }
+            });
+        },
+        [&] {
+            doParallelForAllEdges([&](const HyperedgeID &he) {
+                bool found = false;
+                for(const HyperedgeID &e : incidentEdges(edgeSource(he)))
+                {
+                    if(e == he)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found)
+                {
+                    LOG << "Edge" << he << "not found in incident nets of vertex"
+                        << edgeSource(he);
+                    success = false;
+                }
+            });
         });
-      },
-      [&] {
-        doParallelForAllEdges([&](const HyperedgeID &he) {
-          bool found = false;
-          for(const HyperedgeID &e : incidentEdges(edgeSource(he)))
-          {
-            if(e == he)
-            {
-              found = true;
-              break;
-            }
-          }
-          if(!found)
-          {
-            LOG << "Edge" << he << "not found in incident nets of vertex"
-                << edgeSource(he);
-            success = false;
-          }
-        });
-      });
-  return success;
+    return success;
 }
 
 } // namespace ds

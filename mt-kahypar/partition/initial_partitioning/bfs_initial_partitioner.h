@@ -35,60 +35,60 @@ namespace mt_kahypar {
 template <typename TypeTraits>
 class BFSInitialPartitioner : public IInitialPartitioner
 {
-  using Queue = parallel::scalable_queue<HypernodeID>;
+    using Queue = parallel::scalable_queue<HypernodeID>;
 
-  static constexpr bool debug = false;
+    static constexpr bool debug = false;
 
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-public:
-  BFSInitialPartitioner(const InitialPartitioningAlgorithm, ip_data_container_t *ip_data,
-                        const Context &context, const int seed, const int tag) :
-      _ip_data(ip::to_reference<TypeTraits>(ip_data)),
-      _context(context), _rng(seed), _tag(tag)
-  {
-  }
+  public:
+    BFSInitialPartitioner(const InitialPartitioningAlgorithm,
+                          ip_data_container_t *ip_data, const Context &context,
+                          const int seed, const int tag) :
+        _ip_data(ip::to_reference<TypeTraits>(ip_data)),
+        _context(context), _rng(seed), _tag(tag)
+    {
+    }
 
-private:
-  void partitionImpl() final;
+  private:
+    void partitionImpl() final;
 
-  bool fitsIntoBlock(PartitionedHypergraph &hypergraph, const HypernodeID hn,
-                     const PartitionID block) const
-  {
-    ASSERT(block != kInvalidPartition && block < _context.partition.k);
-    return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
-           _context.partition.perfect_balance_part_weights[block];
-  }
+    bool fitsIntoBlock(PartitionedHypergraph &hypergraph, const HypernodeID hn,
+                       const PartitionID block) const
+    {
+        ASSERT(block != kInvalidPartition && block < _context.partition.k);
+        return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
+               _context.partition.perfect_balance_part_weights[block];
+    }
 
-  // ! Pushes all adjacent hypernodes (not visited before) of hypernode hn
-  // ! into the BFS queue of the corresponding block.
-  inline void
-  pushIncidentHypernodesIntoQueue(const PartitionedHypergraph &hypergraph,
-                                  const Context &context, Queue &queue,
-                                  kahypar::ds::FastResetFlagArray<> &hypernodes_in_queue,
-                                  kahypar::ds::FastResetFlagArray<> &hyperedges_in_queue,
-                                  const HypernodeID hn, const PartitionID block);
+    // ! Pushes all adjacent hypernodes (not visited before) of hypernode hn
+    // ! into the BFS queue of the corresponding block.
+    inline void pushIncidentHypernodesIntoQueue(
+        const PartitionedHypergraph &hypergraph, const Context &context, Queue &queue,
+        kahypar::ds::FastResetFlagArray<> &hypernodes_in_queue,
+        kahypar::ds::FastResetFlagArray<> &hyperedges_in_queue, const HypernodeID hn,
+        const PartitionID block);
 
-  inline void
-  markHypernodeAsInQueue(const PartitionedHypergraph &hypergraph,
-                         kahypar::ds::FastResetFlagArray<> &hypernodes_in_queue,
-                         const HypernodeID hn, const PartitionID block)
-  {
-    hypernodes_in_queue.set(block * hypergraph.initialNumNodes() + hn, true);
-  }
+    inline void
+    markHypernodeAsInQueue(const PartitionedHypergraph &hypergraph,
+                           kahypar::ds::FastResetFlagArray<> &hypernodes_in_queue,
+                           const HypernodeID hn, const PartitionID block)
+    {
+        hypernodes_in_queue.set(block * hypergraph.initialNumNodes() + hn, true);
+    }
 
-  inline void
-  markHyperedgeAsInQueue(const PartitionedHypergraph &hypergraph,
-                         kahypar::ds::FastResetFlagArray<> &hyperedges_in_queue,
-                         const HyperedgeID he, const PartitionID block)
-  {
-    hyperedges_in_queue.set(block * hypergraph.initialNumEdges() + he, true);
-  }
+    inline void
+    markHyperedgeAsInQueue(const PartitionedHypergraph &hypergraph,
+                           kahypar::ds::FastResetFlagArray<> &hyperedges_in_queue,
+                           const HyperedgeID he, const PartitionID block)
+    {
+        hyperedges_in_queue.set(block * hypergraph.initialNumEdges() + he, true);
+    }
 
-  InitialPartitioningDataContainer<TypeTraits> &_ip_data;
-  const Context &_context;
-  std::mt19937 _rng;
-  const int _tag;
+    InitialPartitioningDataContainer<TypeTraits> &_ip_data;
+    const Context &_context;
+    std::mt19937 _rng;
+    const int _tag;
 };
 
 } // namespace mt_kahypar

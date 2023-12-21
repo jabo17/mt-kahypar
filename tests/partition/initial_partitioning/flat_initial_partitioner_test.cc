@@ -50,90 +50,91 @@ template <typename TypeTraitsT, template <typename> typename InitialPartitioner,
           InitialPartitioningAlgorithm algorithm, PartitionID k, size_t runs>
 struct TestConfig
 {
-  using TypeTraits = TypeTraitsT;
-  using InitialPartitionerTask = InitialPartitioner<TypeTraits>;
-  static constexpr InitialPartitioningAlgorithm ALGORITHM = algorithm;
-  static constexpr PartitionID K = k;
-  static constexpr size_t RUNS = runs;
+    using TypeTraits = TypeTraitsT;
+    using InitialPartitionerTask = InitialPartitioner<TypeTraits>;
+    static constexpr InitialPartitioningAlgorithm ALGORITHM = algorithm;
+    static constexpr PartitionID K = k;
+    static constexpr size_t RUNS = runs;
 };
 
 template <typename Config>
 class AFlatInitialPartitionerTest : public Test
 {
 
-public:
-  using TypeTraits = typename Config::TypeTraits;
-  using InitialPartitioner = typename Config::InitialPartitionerTask;
-  using Hypergraph = typename TypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+  public:
+    using TypeTraits = typename Config::TypeTraits;
+    using InitialPartitioner = typename Config::InitialPartitionerTask;
+    using Hypergraph = typename TypeTraits::Hypergraph;
+    using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
-  AFlatInitialPartitionerTest() :
-      hypergraph(), partitioned_hypergraph(), context(), ip_data(nullptr)
-  {
-    context.partition.k = Config::K;
-    context.partition.epsilon = 0.2;
-    context.partition.objective = Objective::km1;
-    context.partition.gain_policy = GainPolicy::km1;
-    context.initial_partitioning.lp_initial_block_size = 5;
-    context.initial_partitioning.lp_maximum_iterations = 100;
-    hypergraph = io::readInputFile<Hypergraph>("../tests/instances/test_instance.hgr",
-                                               FileFormat::hMetis, true);
-    partitioned_hypergraph =
-        PartitionedHypergraph(context.partition.k, hypergraph, parallel_tag_t());
-    context.setupPartWeights(hypergraph.totalWeight());
-    context.refinement.label_propagation.algorithm =
-        LabelPropagationAlgorithm::do_nothing;
-    context.initial_partitioning.refinement.label_propagation.algorithm =
-        LabelPropagationAlgorithm::do_nothing;
-    utils::Utilities::instance().getTimer(context.utility_id).disable();
-  }
-
-  void execute()
-  {
-    ip_data = std::make_unique<InitialPartitioningDataContainer<TypeTraits> >(
-        partitioned_hypergraph, context);
-    tbb::task_group tg;
-    const int seed = 420;
-    ip_data_container_t *ip_data_ptr = ip::to_pointer(*ip_data);
-    for(size_t i = 0; i < Config::RUNS; ++i)
+    AFlatInitialPartitionerTest() :
+        hypergraph(), partitioned_hypergraph(), context(), ip_data(nullptr)
     {
-      tg.run([&, i] {
-        InitialPartitioner ip(Config::ALGORITHM, ip_data_ptr, context, seed + i, i);
-        ip.partition();
-      });
+        context.partition.k = Config::K;
+        context.partition.epsilon = 0.2;
+        context.partition.objective = Objective::km1;
+        context.partition.gain_policy = GainPolicy::km1;
+        context.initial_partitioning.lp_initial_block_size = 5;
+        context.initial_partitioning.lp_maximum_iterations = 100;
+        hypergraph = io::readInputFile<Hypergraph>("../tests/instances/test_instance.hgr",
+                                                   FileFormat::hMetis, true);
+        partitioned_hypergraph =
+            PartitionedHypergraph(context.partition.k, hypergraph, parallel_tag_t());
+        context.setupPartWeights(hypergraph.totalWeight());
+        context.refinement.label_propagation.algorithm =
+            LabelPropagationAlgorithm::do_nothing;
+        context.initial_partitioning.refinement.label_propagation.algorithm =
+            LabelPropagationAlgorithm::do_nothing;
+        utils::Utilities::instance().getTimer(context.utility_id).disable();
     }
-    tg.wait();
-    ip_data->apply();
-  }
 
-  void addFixedVertices(const double percentage,
-                        const PartitionID default_block = kInvalidPartition)
-  {
-    ds::FixedVertexSupport<Hypergraph> fixed_vertices(hypergraph.initialNumNodes(),
-                                                      context.partition.k);
-    fixed_vertices.setHypergraph(&hypergraph);
-
-    const int threshold = percentage * 1000;
-    utils::Randomize &rand = utils::Randomize::instance();
-    for(const HypernodeID &hn : hypergraph.nodes())
+    void execute()
     {
-      int rnd = rand.getRandomInt(0, 1000, THREAD_ID);
-      if(rnd <= threshold)
-      {
-        const PartitionID block =
-            default_block == kInvalidPartition ?
-                rand.getRandomInt(0, context.partition.k - 1, THREAD_ID) :
-                default_block;
-        fixed_vertices.fixToBlock(hn, block);
-      }
+        ip_data = std::make_unique<InitialPartitioningDataContainer<TypeTraits> >(
+            partitioned_hypergraph, context);
+        tbb::task_group tg;
+        const int seed = 420;
+        ip_data_container_t *ip_data_ptr = ip::to_pointer(*ip_data);
+        for(size_t i = 0; i < Config::RUNS; ++i)
+        {
+            tg.run([&, i] {
+                InitialPartitioner ip(Config::ALGORITHM, ip_data_ptr, context, seed + i,
+                                      i);
+                ip.partition();
+            });
+        }
+        tg.wait();
+        ip_data->apply();
     }
-    hypergraph.addFixedVertexSupport(std::move(fixed_vertices));
-  }
 
-  Hypergraph hypergraph;
-  PartitionedHypergraph partitioned_hypergraph;
-  Context context;
-  std::unique_ptr<InitialPartitioningDataContainer<TypeTraits> > ip_data;
+    void addFixedVertices(const double percentage,
+                          const PartitionID default_block = kInvalidPartition)
+    {
+        ds::FixedVertexSupport<Hypergraph> fixed_vertices(hypergraph.initialNumNodes(),
+                                                          context.partition.k);
+        fixed_vertices.setHypergraph(&hypergraph);
+
+        const int threshold = percentage * 1000;
+        utils::Randomize &rand = utils::Randomize::instance();
+        for(const HypernodeID &hn : hypergraph.nodes())
+        {
+            int rnd = rand.getRandomInt(0, 1000, THREAD_ID);
+            if(rnd <= threshold)
+            {
+                const PartitionID block =
+                    default_block == kInvalidPartition ?
+                        rand.getRandomInt(0, context.partition.k - 1, THREAD_ID) :
+                        default_block;
+                fixed_vertices.fixToBlock(hn, block);
+            }
+        }
+        hypergraph.addFixedVertexSupport(std::move(fixed_vertices));
+    }
+
+    Hypergraph hypergraph;
+    PartitionedHypergraph partitioned_hypergraph;
+    Context context;
+    std::unique_ptr<InitialPartitioningDataContainer<TypeTraits> > ip_data;
 };
 
 template <typename TypeTraits>
@@ -378,69 +379,69 @@ TYPED_TEST_CASE(AFlatInitialPartitionerTest, TestConfigs);
 
 TYPED_TEST(AFlatInitialPartitionerTest, HasValidImbalance)
 {
-  this->execute();
+    this->execute();
 
-  ASSERT_LE(metrics::imbalance(this->partitioned_hypergraph, this->context),
-            this->context.partition.epsilon);
+    ASSERT_LE(metrics::imbalance(this->partitioned_hypergraph, this->context),
+              this->context.partition.epsilon);
 }
 
 TYPED_TEST(AFlatInitialPartitionerTest, AssginsEachHypernode)
 {
-  this->execute();
+    this->execute();
 
-  for(const HypernodeID &hn : this->hypergraph.nodes())
-  {
-    ASSERT_NE(this->partitioned_hypergraph.partID(hn), -1);
-  }
+    for(const HypernodeID &hn : this->hypergraph.nodes())
+    {
+        ASSERT_NE(this->partitioned_hypergraph.partID(hn), -1);
+    }
 }
 
 TYPED_TEST(AFlatInitialPartitionerTest, HasNoSignificantLowPartitionWeights)
 {
-  this->execute();
+    this->execute();
 
-  // Each block should have a weight greater or equal than 20% of the average
-  // block weight.
-  for(PartitionID block = 0; block < this->context.partition.k; ++block)
-  {
-    ASSERT_GE(this->partitioned_hypergraph.partWeight(block),
-              this->context.partition.perfect_balance_part_weights[block] / 5);
-  }
+    // Each block should have a weight greater or equal than 20% of the average
+    // block weight.
+    for(PartitionID block = 0; block < this->context.partition.k; ++block)
+    {
+        ASSERT_GE(this->partitioned_hypergraph.partWeight(block),
+                  this->context.partition.perfect_balance_part_weights[block] / 5);
+    }
 }
 
 TYPED_TEST(AFlatInitialPartitionerTest, CanHandleFixedVertices)
 {
-  this->addFixedVertices(0.25 /* 25% of the nodes are fixed */);
-  this->execute();
+    this->addFixedVertices(0.25 /* 25% of the nodes are fixed */);
+    this->execute();
 
-  for(const HypernodeID &hn : this->hypergraph.nodes())
-  {
-    if(this->hypergraph.isFixed(hn))
+    for(const HypernodeID &hn : this->hypergraph.nodes())
     {
-      ASSERT_EQ(this->hypergraph.fixedVertexBlock(hn),
-                this->partitioned_hypergraph.partID(hn));
+        if(this->hypergraph.isFixed(hn))
+        {
+            ASSERT_EQ(this->hypergraph.fixedVertexBlock(hn),
+                      this->partitioned_hypergraph.partID(hn));
+        }
     }
-  }
 
-  ASSERT_LE(metrics::imbalance(this->partitioned_hypergraph, this->context),
-            this->context.partition.epsilon);
+    ASSERT_LE(metrics::imbalance(this->partitioned_hypergraph, this->context),
+              this->context.partition.epsilon);
 }
 
 TYPED_TEST(AFlatInitialPartitionerTest, CanHandleFixedVerticesInOnlyOneBlock)
 {
-  this->addFixedVertices(0.05 /* 5% of the nodes are fixed to block 0 */, 0);
-  this->execute();
+    this->addFixedVertices(0.05 /* 5% of the nodes are fixed to block 0 */, 0);
+    this->execute();
 
-  for(const HypernodeID &hn : this->hypergraph.nodes())
-  {
-    if(this->hypergraph.isFixed(hn))
+    for(const HypernodeID &hn : this->hypergraph.nodes())
     {
-      ASSERT_EQ(this->hypergraph.fixedVertexBlock(hn),
-                this->partitioned_hypergraph.partID(hn));
+        if(this->hypergraph.isFixed(hn))
+        {
+            ASSERT_EQ(this->hypergraph.fixedVertexBlock(hn),
+                      this->partitioned_hypergraph.partID(hn));
+        }
     }
-  }
 
-  ASSERT_LE(metrics::imbalance(this->partitioned_hypergraph, this->context),
-            this->context.partition.epsilon);
+    ASSERT_LE(metrics::imbalance(this->partitioned_hypergraph, this->context),
+              this->context.partition.epsilon);
 }
 
 } // namespace mt_kahypar
