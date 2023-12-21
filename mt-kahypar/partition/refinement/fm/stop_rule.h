@@ -37,24 +37,19 @@ class StopRule
   public:
     StopRule(HypernodeID numNodes) : beta(std::log(numNodes)) {}
 
-    bool searchShouldStop()
-    {
+    bool searchShouldStop() {
         return (numSteps > beta) &&
                (Mk == 0 || numSteps >= (variance / (Mk * Mk)) * stopFactor);
     }
 
-    void update(Gain gain)
-    {
+    void update(Gain gain) {
         ++numSteps;
-        if(numSteps == 1)
-        {
+        if(numSteps == 1) {
             Mk = gain;
             MkPrevious = gain;
             SkPrevious = 0.0;
             variance = 0.0;
-        }
-        else
-        {
+        } else {
             Mk = MkPrevious + (gain - MkPrevious) / numSteps;
             Sk = SkPrevious + (gain - MkPrevious) * (gain - Mk);
             variance = Sk / (numSteps - 1.0);
@@ -64,8 +59,7 @@ class StopRule
         }
     }
 
-    void reset()
-    {
+    void reset() {
         numSteps = 0;
         variance = 0.0;
     }

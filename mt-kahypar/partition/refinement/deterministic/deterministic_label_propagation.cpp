@@ -39,14 +39,12 @@ namespace mt_kahypar {
 
 template <typename GraphAndGainTypes>
 bool DeterministicLabelPropagationRefiner<GraphAndGainTypes>::refineImpl(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph, const vec<HypernodeID> &,
-    Metrics &best_metrics, const double)
-{
-    PartitionedHypergraph &phg = utils::cast<PartitionedHypergraph>(hypergraph);
+    mt_kahypar_partitioned_hypergraph_t& hypergraph, const vec<HypernodeID>&,
+    Metrics& best_metrics, const double) {
+    PartitionedHypergraph& phg = utils::cast<PartitionedHypergraph>(hypergraph);
     Gain overall_improvement = 0;
 
-    if(context.partition.k != current_k)
-    {
+    if(context.partition.k != current_k) {
         current_k = context.partition.k;
         gain_computation.changeNumberOfBlocks(current_k);
     }
@@ -56,11 +54,9 @@ bool DeterministicLabelPropagationRefiner<GraphAndGainTypes>::refineImpl(
         context.refinement.deterministic_refinement.num_sub_rounds_sync_lp;
 
     for(size_t iter = 0; iter < context.refinement.label_propagation.maximum_iterations;
-        ++iter)
-    {
+        ++iter) {
         if(context.refinement.deterministic_refinement.use_active_node_set &&
-           ++round == 0)
-        {
+           ++round == 0) {
             std::fill(last_moved_in_round.begin(), last_moved_in_round.end(),
                       CAtomic<uint32_t>(0));
         }
@@ -68,14 +64,11 @@ bool DeterministicLabelPropagationRefiner<GraphAndGainTypes>::refineImpl(
         // size == 0 means no node was moved last round, but there were positive gains -->
         // try again with different permutation
         if(!context.refinement.deterministic_refinement.use_active_node_set ||
-           iter == 0 || active_nodes.size() == 0)
-        {
+           iter == 0 || active_nodes.size() == 0) {
             permutation.random_grouping(
                 phg.initialNumNodes(),
                 context.shared_memory.static_balancing_work_packages, prng());
-        }
-        else
-        {
+        } else {
             tbb::parallel_sort(active_nodes.begin(), active_nodes.end());
             permutation.sample_buckets_and_group_by(
                 active_nodes.range(),
@@ -88,8 +81,7 @@ bool DeterministicLabelPropagationRefiner<GraphAndGainTypes>::refineImpl(
         size_t num_moves = 0;
         Gain round_improvement = 0;
         bool increase_sub_rounds = false;
-        for(size_t sub_round = 0; sub_round < num_sub_rounds; ++sub_round)
-        {
+        for(size_t sub_round = 0; sub_round < num_sub_rounds; ++sub_round) {
             auto [first_bucket, last_bucket] = parallel::chunking::bounds(
                 sub_round, num_buckets, num_buckets_per_sub_round);
             ASSERT(first_bucket < last_bucket &&
@@ -111,8 +103,7 @@ bool DeterministicLabelPropagationRefiner<GraphAndGainTypes>::refineImpl(
                         /*consider_non_adjacent_blocks=*/false,
                         /*allow_imbalance=*/true);
                     move.gain = -move.gain;
-                    if(move.gain > 0 && move.to != phg.partID(u))
-                    {
+                    if(move.gain > 0 && move.to != phg.partID(u)) {
                         moves.push_back_buffered(move);
                     }
                 });
@@ -121,14 +112,12 @@ bool DeterministicLabelPropagationRefiner<GraphAndGainTypes>::refineImpl(
 
             Gain sub_round_improvement = 0;
             size_t num_moves_in_sub_round = moves.size();
-            if(num_moves_in_sub_round > 0)
-            {
+            if(num_moves_in_sub_round > 0) {
                 bool reverted = false;
                 std::tie(sub_round_improvement, reverted) =
                     applyMovesByMaximalPrefixesInBlockPairs(phg);
                 increase_sub_rounds |= reverted;
-                if(sub_round_improvement > 0 && moves.size() > 0)
-                {
+                if(sub_round_improvement > 0 && moves.size() > 0) {
                     sub_round_improvement +=
                         applyMovesSortedByGainAndRevertUnbalanced(phg);
                 }
@@ -139,20 +128,17 @@ bool DeterministicLabelPropagationRefiner<GraphAndGainTypes>::refineImpl(
         overall_improvement += round_improvement;
         active_nodes.finalize();
 
-        if(increase_sub_rounds)
-        {
+        if(increase_sub_rounds) {
             num_sub_rounds = std::min(num_buckets, num_sub_rounds * 2);
         }
-        if(num_moves == 0)
-        {
+        if(num_moves == 0) {
             break; // no vertices with positive gain --> stop
         }
     }
 
     best_metrics.quality -= overall_improvement;
     best_metrics.imbalance = metrics::imbalance(phg, context);
-    if(context.type == ContextType::main)
-    {
+    if(context.type == ContextType::main) {
         DBG << V(best_metrics.quality) << V(best_metrics.imbalance);
     }
     return overall_improvement > 0;
@@ -164,36 +150,29 @@ bool DeterministicLabelPropagationRefiner<GraphAndGainTypes>::refineImpl(
  */
 template <typename GraphAndGainTypes>
 Gain DeterministicLabelPropagationRefiner<
-    GraphAndGainTypes>::performMoveWithAttributedGain(PartitionedHypergraph &phg,
-                                                      const Move &m,
-                                                      bool activate_neighbors)
-{
+    GraphAndGainTypes>::performMoveWithAttributedGain(PartitionedHypergraph& phg,
+                                                      const Move& m,
+                                                      bool activate_neighbors) {
     Gain attributed_gain = 0;
-    auto objective_delta = [&](const SynchronizedEdgeUpdate &sync_update) {
+    auto objective_delta = [&](const SynchronizedEdgeUpdate& sync_update) {
         attributed_gain -= AttributedGains::gain(sync_update);
     };
     const bool was_moved = phg.changeNodePart(m.node, m.from, m.to, objective_delta);
     if(context.refinement.deterministic_refinement.use_active_node_set &&
-       activate_neighbors && was_moved)
-    {
+       activate_neighbors && was_moved) {
         // activate neighbors for next round
         const HypernodeID n = phg.initialNumNodes();
-        for(HyperedgeID he : phg.incidentEdges(m.node))
-        {
+        for(HyperedgeID he : phg.incidentEdges(m.node)) {
             if(phg.edgeSize(he) <=
-               context.refinement.label_propagation.hyperedge_size_activation_threshold)
-            {
-                if(last_moved_in_round[he + n].load(std::memory_order_relaxed) != round)
-                {
+               context.refinement.label_propagation.hyperedge_size_activation_threshold) {
+                if(last_moved_in_round[he + n].load(std::memory_order_relaxed) != round) {
                     last_moved_in_round[he + n].store(
                         round, std::memory_order_relaxed); // no need for atomic semantics
-                    for(HypernodeID v : phg.pins(he))
-                    {
+                    for(HypernodeID v : phg.pins(he)) {
                         uint32_t lrv =
                             last_moved_in_round[v].load(std::memory_order_relaxed);
                         if(lrv != round && last_moved_in_round[v].compare_exchange_strong(
-                                               lrv, round, std::memory_order_acq_rel))
-                        {
+                                               lrv, round, std::memory_order_acq_rel)) {
                             active_nodes.push_back_buffered(v);
                         }
                     }
@@ -207,16 +186,13 @@ Gain DeterministicLabelPropagationRefiner<
 template <typename GraphAndGainTypes>
 template <typename Predicate>
 Gain DeterministicLabelPropagationRefiner<GraphAndGainTypes>::applyMovesIf(
-    PartitionedHypergraph &phg, const vec<Move> &my_moves, size_t end,
-    Predicate &&predicate)
-{
+    PartitionedHypergraph& phg, const vec<Move>& my_moves, size_t end,
+    Predicate&& predicate) {
     auto range = tbb::blocked_range<size_t>(UL(0), end);
-    auto accum = [&](const tbb::blocked_range<size_t> &r, const Gain &init) -> Gain {
+    auto accum = [&](const tbb::blocked_range<size_t>& r, const Gain& init) -> Gain {
         Gain my_gain = init;
-        for(size_t i = r.begin(); i < r.end(); ++i)
-        {
-            if(predicate(i))
-            {
+        for(size_t i = r.begin(); i < r.end(); ++i) {
+            if(predicate(i)) {
                 my_gain += performMoveWithAttributedGain(phg, my_moves[i], true);
             }
         }
@@ -226,26 +202,23 @@ Gain DeterministicLabelPropagationRefiner<GraphAndGainTypes>::applyMovesIf(
 }
 
 template <typename PartitionedHypergraph>
-vec<HypernodeWeight> aggregatePartWeightDeltas(PartitionedHypergraph &phg,
+vec<HypernodeWeight> aggregatePartWeightDeltas(PartitionedHypergraph& phg,
                                                PartitionID current_k,
-                                               const vec<Move> &moves, size_t end)
-{
+                                               const vec<Move>& moves, size_t end) {
     // parallel reduce makes way too many vector copies
     tbb::enumerable_thread_specific<vec<HypernodeWeight> > ets_part_weight_diffs(
         current_k, 0);
-    auto accum = [&](const tbb::blocked_range<size_t> &r) {
-        auto &part_weights = ets_part_weight_diffs.local();
-        for(size_t i = r.begin(); i < r.end(); ++i)
-        {
+    auto accum = [&](const tbb::blocked_range<size_t>& r) {
+        auto& part_weights = ets_part_weight_diffs.local();
+        for(size_t i = r.begin(); i < r.end(); ++i) {
             part_weights[moves[i].from] -= phg.nodeWeight(moves[i].node);
             part_weights[moves[i].to] += phg.nodeWeight(moves[i].node);
         }
     };
     tbb::parallel_for(tbb::blocked_range<size_t>(UL(0), end), accum);
     vec<HypernodeWeight> res(current_k, 0);
-    auto combine = [&](const vec<HypernodeWeight> &a) {
-        for(size_t i = 0; i < res.size(); ++i)
-        {
+    auto combine = [&](const vec<HypernodeWeight>& a) {
+        for(size_t i = 0; i < res.size(); ++i) {
             res[i] += a[i];
         }
     };
@@ -255,27 +228,23 @@ vec<HypernodeWeight> aggregatePartWeightDeltas(PartitionedHypergraph &phg,
 
 template <typename GraphAndGainTypes>
 Gain DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
-    applyMovesSortedByGainAndRevertUnbalanced(PartitionedHypergraph &phg)
-{
+    applyMovesSortedByGainAndRevertUnbalanced(PartitionedHypergraph& phg) {
     const size_t num_moves = moves.size();
     tbb::parallel_sort(
-        moves.begin(), moves.begin() + num_moves, [](const Move &m1, const Move &m2) {
+        moves.begin(), moves.begin() + num_moves, [](const Move& m1, const Move& m2) {
             return m1.gain > m2.gain || (m1.gain == m2.gain && m1.node < m2.node);
         });
 
-    const auto &max_part_weights = context.partition.max_part_weights;
+    const auto& max_part_weights = context.partition.max_part_weights;
     size_t num_overloaded_blocks = 0, num_overloaded_before_round = 0;
     vec<HypernodeWeight> part_weights =
         aggregatePartWeightDeltas(phg, current_k, moves.getData(), num_moves);
-    for(PartitionID i = 0; i < current_k; ++i)
-    {
+    for(PartitionID i = 0; i < current_k; ++i) {
         part_weights[i] += phg.partWeight(i);
-        if(part_weights[i] > max_part_weights[i])
-        {
+        if(part_weights[i] > max_part_weights[i]) {
             num_overloaded_blocks++;
         }
-        if(phg.partWeight(i) > max_part_weights[i])
-        {
+        if(phg.partWeight(i) > max_part_weights[i]) {
             num_overloaded_before_round++;
         }
     }
@@ -284,29 +253,25 @@ Gain DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
     size_t num_reverted_moves = 0;
     size_t j = num_moves;
 
-    auto revert_move = [&](Move &m) {
+    auto revert_move = [&](Move& m) {
         part_weights[m.to] -= phg.nodeWeight(m.node);
         part_weights[m.from] += phg.nodeWeight(m.node);
         m.invalidate();
         num_reverted_moves++;
-        if(part_weights[m.to] <= max_part_weights[m.to])
-        {
+        if(part_weights[m.to] <= max_part_weights[m.to]) {
             num_overloaded_blocks--;
         }
     };
 
-    while(num_overloaded_blocks > 0 && j > 0)
-    {
-        Move &m = moves[--j];
+    while(num_overloaded_blocks > 0 && j > 0) {
+        Move& m = moves[--j];
         if(part_weights[m.to] > max_part_weights[m.to] &&
-           part_weights[m.from] + phg.nodeWeight(m.node) <= max_part_weights[m.from])
-        {
+           part_weights[m.from] + phg.nodeWeight(m.node) <= max_part_weights[m.from]) {
             revert_move(m);
         }
     }
 
-    if(num_overloaded_blocks > 0)
-    {
+    if(num_overloaded_blocks > 0) {
         DBG << "still overloaded" << num_overloaded_blocks << V(num_moves)
             << V(num_reverted_moves) << V(num_overloaded_before_round)
             << V(num_overloaded_before_first_pass) << "trigger second run";
@@ -314,28 +279,23 @@ Gain DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
         size_t num_extra_rounds = 1;
         j = num_moves;
         size_t last_valid_move = 0;
-        while(num_overloaded_blocks > 0)
-        {
-            if(j == 0)
-            {
+        while(num_overloaded_blocks > 0) {
+            if(j == 0) {
                 j = last_valid_move;
                 last_valid_move = 0;
                 num_extra_rounds++;
             }
-            Move &m = moves[j - 1];
-            if(m.isValid() && part_weights[m.to] > max_part_weights[m.to])
-            {
+            Move& m = moves[j - 1];
+            if(m.isValid() && part_weights[m.to] > max_part_weights[m.to]) {
                 if(part_weights[m.from] + phg.nodeWeight(m.node) >
                        max_part_weights[m.from] &&
-                   part_weights[m.from] <= max_part_weights[m.from])
-                {
+                   part_weights[m.from] <= max_part_weights[m.from]) {
                     num_overloaded_blocks++;
                 }
                 revert_move(m);
             }
 
-            if(last_valid_move == 0 && m.isValid())
-            {
+            if(last_valid_move == 0 && m.isValid()) {
                 last_valid_move = j;
             }
             --j;
@@ -349,16 +309,12 @@ Gain DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
                              [&](size_t pos) { return moves[pos].isValid(); });
 
     // if that decreased solution quality, revert it all
-    if(gain < 0)
-    {
+    if(gain < 0) {
         gain += applyMovesIf(phg, moves.getData(), num_moves, [&](size_t pos) {
-            if(moves[pos].isValid())
-            {
+            if(moves[pos].isValid()) {
                 std::swap(moves[pos].from, moves[pos].to);
                 return true;
-            }
-            else
-            {
+            } else {
                 return false;
             }
         });
@@ -369,12 +325,11 @@ Gain DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
 
 template <typename GraphAndGainTypes>
 std::pair<Gain, bool> DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
-    applyMovesByMaximalPrefixesInBlockPairs(PartitionedHypergraph &phg)
-{
+    applyMovesByMaximalPrefixesInBlockPairs(PartitionedHypergraph& phg) {
     PartitionID k = current_k;
     PartitionID max_key = k * k;
     auto index = [&](PartitionID b1, PartitionID b2) { return b1 * k + b2; };
-    auto get_key = [&](const Move &m) { return index(m.from, m.to); };
+    auto get_key = [&](const Move& m) { return index(m.from, m.to); };
 
     const size_t num_moves = moves.size();
 
@@ -390,22 +345,17 @@ std::pair<Gain, bool> DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
 
     vec<std::pair<PartitionID, PartitionID> > relevant_block_pairs;
     vec<size_t> involvements(k, 0);
-    for(PartitionID p1 = 0; p1 < k; ++p1)
-    {
-        for(PartitionID p2 = p1 + 1; p2 < k; ++p2)
-        {
-            if(has_moves(p1, p2) || has_moves(p2, p1))
-            {
+    for(PartitionID p1 = 0; p1 < k; ++p1) {
+        for(PartitionID p2 = p1 + 1; p2 < k; ++p2) {
+            if(has_moves(p1, p2) || has_moves(p2, p1)) {
                 relevant_block_pairs.emplace_back(p1, p2);
             }
             // more involvements reduce slack --> only increment involvements if vertices
             // are moved into that block
-            if(has_moves(p1, p2))
-            {
+            if(has_moves(p1, p2)) {
                 involvements[p2]++;
             }
-            if(has_moves(p2, p1))
-            {
+            if(has_moves(p2, p1)) {
                 involvements[p1]++;
             }
         }
@@ -419,7 +369,7 @@ std::pair<Gain, bool> DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
         auto sort_by_gain_and_prefix_sum_node_weights = [&](PartitionID p1,
                                                             PartitionID p2) {
             size_t begin = positions[index(p1, p2)], end = positions[index(p1, p2) + 1];
-            auto comp = [&](const Move &m1, const Move &m2) {
+            auto comp = [&](const Move& m1, const Move& m2) {
                 return m1.gain > m2.gain || (m1.gain == m2.gain && m1.node < m2.node);
             };
             tbb::parallel_sort(sorted_moves.begin() + begin, sorted_moves.begin() + end,
@@ -454,8 +404,7 @@ std::pair<Gain, bool> DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
         assert(best_prefix == findBestPrefixesSequentially(p1_begin, p1_end, p2_begin,
                                                            p2_end, p1_begin - 1,
                                                            p2_begin - 1, lb_p1, ub_p2));
-        if(best_prefix.first == invalid_pos)
-        {
+        if(best_prefix.first == invalid_pos) {
             // represents no solution found (and recursive version didn't move all the way
             // to the start of the range)
             // --> replace with starts of ranges (represents no moves applied)
@@ -467,12 +416,9 @@ std::pair<Gain, bool> DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
 
     moves.clear();
     Gain actual_gain = applyMovesIf(phg, sorted_moves, num_moves, [&](size_t pos) {
-        if(pos < swap_prefix[index(sorted_moves[pos].from, sorted_moves[pos].to)])
-        {
+        if(pos < swap_prefix[index(sorted_moves[pos].from, sorted_moves[pos].to)]) {
             return true;
-        }
-        else
-        {
+        } else {
             // save non-applied moves as backup, to try to apply them in a second step.
             moves.push_back_buffered(sorted_moves[pos]);
             return false;
@@ -482,16 +428,12 @@ std::pair<Gain, bool> DeterministicLabelPropagationRefiner<GraphAndGainTypes>::
 
     // revert everything if that decreased solution quality
     bool revert_all = actual_gain < 0;
-    if(revert_all)
-    {
+    if(revert_all) {
         actual_gain += applyMovesIf(phg, sorted_moves, num_moves, [&](size_t pos) {
-            if(pos < swap_prefix[index(sorted_moves[pos].from, sorted_moves[pos].to)])
-            {
+            if(pos < swap_prefix[index(sorted_moves[pos].from, sorted_moves[pos].to)]) {
                 std::swap(sorted_moves[pos].from, sorted_moves[pos].to);
                 return true;
-            }
-            else
-            {
+            } else {
                 return false;
             }
         });
@@ -504,8 +446,7 @@ template <typename GraphAndGainTypes>
 std::pair<size_t, size_t>
 DeterministicLabelPropagationRefiner<GraphAndGainTypes>::findBestPrefixesRecursive(
     size_t p1_begin, size_t p1_end, size_t p2_begin, size_t p2_end, size_t p1_invalid,
-    size_t p2_invalid, HypernodeWeight lb_p1, HypernodeWeight ub_p2)
-{
+    size_t p2_invalid, HypernodeWeight lb_p1, HypernodeWeight ub_p2) {
     auto balance = [&](size_t p1_ind, size_t p2_ind) {
         ASSERT(p1_ind == p1_invalid || p1_ind < p1_end);
         ASSERT(p1_ind >= p1_invalid || p1_invalid == (size_t(0) - 1));
@@ -526,28 +467,24 @@ DeterministicLabelPropagationRefiner<GraphAndGainTypes>::findBestPrefixesRecursi
     const size_t n_p1 = p1_end - p1_begin, n_p2 = p2_end - p2_begin;
 
     static constexpr size_t sequential_cutoff = 2000;
-    if(n_p1 < sequential_cutoff && n_p2 < sequential_cutoff)
-    {
+    if(n_p1 < sequential_cutoff && n_p2 < sequential_cutoff) {
         return findBestPrefixesSequentially(p1_begin, p1_end, p2_begin, p2_end,
                                             p1_invalid, p2_invalid, lb_p1, ub_p2);
     }
 
     const auto c = cumulative_node_weights.begin();
-    if(n_p1 > n_p2)
-    {
+    if(n_p1 > n_p2) {
         size_t p1_mid = p1_begin + n_p1 / 2;
         auto p2_match_it =
             std::lower_bound(c + p2_begin, c + p2_end, cumulative_node_weights[p1_mid]);
         size_t p2_match = std::distance(cumulative_node_weights.begin(), p2_match_it);
 
-        if(p2_match != p2_end && p1_mid != p1_end && is_feasible(p1_mid, p2_match))
-        {
+        if(p2_match != p2_end && p1_mid != p1_end && is_feasible(p1_mid, p2_match)) {
             // no need to search left range
             return findBestPrefixesRecursive(p1_mid + 1, p1_end, p2_match + 1, p2_end,
                                              p1_invalid, p2_invalid, lb_p1, ub_p2);
         }
-        if(p2_match == p2_end && balance(p1_mid, p2_end - 1) > ub_p2)
-        {
+        if(p2_match == p2_end && balance(p1_mid, p2_end - 1) > ub_p2) {
             // p1_mid cannot be compensated --> no need to search right range
             return findBestPrefixesRecursive(p1_begin, p1_mid, p2_begin, p2_match,
                                              p1_invalid, p2_invalid, lb_p1, ub_p2);
@@ -564,22 +501,18 @@ DeterministicLabelPropagationRefiner<GraphAndGainTypes>::findBestPrefixesRecursi
                                                   p1_invalid, p2_invalid, lb_p1, ub_p2);
             });
         return right.first != invalid_pos ? right : left;
-    }
-    else
-    {
+    } else {
         size_t p2_mid = p2_begin + n_p2 / 2;
         auto p1_match_it =
             std::lower_bound(c + p1_begin, c + p1_end, cumulative_node_weights[p2_mid]);
         size_t p1_match = std::distance(cumulative_node_weights.begin(), p1_match_it);
 
-        if(p1_match != p1_end && p2_mid != p2_end && is_feasible(p1_match, p2_mid))
-        {
+        if(p1_match != p1_end && p2_mid != p2_end && is_feasible(p1_match, p2_mid)) {
             // no need to search left range
             return findBestPrefixesRecursive(p1_match + 1, p1_end, p2_mid + 1, p2_end,
                                              p1_invalid, p2_invalid, lb_p1, ub_p2);
         }
-        if(p1_match == p1_end && balance(p1_end - 1, p2_mid) < lb_p1)
-        {
+        if(p1_match == p1_end && balance(p1_end - 1, p2_mid) < lb_p1) {
             // p2_mid cannot be compensated --> no need to search right range
             return findBestPrefixesRecursive(p1_begin, p1_match, p2_begin, p2_mid,
                                              p1_invalid, p2_invalid, lb_p1, ub_p2);
@@ -603,8 +536,7 @@ template <typename GraphAndGainTypes>
 std::pair<size_t, size_t>
 DeterministicLabelPropagationRefiner<GraphAndGainTypes>::findBestPrefixesSequentially(
     size_t p1_begin, size_t p1_end, size_t p2_begin, size_t p2_end, size_t p1_inv,
-    size_t p2_inv, HypernodeWeight lb_p1, HypernodeWeight ub_p2)
-{
+    size_t p2_inv, HypernodeWeight lb_p1, HypernodeWeight ub_p2) {
     auto balance = [&](size_t p1_ind, size_t p2_ind) {
         const auto a = (p1_ind == p1_inv) ? 0 : cumulative_node_weights[p1_ind];
         const auto b = (p2_ind == p2_inv) ? 0 : cumulative_node_weights[p2_ind];
@@ -616,24 +548,17 @@ DeterministicLabelPropagationRefiner<GraphAndGainTypes>::findBestPrefixesSequent
         return lb_p1 <= bal && bal <= ub_p2;
     };
 
-    while(true)
-    {
-        if(is_feasible(p1_end - 1, p2_end - 1))
-        {
+    while(true) {
+        if(is_feasible(p1_end - 1, p2_end - 1)) {
             return std::make_pair(p1_end, p2_end);
         }
-        if(balance(p1_end - 1, p2_end - 1) < 0)
-        {
-            if(p2_end == p2_begin)
-            {
+        if(balance(p1_end - 1, p2_end - 1) < 0) {
+            if(p2_end == p2_begin) {
                 break;
             }
             p2_end--;
-        }
-        else
-        {
-            if(p1_end == p1_begin)
-            {
+        } else {
+            if(p1_end == p1_begin) {
                 break;
             }
             p1_end--;

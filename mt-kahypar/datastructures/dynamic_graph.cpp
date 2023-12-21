@@ -43,17 +43,14 @@ namespace mt_kahypar {
 namespace ds {
 
 // ! Recomputes the total weight of the hypergraph (parallel)
-void DynamicGraph::updateTotalWeight(parallel_tag_t)
-{
+void DynamicGraph::updateTotalWeight(parallel_tag_t) {
     _total_weight =
         tbb::parallel_reduce(
             tbb::blocked_range<HypernodeID>(ID(0), numNodes()), 0,
-            [this](const tbb::blocked_range<HypernodeID> &range, HypernodeWeight init) {
+            [this](const tbb::blocked_range<HypernodeID>& range, HypernodeWeight init) {
                 HypernodeWeight weight = init;
-                for(HypernodeID hn = range.begin(); hn < range.end(); ++hn)
-                {
-                    if(nodeIsEnabled(hn))
-                    {
+                for(HypernodeID hn = range.begin(); hn < range.end(); ++hn) {
+                    if(nodeIsEnabled(hn)) {
                         weight += this->_nodes[hn].weight();
                     }
                 }
@@ -64,13 +61,10 @@ void DynamicGraph::updateTotalWeight(parallel_tag_t)
 }
 
 // ! Recomputes the total weight of the hypergraph (sequential)
-void DynamicGraph::updateTotalWeight()
-{
+void DynamicGraph::updateTotalWeight() {
     _total_weight = 0;
-    for(const HypernodeID &hn : nodes())
-    {
-        if(nodeIsEnabled(hn))
-        {
+    for(const HypernodeID& hn : nodes()) {
+        if(nodeIsEnabled(hn)) {
             _total_weight += nodeWeight(hn);
         }
     }
@@ -85,8 +79,7 @@ void DynamicGraph::updateTotalWeight()
  * running contractions. The contraction can be executed by calling function contract(v,
  * max_node_weight).
  */
-bool DynamicGraph::registerContraction(const HypernodeID u, const HypernodeID v)
-{
+bool DynamicGraph::registerContraction(const HypernodeID u, const HypernodeID v) {
     return _contraction_tree.registerContraction(
         u, v, _version, [&](HypernodeID u) { acquireHypernode(u); },
         [&](HypernodeID u) { releaseHypernode(u); });
@@ -100,8 +93,8 @@ bool DynamicGraph::registerContraction(const HypernodeID u, const HypernodeID v)
  * contracts also u (if any contraction is registered). Therefore, function can return
  * several contractions or also return an empty contraction vector.
  */
-size_t DynamicGraph::contract(const HypernodeID v, const HypernodeWeight max_node_weight)
-{
+size_t DynamicGraph::contract(const HypernodeID v,
+                              const HypernodeWeight max_node_weight) {
     ASSERT(_contraction_tree.parent(v) != v, "No contraction registered for node " << v);
 
     HypernodeID x = _contraction_tree.parent(v);
@@ -110,12 +103,10 @@ size_t DynamicGraph::contract(const HypernodeID v, const HypernodeWeight max_nod
     size_t num_contractions = 0;
     // We perform all contractions registered in the contraction tree
     // as long as there are no pending contractions
-    while(x != y && res != ContractionResult::PENDING_CONTRACTIONS)
-    {
+    while(x != y && res != ContractionResult::PENDING_CONTRACTIONS) {
         // Perform Contraction
         res = contract(x, y, max_node_weight);
-        if(res == ContractionResult::CONTRACTED)
-        {
+        if(res == ContractionResult::CONTRACTED) {
             ++num_contractions;
         }
         y = x;
@@ -135,17 +126,13 @@ size_t DynamicGraph::contract(const HypernodeID v, const HypernodeWeight max_nod
  */
 DynamicGraph::ContractionResult
 DynamicGraph::contract(const HypernodeID u, const HypernodeID v,
-                       const HypernodeWeight max_node_weight)
-{
+                       const HypernodeWeight max_node_weight) {
 
     // Acquire ownership in correct order to prevent deadlocks
-    if(u < v)
-    {
+    if(u < v) {
         acquireHypernode(u);
         acquireHypernode(v);
-    }
-    else
-    {
+    } else {
         acquireHypernode(v);
         acquireHypernode(u);
     }
@@ -164,8 +151,7 @@ DynamicGraph::contract(const HypernodeID u, const HypernodeID v,
         (!hasFixedVertices() ||
          /** only run this if all previous checks were successful */ _fixed_vertices
              .contract(u, v));
-    if(valid_contraction)
-    {
+    if(valid_contraction) {
         ASSERT(nodeIsEnabled(u), "Hypernode" << u << "is disabled!");
         hypernode(u).setWeight(nodeWeight(u) + nodeWeight(v));
         hypernode(v).disable();
@@ -184,15 +170,12 @@ DynamicGraph::contract(const HypernodeID u, const HypernodeID v,
         _contraction_tree.unregisterContraction(u, v, contraction_start, contraction_end);
         releaseHypernode(u);
         return ContractionResult::CONTRACTED;
-    }
-    else
-    {
+    } else {
         ContractionResult res = ContractionResult::PENDING_CONTRACTIONS;
         const bool fixed_vertex_contraction_failed =
             contraction_partner_valid && less_or_equal_than_max_node_weight;
         if((!less_or_equal_than_max_node_weight || fixed_vertex_contraction_failed) &&
-           nodeIsEnabled(v) && _contraction_tree.parent(v) == u)
-        {
+           nodeIsEnabled(v) && _contraction_tree.parent(v) == u) {
             _contraction_tree.unregisterContraction(u, v, kInvalidHypernode,
                                                     kInvalidHypernode, true /* failed */);
             res = fixed_vertex_contraction_failed ?
@@ -211,26 +194,22 @@ DynamicGraph::contract(const HypernodeID u, const HypernodeID v,
  * The two uncontraction functions are required by the partitioned graph to update
  * gain cache values.
  */
-void DynamicGraph::uncontract(const Batch &batch, const MarkEdgeFunc &mark_edge,
-                              const UncontractionFunction &case_one_func,
-                              const UncontractionFunction &case_two_func)
-{
+void DynamicGraph::uncontract(const Batch& batch, const MarkEdgeFunc& mark_edge,
+                              const UncontractionFunction& case_one_func,
+                              const UncontractionFunction& case_two_func) {
     ASSERT(batch.size() > UL(0));
     ASSERT(
         [&] {
             const HypernodeID expected_batch_index = hypernode(batch[0].v).batchIndex();
-            for(const Memento &memento : batch)
-            {
-                if(hypernode(memento.v).batchIndex() != expected_batch_index)
-                {
+            for(const Memento& memento : batch) {
+                if(hypernode(memento.v).batchIndex() != expected_batch_index) {
                     LOG << "Batch contains uncontraction from different batches."
                         << "Hypernode" << memento.v << "with version"
                         << hypernode(memento.v).batchIndex() << "but expected is"
                         << expected_batch_index;
                     return false;
                 }
-                if(_contraction_tree.version(memento.v) != _version)
-                {
+                if(_contraction_tree.version(memento.v) != _version) {
                     LOG << "Batch contains uncontraction from a different version."
                         << "Hypernode" << memento.v << "with version"
                         << _contraction_tree.version(memento.v) << "but expected is"
@@ -244,7 +223,7 @@ void DynamicGraph::uncontract(const Batch &batch, const MarkEdgeFunc &mark_edge,
         "hypergraph version");
 
     tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
-        const Memento &memento = batch[i];
+        const Memento& memento = batch[i];
         ASSERT(!hypernode(memento.u).isDisabled(),
                "Hypernode" << memento.u << "is disabled");
         ASSERT(hypernode(memento.v).isDisabled(),
@@ -267,8 +246,7 @@ void DynamicGraph::uncontract(const Batch &batch, const MarkEdgeFunc &mark_edge,
         releaseHypernode(memento.u);
 
         // Revert contraction in fixed vertex support
-        if(hasFixedVertices())
-        {
+        if(hasFixedVertices()) {
             _fixed_vertices.uncontract(memento.u, memento.v);
         }
     });
@@ -285,8 +263,7 @@ void DynamicGraph::uncontract(const Batch &batch, const MarkEdgeFunc &mark_edge,
  * createBatchUncontractionHierarchyOfVersion(...))
  */
 VersionedBatchVector
-DynamicGraph::createBatchUncontractionHierarchy(const size_t batch_size)
-{
+DynamicGraph::createBatchUncontractionHierarchy(const size_t batch_size) {
     const size_t num_versions = _version + 1;
     // Finalizes the contraction tree such that it is traversable in a top-down fashion
     // and contains subtree size for each  tree node
@@ -295,13 +272,11 @@ DynamicGraph::createBatchUncontractionHierarchy(const size_t batch_size)
     VersionedBatchVector versioned_batches(num_versions);
     parallel::scalable_vector<size_t> batch_sizes_prefix_sum(num_versions, 0);
     BatchIndexAssigner batch_index_assigner(numNodes(), batch_size);
-    for(size_t version = 0; version < num_versions; ++version)
-    {
+    for(size_t version = 0; version < num_versions; ++version) {
         versioned_batches[version] =
             _contraction_tree.createBatchUncontractionHierarchyForVersion(
                 batch_index_assigner, version);
-        if(version > 0)
-        {
+        if(version > 0) {
             batch_sizes_prefix_sum[version] = batch_sizes_prefix_sum[version - 1] +
                                               versioned_batches[version - 1].size();
         }
@@ -317,8 +292,7 @@ DynamicGraph::createBatchUncontractionHierarchy(const size_t batch_size)
  * and single-pin hyperedges are removed. Returns a vector of removed hyperedges.
  */
 parallel::scalable_vector<DynamicGraph::ParallelHyperedge>
-DynamicGraph::removeSinglePinAndParallelHyperedges()
-{
+DynamicGraph::removeSinglePinAndParallelHyperedges() {
     ++_version;
     return _adjacency_array.removeSinglePinAndParallelEdges();
 }
@@ -329,15 +303,13 @@ DynamicGraph::removeSinglePinAndParallelHyperedges()
  * removeSinglePinAndParallelNets(...).
  */
 void DynamicGraph::restoreSinglePinAndParallelNets(
-    const parallel::scalable_vector<ParallelHyperedge> &hes_to_restore)
-{
+    const parallel::scalable_vector<ParallelHyperedge>& hes_to_restore) {
     _adjacency_array.restoreSinglePinAndParallelEdges(hes_to_restore);
     --_version;
 }
 
 // ! Copy dynamic hypergraph in parallel
-DynamicGraph DynamicGraph::copy(parallel_tag_t) const
-{
+DynamicGraph DynamicGraph::copy(parallel_tag_t) const {
     DynamicGraph hypergraph;
 
     hypergraph._num_removed_nodes = _num_removed_nodes;
@@ -355,7 +327,7 @@ DynamicGraph DynamicGraph::copy(parallel_tag_t) const
         [&] { hypergraph._adjacency_array = _adjacency_array.copy(parallel_tag_t()); },
         [&] {
             hypergraph._acquired_nodes.resize(_acquired_nodes.size());
-            tbb::parallel_for(ID(0), numNodes(), [&](const HypernodeID &hn) {
+            tbb::parallel_for(ID(0), numNodes(), [&](const HypernodeID& hn) {
                 hypergraph._acquired_nodes[hn] = _acquired_nodes[hn];
             });
         },
@@ -368,8 +340,7 @@ DynamicGraph DynamicGraph::copy(parallel_tag_t) const
 }
 
 // ! Copy dynamic hypergraph sequential
-DynamicGraph DynamicGraph::copy() const
-{
+DynamicGraph DynamicGraph::copy() const {
     DynamicGraph hypergraph;
 
     hypergraph._num_removed_nodes = _num_removed_nodes;
@@ -383,8 +354,7 @@ DynamicGraph DynamicGraph::copy() const
     memcpy(hypergraph._nodes.data(), _nodes.data(), sizeof(Node) * _nodes.size());
     hypergraph._adjacency_array = _adjacency_array.copy(parallel_tag_t());
     hypergraph._acquired_nodes.resize(numNodes());
-    for(HypernodeID hn = 0; hn < numNodes(); ++hn)
-    {
+    for(HypernodeID hn = 0; hn < numNodes(); ++hn) {
         hypergraph._acquired_nodes[hn] = _acquired_nodes[hn];
     }
     hypergraph._contraction_tree = _contraction_tree.copy();
@@ -394,8 +364,7 @@ DynamicGraph DynamicGraph::copy() const
     return hypergraph;
 }
 
-void DynamicGraph::memoryConsumption(utils::MemoryTreeNode *parent) const
-{
+void DynamicGraph::memoryConsumption(utils::MemoryTreeNode *parent) const {
     ASSERT(parent);
 
     parent->addChild("Hypernodes", sizeof(Node) * _nodes.size());
@@ -405,30 +374,25 @@ void DynamicGraph::memoryConsumption(utils::MemoryTreeNode *parent) const
     utils::MemoryTreeNode *contraction_tree_node = parent->addChild("Contraction Tree");
     _contraction_tree.memoryConsumption(contraction_tree_node);
 
-    if(hasFixedVertices())
-    {
+    if(hasFixedVertices()) {
         parent->addChild("Fixed Vertex Support", _fixed_vertices.size_in_bytes());
     }
 }
 
 // ! Only for testing
-bool DynamicGraph::verifyIncidenceArrayAndIncidentNets()
-{
+bool DynamicGraph::verifyIncidenceArrayAndIncidentNets() {
     bool success = true;
     tbb::parallel_invoke(
         [&] {
-            doParallelForAllNodes([&](const HypernodeID &hn) {
-                for(const HyperedgeID &he : incidentEdges(hn))
-                {
-                    if(edgeSource(he) != hn)
-                    {
+            doParallelForAllNodes([&](const HypernodeID& hn) {
+                for(const HyperedgeID& he : incidentEdges(hn)) {
+                    if(edgeSource(he) != hn) {
                         LOG << "Edge" << he << "has source" << edgeSource(he)
                             << "but should be" << hn;
                         success = false;
                     }
                     const HypernodeID back_target = edge(edge(he).back_edge).target;
-                    if(back_target != hn)
-                    {
+                    if(back_target != hn) {
                         LOG << "Backedge" << edge(he).back_edge << "(of edge" << he
                             << ") has target" << back_target << "but should be" << hn;
                         success = false;
@@ -437,18 +401,15 @@ bool DynamicGraph::verifyIncidenceArrayAndIncidentNets()
             });
         },
         [&] {
-            doParallelForAllEdges([&](const HyperedgeID &he) {
+            doParallelForAllEdges([&](const HyperedgeID& he) {
                 bool found = false;
-                for(const HyperedgeID &e : incidentEdges(edgeSource(he)))
-                {
-                    if(e == he)
-                    {
+                for(const HyperedgeID& e : incidentEdges(edgeSource(he))) {
+                    if(e == he) {
                         found = true;
                         break;
                     }
                 }
-                if(!found)
-                {
+                if(!found) {
                     LOG << "Edge" << he << "not found in incident nets of vertex"
                         << edgeSource(he);
                     success = false;

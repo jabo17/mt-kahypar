@@ -52,40 +52,35 @@ class Utilities
     };
 
   public:
-    Utilities(const Utilities &) = delete;
-    Utilities &operator=(const Utilities &) = delete;
+    Utilities(const Utilities&) = delete;
+    Utilities& operator=(const Utilities&) = delete;
 
-    Utilities(Utilities &&) = delete;
-    Utilities &operator=(Utilities &&) = delete;
+    Utilities(Utilities&&) = delete;
+    Utilities& operator=(Utilities&&) = delete;
 
-    static Utilities &instance()
-    {
+    static Utilities& instance() {
         static Utilities instance;
         return instance;
     }
 
-    size_t registerNewUtilityObjects()
-    {
+    size_t registerNewUtilityObjects() {
         std::lock_guard<std::mutex> lock(_utility_mutex);
         const size_t id = _utilities.size();
         _utilities.emplace_back();
         return id;
     }
 
-    Stats &getStats(const size_t id)
-    {
+    Stats& getStats(const size_t id) {
         ASSERT(id < _utilities.size());
         return _utilities[id].stats;
     }
 
-    InitialPartitioningStats &getInitialPartitioningStats(const size_t id)
-    {
+    InitialPartitioningStats& getInitialPartitioningStats(const size_t id) {
         ASSERT(id < _utilities.size());
         return _utilities[id].ip_stats;
     }
 
-    Timer &getTimer(const size_t id)
-    {
+    Timer& getTimer(const size_t id) {
         ASSERT(id < _utilities.size());
         return _utilities[id].timer;
     }

@@ -36,13 +36,11 @@ namespace mt_kahypar {
 namespace ds {
 
 void verifyIncidentNets(const HypernodeID u, const HyperedgeID num_hyperedges,
-                        const IncidentNetArray &incident_nets,
-                        const std::set<HyperedgeID> &_expected_incident_nets)
-{
+                        const IncidentNetArray& incident_nets,
+                        const std::set<HyperedgeID>& _expected_incident_nets) {
     size_t num_incident_edges = 0;
     std::vector<bool> actual_incident_edges(num_hyperedges, false);
-    for(const HyperedgeID &he : incident_nets.incidentEdges(u))
-    {
+    for(const HyperedgeID& he : incident_nets.incidentEdges(u)) {
         ASSERT_TRUE(_expected_incident_nets.find(he) != _expected_incident_nets.end())
             << "Hyperedge " << he << " should be not part of incident nets of vertex "
             << u;
@@ -58,18 +56,15 @@ void verifyIncidentNets(const HypernodeID u, const HyperedgeID num_hyperedges,
 
 kahypar::ds::FastResetFlagArray<>
 createFlagArray(const HyperedgeID num_hyperedges,
-                const std::vector<HyperedgeID> &contained_hes)
-{
+                const std::vector<HyperedgeID>& contained_hes) {
     kahypar::ds::FastResetFlagArray<> flag_array(num_hyperedges);
-    for(const HyperedgeID &he : contained_hes)
-    {
+    for(const HyperedgeID& he : contained_hes) {
         flag_array.set(he, true);
     }
     return flag_array;
 }
 
-TEST(AIncidentNetArray, VerifyInitialIncidentNetsOfEachVertex)
-{
+TEST(AIncidentNetArray, VerifyInitialIncidentNetsOfEachVertex) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     verifyIncidentNets(0, 4, incident_nets, { 0, 1 });
@@ -81,32 +76,28 @@ TEST(AIncidentNetArray, VerifyInitialIncidentNetsOfEachVertex)
     verifyIncidentNets(6, 4, incident_nets, { 2, 3 });
 }
 
-TEST(AIncidentNetArray, ContractTwoVertices1)
-{
+TEST(AIncidentNetArray, ContractTwoVertices1) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(3, 4, createFlagArray(4, { 1, 2 }));
     verifyIncidentNets(3, 4, incident_nets, { 1, 2 });
 }
 
-TEST(AIncidentNetArray, ContractTwoVertices2)
-{
+TEST(AIncidentNetArray, ContractTwoVertices2) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 2, createFlagArray(4, { 0 }));
     verifyIncidentNets(0, 4, incident_nets, { 0, 1, 3 });
 }
 
-TEST(AIncidentNetArray, ContractTwoVertices3)
-{
+TEST(AIncidentNetArray, ContractTwoVertices3) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 6, createFlagArray(4, {}));
     verifyIncidentNets(0, 4, incident_nets, { 0, 1, 2, 3 });
 }
 
-TEST(AIncidentNetArray, ContractSeveralVertices1)
-{
+TEST(AIncidentNetArray, ContractSeveralVertices1) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(3, 4, createFlagArray(4, { 1, 2 }));
@@ -114,8 +105,7 @@ TEST(AIncidentNetArray, ContractSeveralVertices1)
     verifyIncidentNets(3, 4, incident_nets, { 0, 1, 2 });
 }
 
-TEST(AIncidentNetArray, ContractSeveralVertices2)
-{
+TEST(AIncidentNetArray, ContractSeveralVertices2) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(1, 5, createFlagArray(4, {}));
@@ -123,8 +113,7 @@ TEST(AIncidentNetArray, ContractSeveralVertices2)
     verifyIncidentNets(4, 4, incident_nets, { 1, 2, 3 });
 }
 
-TEST(AIncidentNetArray, ContractSeveralVertices3)
-{
+TEST(AIncidentNetArray, ContractSeveralVertices3) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 3, createFlagArray(4, { 1 }));
@@ -133,8 +122,7 @@ TEST(AIncidentNetArray, ContractSeveralVertices3)
     verifyIncidentNets(0, 4, incident_nets, { 0, 1, 2, 3 });
 }
 
-TEST(AIncidentNetArray, ContractSeveralVertices4)
-{
+TEST(AIncidentNetArray, ContractSeveralVertices4) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 2, createFlagArray(4, { 0 }));
@@ -149,8 +137,7 @@ TEST(AIncidentNetArray, ContractSeveralVertices4)
     verifyIncidentNets(0, 4, incident_nets, { 0, 1, 2, 3 });
 }
 
-TEST(AIncidentNetArray, UncontractTwoVertices1)
-{
+TEST(AIncidentNetArray, UncontractTwoVertices1) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(3, 4, createFlagArray(4, { 1, 2 }));
@@ -159,8 +146,7 @@ TEST(AIncidentNetArray, UncontractTwoVertices1)
     verifyIncidentNets(4, 4, incident_nets, { 1, 2 });
 }
 
-TEST(AIncidentNetArray, UnontractTwoVertices2)
-{
+TEST(AIncidentNetArray, UnontractTwoVertices2) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 2, createFlagArray(4, { 0 }));
@@ -169,8 +155,7 @@ TEST(AIncidentNetArray, UnontractTwoVertices2)
     verifyIncidentNets(2, 4, incident_nets, { 0, 3 });
 }
 
-TEST(AIncidentNetArray, UncontractTwoVertices3)
-{
+TEST(AIncidentNetArray, UncontractTwoVertices3) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 6, createFlagArray(4, {}));
@@ -179,8 +164,7 @@ TEST(AIncidentNetArray, UncontractTwoVertices3)
     verifyIncidentNets(6, 4, incident_nets, { 2, 3 });
 }
 
-TEST(AIncidentNetArray, UncontractSeveralVertices1)
-{
+TEST(AIncidentNetArray, UncontractSeveralVertices1) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(3, 4, createFlagArray(4, { 1, 2 }));
@@ -194,8 +178,7 @@ TEST(AIncidentNetArray, UncontractSeveralVertices1)
     verifyIncidentNets(4, 4, incident_nets, { 1, 2 });
 }
 
-TEST(AIncidentNetArray, UncontractSeveralVertices2)
-{
+TEST(AIncidentNetArray, UncontractSeveralVertices2) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(1, 5, createFlagArray(4, {}));
@@ -209,8 +192,7 @@ TEST(AIncidentNetArray, UncontractSeveralVertices2)
     verifyIncidentNets(5, 4, incident_nets, { 3 });
 }
 
-TEST(AIncidentNetArray, UncontractSeveralVertices3)
-{
+TEST(AIncidentNetArray, UncontractSeveralVertices3) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 3, createFlagArray(4, { 1 }));
@@ -230,8 +212,7 @@ TEST(AIncidentNetArray, UncontractSeveralVertices3)
     verifyIncidentNets(6, 4, incident_nets, { 2, 3 });
 }
 
-TEST(AIncidentNetArray, UncontractSeveralVertices4)
-{
+TEST(AIncidentNetArray, UncontractSeveralVertices4) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 2, createFlagArray(4, { 0 }));
@@ -269,28 +250,24 @@ TEST(AIncidentNetArray, UncontractSeveralVertices4)
 using OwnershipVector = parallel::scalable_vector<SpinLock>;
 
 template <typename F, typename K>
-void executeParallel(const F &f1, const K &f2)
-{
+void executeParallel(const F& f1, const K& f2) {
     std::atomic<size_t> cnt(0);
     tbb::parallel_invoke(
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
             f1();
         },
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
             f2();
         });
 }
 
-TEST(AIncidentNetArray, ContractsParallel1)
-{
+TEST(AIncidentNetArray, ContractsParallel1) {
     OwnershipVector acquired_hns(7);
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
@@ -312,8 +289,7 @@ TEST(AIncidentNetArray, ContractsParallel1)
     verifyIncidentNets(0, 4, incident_nets, { 0, 1, 3 });
 }
 
-TEST(AIncidentNetArray, ContractsParallel2)
-{
+TEST(AIncidentNetArray, ContractsParallel2) {
     OwnershipVector acquired_hns(7);
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
@@ -335,8 +311,7 @@ TEST(AIncidentNetArray, ContractsParallel2)
     verifyIncidentNets(0, 4, incident_nets, { 0, 1, 2, 3 });
 }
 
-TEST(AIncidentNetArray, UnontractsParallel1)
-{
+TEST(AIncidentNetArray, UnontractsParallel1) {
     OwnershipVector acquired_hns(7);
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
@@ -360,8 +335,7 @@ TEST(AIncidentNetArray, UnontractsParallel1)
     verifyIncidentNets(5, 4, incident_nets, { 3 });
 }
 
-TEST(AIncidentNetArray, UnontractsParallel2)
-{
+TEST(AIncidentNetArray, UnontractsParallel2) {
     OwnershipVector acquired_hns(7);
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
@@ -385,24 +359,21 @@ TEST(AIncidentNetArray, UnontractsParallel2)
     verifyIncidentNets(6, 4, incident_nets, { 2, 3 });
 }
 
-TEST(AIncidentNetArray, RemovesIncidentNets1)
-{
+TEST(AIncidentNetArray, RemovesIncidentNets1) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.removeIncidentNets(0, createFlagArray(4, { 1 }));
     verifyIncidentNets(0, 4, incident_nets, { 0 });
 }
 
-TEST(AIncidentNetArray, RemovesIncidentNets2)
-{
+TEST(AIncidentNetArray, RemovesIncidentNets2) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.removeIncidentNets(5, createFlagArray(4, { 3 }));
     verifyIncidentNets(5, 4, incident_nets, {});
 }
 
-TEST(AIncidentNetArray, RemovesIncidentNets3)
-{
+TEST(AIncidentNetArray, RemovesIncidentNets3) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.removeIncidentNets(3, createFlagArray(4, { 1 }));
@@ -411,8 +382,7 @@ TEST(AIncidentNetArray, RemovesIncidentNets3)
     verifyIncidentNets(4, 4, incident_nets, { 2 });
 }
 
-TEST(AIncidentNetArray, RemovesIncidentNetsAfterContraction1)
-{
+TEST(AIncidentNetArray, RemovesIncidentNetsAfterContraction1) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 2, createFlagArray(4, { 0 }));
@@ -420,8 +390,7 @@ TEST(AIncidentNetArray, RemovesIncidentNetsAfterContraction1)
     verifyIncidentNets(0, 4, incident_nets, { 0, 3 });
 }
 
-TEST(AIncidentNetArray, RemovesIncidentNetsAfterContraction2)
-{
+TEST(AIncidentNetArray, RemovesIncidentNetsAfterContraction2) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 2, createFlagArray(4, { 0 }));
@@ -430,8 +399,7 @@ TEST(AIncidentNetArray, RemovesIncidentNetsAfterContraction2)
     verifyIncidentNets(0, 4, incident_nets, { 0, 2 });
 }
 
-TEST(AIncidentNetArray, RestoreIncidentNets1)
-{
+TEST(AIncidentNetArray, RestoreIncidentNets1) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.removeIncidentNets(0, createFlagArray(4, { 1 }));
@@ -439,8 +407,7 @@ TEST(AIncidentNetArray, RestoreIncidentNets1)
     verifyIncidentNets(0, 4, incident_nets, { 0, 1 });
 }
 
-TEST(AIncidentNetArray, RestoreIncidentNets2)
-{
+TEST(AIncidentNetArray, RestoreIncidentNets2) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.removeIncidentNets(5, createFlagArray(4, { 3 }));
@@ -448,8 +415,7 @@ TEST(AIncidentNetArray, RestoreIncidentNets2)
     verifyIncidentNets(5, 4, incident_nets, { 3 });
 }
 
-TEST(AIncidentNetArray, RestoreIncidentNets3)
-{
+TEST(AIncidentNetArray, RestoreIncidentNets3) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.removeIncidentNets(3, createFlagArray(4, { 1 }));
@@ -460,8 +426,7 @@ TEST(AIncidentNetArray, RestoreIncidentNets3)
     verifyIncidentNets(4, 4, incident_nets, { 1, 2 });
 }
 
-TEST(AIncidentNetArray, RestoreIncidentNetsAfterContraction1)
-{
+TEST(AIncidentNetArray, RestoreIncidentNetsAfterContraction1) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 2, createFlagArray(4, { 0 }));
@@ -473,8 +438,7 @@ TEST(AIncidentNetArray, RestoreIncidentNetsAfterContraction1)
     verifyIncidentNets(2, 4, incident_nets, { 0, 3 });
 }
 
-TEST(AIncidentNetArray, RestoreIncidentNetsAfterContraction2)
-{
+TEST(AIncidentNetArray, RestoreIncidentNetsAfterContraction2) {
     IncidentNetArray incident_nets(
         7, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } });
     incident_nets.contract(0, 2, createFlagArray(4, { 0 }));

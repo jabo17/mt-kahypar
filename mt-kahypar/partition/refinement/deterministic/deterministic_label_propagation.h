@@ -48,23 +48,19 @@ class DeterministicLabelPropagationRefiner final : public IRefiner
   public:
     explicit DeterministicLabelPropagationRefiner(
         const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,
-        const Context &context, gain_cache_t /* only relevant for other refiners */,
-        IRebalancer & /* only relevant for other refiners */) :
-        DeterministicLabelPropagationRefiner(num_hypernodes, num_hyperedges, context)
-    {
-    }
+        const Context& context, gain_cache_t /* only relevant for other refiners */,
+        IRebalancer& /* only relevant for other refiners */) :
+        DeterministicLabelPropagationRefiner(num_hypernodes, num_hyperedges, context) {}
 
     explicit DeterministicLabelPropagationRefiner(const HypernodeID num_hypernodes,
                                                   const HyperedgeID num_hyperedges,
-                                                  const Context &context) :
+                                                  const Context& context) :
         context(context),
         gain_computation(context, true /* disable_randomization */),
         cumulative_node_weights(num_hypernodes), moves(num_hypernodes),
         sorted_moves(num_hypernodes), current_k(context.partition.k),
-        prng(context.partition.seed), active_nodes(0)
-    {
-        if(context.refinement.deterministic_refinement.use_active_node_set)
-        {
+        prng(context.partition.seed), active_nodes(0) {
+        if(context.refinement.deterministic_refinement.use_active_node_set) {
             active_nodes.adapt_capacity(num_hypernodes);
             last_moved_in_round.resize(num_hypernodes + num_hyperedges,
                                        CAtomic<uint32_t>(0));
@@ -75,23 +71,22 @@ class DeterministicLabelPropagationRefiner final : public IRefiner
     static constexpr bool debug = false;
     static constexpr size_t invalid_pos = std::numeric_limits<size_t>::max() / 2;
 
-    bool refineImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-                    const vec<HypernodeID> &refinement_nodes, Metrics &best_metrics,
+    bool refineImpl(mt_kahypar_partitioned_hypergraph_t& hypergraph,
+                    const vec<HypernodeID>& refinement_nodes, Metrics& best_metrics,
                     double) final;
 
-    void initializeImpl(mt_kahypar_partitioned_hypergraph_t &) final
-    { /* nothing to do */
+    void initializeImpl(mt_kahypar_partitioned_hypergraph_t&) final { /* nothing to do */
     }
 
     // functions to apply moves from a sub-round
-    Gain applyMovesSortedByGainAndRevertUnbalanced(PartitionedHypergraph &phg);
+    Gain applyMovesSortedByGainAndRevertUnbalanced(PartitionedHypergraph& phg);
     std::pair<Gain, bool>
-    applyMovesByMaximalPrefixesInBlockPairs(PartitionedHypergraph &phg);
-    Gain performMoveWithAttributedGain(PartitionedHypergraph &phg, const Move &m,
+    applyMovesByMaximalPrefixesInBlockPairs(PartitionedHypergraph& phg);
+    Gain performMoveWithAttributedGain(PartitionedHypergraph& phg, const Move& m,
                                        bool activate_neighbors);
     template <typename Predicate>
-    Gain applyMovesIf(PartitionedHypergraph &phg, const vec<Move> &moves, size_t end,
-                      Predicate &&predicate);
+    Gain applyMovesIf(PartitionedHypergraph& phg, const vec<Move>& moves, size_t end,
+                      Predicate&& predicate);
 
     std::pair<size_t, size_t> findBestPrefixesRecursive(size_t p1_begin, size_t p1_end,
                                                         size_t p2_begin, size_t p2_end,
@@ -106,7 +101,7 @@ class DeterministicLabelPropagationRefiner final : public IRefiner
                                                            HypernodeWeight lb_p1,
                                                            HypernodeWeight ub_p2);
 
-    const Context &context;
+    const Context& context;
     GainComputation gain_computation;
     vec<HypernodeWeight> cumulative_node_weights;
     ds::BufferedVector<Move> moves;

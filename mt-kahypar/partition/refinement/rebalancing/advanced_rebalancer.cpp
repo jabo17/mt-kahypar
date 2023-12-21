@@ -39,15 +39,11 @@ namespace mt_kahypar {
 
 namespace impl {
 
-float transformGain(Gain gain_, HypernodeWeight wu)
-{
+float transformGain(Gain gain_, HypernodeWeight wu) {
     float gain = gain_;
-    if(gain > 0)
-    {
+    if(gain > 0) {
         gain *= wu;
-    }
-    else if(gain < 0)
-    {
+    } else if(gain < 0) {
         gain /= wu;
     }
     return gain;
@@ -55,24 +51,20 @@ float transformGain(Gain gain_, HypernodeWeight wu)
 
 template <typename PartitionedHypergraph, typename GainCache>
 std::pair<PartitionID, float>
-computeBestTargetBlock(const PartitionedHypergraph &phg, const Context &context,
-                       const GainCache &gain_cache, HypernodeID u, PartitionID from)
-{
+computeBestTargetBlock(const PartitionedHypergraph& phg, const Context& context,
+                       const GainCache& gain_cache, HypernodeID u, PartitionID from) {
     const HypernodeWeight wu = phg.nodeWeight(u);
     const HypernodeWeight from_weight = phg.partWeight(from);
     PartitionID to = kInvalidPartition;
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
-    for(PartitionID i = 0; i < context.partition.k; ++i)
-    {
-        if(i != from)
-        {
+    for(PartitionID i = 0; i < context.partition.k; ++i) {
+        if(i != from) {
             const HypernodeWeight to_weight = phg.partWeight(i);
             const HyperedgeWeight benefit = gain_cache.benefitTerm(u, i);
             if((benefit > to_benefit ||
                 (benefit == to_benefit && to_weight < best_to_weight)) &&
-               to_weight + wu <= context.partition.max_part_weights[i])
-            {
+               to_weight + wu <= context.partition.max_part_weights[i]) {
                 to_benefit = benefit;
                 to = i;
                 best_to_weight = to_weight;
@@ -81,8 +73,7 @@ computeBestTargetBlock(const PartitionedHypergraph &phg, const Context &context,
     }
 
     Gain gain = std::numeric_limits<Gain>::min();
-    if(to != kInvalidPartition)
-    {
+    if(to != kInvalidPartition) {
         gain = to_benefit - gain_cache.penaltyTerm(u, phg.partID(u));
     }
     return std::make_pair(to, transformGain(gain, wu));
@@ -90,25 +81,21 @@ computeBestTargetBlock(const PartitionedHypergraph &phg, const Context &context,
 
 template <typename PartitionedHypergraph, typename GainCache>
 std::pair<PartitionID, float>
-bestOfThree(const PartitionedHypergraph &phg, const Context &context,
-            const GainCache &gain_cache, HypernodeID u, PartitionID from,
-            std::array<PartitionID, 3> parts)
-{
+bestOfThree(const PartitionedHypergraph& phg, const Context& context,
+            const GainCache& gain_cache, HypernodeID u, PartitionID from,
+            std::array<PartitionID, 3> parts) {
     const HypernodeWeight wu = phg.nodeWeight(u);
     const HypernodeWeight from_weight = phg.partWeight(from);
     PartitionID to = kInvalidPartition;
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
-    for(PartitionID i : parts)
-    {
-        if(i != from && i != kInvalidPartition)
-        {
+    for(PartitionID i : parts) {
+        if(i != from && i != kInvalidPartition) {
             const HypernodeWeight to_weight = phg.partWeight(i);
             const HyperedgeWeight benefit = gain_cache.benefitTerm(u, i);
             if((benefit > to_benefit ||
                 (benefit == to_benefit && to_weight < best_to_weight)) &&
-               to_weight + wu <= context.partition.max_part_weights[i])
-            {
+               to_weight + wu <= context.partition.max_part_weights[i]) {
                 to_benefit = benefit;
                 to = i;
                 best_to_weight = to_weight;
@@ -116,13 +103,10 @@ bestOfThree(const PartitionedHypergraph &phg, const Context &context,
         }
     }
 
-    if(to != kInvalidPartition)
-    {
+    if(to != kInvalidPartition) {
         Gain gain = to_benefit - gain_cache.penaltyTerm(u, phg.partID(u));
         return std::make_pair(to, transformGain(gain, wu));
-    }
-    else
-    {
+    } else {
         // edge case: if u does not fit in any of the three considered blocks we need to
         // check all blocks
         return computeBestTargetBlock(phg, context, gain_cache, u, from);
@@ -134,11 +118,9 @@ struct AccessToken
     AccessToken(int seed, size_t num_pqs) : dist(0, num_pqs - 1) { rng.seed(seed); }
     size_t getRandomPQ() { return dist(rng); }
 
-    std::array<size_t, 2> getTwoRandomPQs()
-    {
+    std::array<size_t, 2> getTwoRandomPQs() {
         std::array<size_t, 2> result({ getRandomPQ(), getRandomPQ() });
-        while(result[0] == result[1])
-        {
+        while(result[0] == result[1]) {
             result[1] = getRandomPQ();
         }
         return result;
@@ -153,38 +135,32 @@ struct NextMoveFinder
 {
     Move next_move;
 
-    PartitionedHypergraph &_phg;
-    GainCache &_gain_cache;
-    const Context &_context;
+    PartitionedHypergraph& _phg;
+    GainCache& _gain_cache;
+    const Context& _context;
 
-    vec<rebalancer::GuardedPQ> &_pqs;
-    ds::Array<PartitionID> &_target_part;
-    ds::Array<rebalancer::NodeState> &_node_state;
+    vec<rebalancer::GuardedPQ>& _pqs;
+    ds::Array<PartitionID>& _target_part;
+    ds::Array<rebalancer::NodeState>& _node_state;
     AccessToken _token;
 
-    NextMoveFinder(int seed, const Context &context, PartitionedHypergraph &phg,
-                   GainCache &gain_cache, vec<rebalancer::GuardedPQ> &pqs,
-                   ds::Array<PartitionID> &target_part,
-                   ds::Array<rebalancer::NodeState> &node_state) :
+    NextMoveFinder(int seed, const Context& context, PartitionedHypergraph& phg,
+                   GainCache& gain_cache, vec<rebalancer::GuardedPQ>& pqs,
+                   ds::Array<PartitionID>& target_part,
+                   ds::Array<rebalancer::NodeState>& node_state) :
         _phg(phg),
         _gain_cache(gain_cache), _context(context), _pqs(pqs), _target_part(target_part),
-        _node_state(node_state), _token(seed, pqs.size())
-    {
-    }
+        _node_state(node_state), _token(seed, pqs.size()) {}
 
-    void recomputeTopGainMove(HypernodeID v, const Move &move /* of the neighbor */)
-    {
+    void recomputeTopGainMove(HypernodeID v, const Move& move /* of the neighbor */) {
         float gain = 0;
         PartitionID newTarget = kInvalidPartition;
         const PartitionID designatedTargetV = _target_part[v];
         if(_context.partition.k < 4 || designatedTargetV == move.from ||
-           designatedTargetV == move.to)
-        {
+           designatedTargetV == move.to) {
             std::tie(newTarget, gain) =
                 computeBestTargetBlock(_phg, _context, _gain_cache, v, _phg.partID(v));
-        }
-        else
-        {
+        } else {
             std::tie(newTarget, gain) =
                 bestOfThree(_phg, _context, _gain_cache, v, _phg.partID(v),
                             { designatedTargetV, move.from, move.to });
@@ -192,22 +168,18 @@ struct NextMoveFinder
         _target_part[v] = newTarget;
     }
 
-    bool checkCandidate(HypernodeID u, float &gain_in_pq)
-    {
+    bool checkCandidate(HypernodeID u, float& gain_in_pq) {
         if(!_node_state[u].tryLock())
             return false;
         auto [to, true_gain] =
             computeBestTargetBlock(_phg, _context, _gain_cache, u, _phg.partID(u));
-        if(true_gain >= gain_in_pq)
-        {
+        if(true_gain >= gain_in_pq) {
             next_move.node = u;
             next_move.to = to;
             next_move.from = _phg.partID(u);
             next_move.gain = true_gain;
             return true;
-        }
-        else
-        {
+        } else {
             _target_part[u] = to;
             gain_in_pq = true_gain;
             _node_state[u].unlock();
@@ -215,30 +187,23 @@ struct NextMoveFinder
         }
     }
 
-    bool lockedModifyPQ(size_t best_id)
-    {
-        auto &gpq = _pqs[best_id];
-        auto &pq = gpq.pq;
+    bool lockedModifyPQ(size_t best_id) {
+        auto& gpq = _pqs[best_id];
+        auto& pq = gpq.pq;
 
         HypernodeID node = pq.top();
         float gain_in_pq = pq.topKey();
         const bool success = checkCandidate(node, gain_in_pq);
 
-        if(success)
-        {
+        if(success) {
             pq.deleteTop();
             gpq.top_key = pq.empty() ? std::numeric_limits<float>::min() : pq.topKey();
-        }
-        else
-        {
+        } else {
             // gain was updated by success_func in this case
-            if(_target_part[node] != kInvalidPartition)
-            {
+            if(_target_part[node] != kInvalidPartition) {
                 pq.adjustKey(node, gain_in_pq);
                 gpq.top_key = pq.topKey();
-            }
-            else
-            {
+            } else {
                 pq.deleteTop();
                 gpq.top_key =
                     pq.empty() ? std::numeric_limits<float>::min() : pq.topKey();
@@ -248,14 +213,12 @@ struct NextMoveFinder
         return success;
     }
 
-    bool tryPop()
-    {
+    bool tryPop() {
         static constexpr size_t NUM_TRIES = 32;
-        for(size_t i = 0; i < NUM_TRIES; ++i)
-        {
+        for(size_t i = 0; i < NUM_TRIES; ++i) {
             auto two = _token.getTwoRandomPQs();
-            auto &first = _pqs[two[0]];
-            auto &second = _pqs[two[1]];
+            auto& first = _pqs[two[0]];
+            auto& second = _pqs[two[1]];
             if(first.pq.empty() && second.pq.empty())
                 continue;
             size_t best_id = two[0];
@@ -265,8 +228,7 @@ struct NextMoveFinder
                 continue;
             // could also check for top key. would want to distinguish tries that failed
             // due to high contention vs approaching the end
-            if(_pqs[best_id].pq.empty())
-            {
+            if(_pqs[best_id].pq.empty()) {
                 _pqs[best_id].lock.unlock();
                 continue;
             }
@@ -278,14 +240,11 @@ struct NextMoveFinder
             i = 0;
         }
 
-        while(true)
-        {
+        while(true) {
             float best_key = std::numeric_limits<float>::min();
             int best_id = -1;
-            for(size_t i = 0; i < _pqs.size(); ++i)
-            {
-                if(!_pqs[i].pq.empty() && _pqs[i].top_key > best_key)
-                {
+            for(size_t i = 0; i < _pqs.size(); ++i) {
+                if(!_pqs[i].pq.empty() && _pqs[i].top_key > best_key) {
                     best_key = _pqs[i].top_key;
                     best_id = i;
                 }
@@ -294,8 +253,7 @@ struct NextMoveFinder
                 return false;
             if(!_pqs[best_id].lock.tryLock())
                 continue;
-            if(_pqs[best_id].pq.empty())
-            {
+            if(_pqs[best_id].pq.empty()) {
                 _pqs[best_id].lock.unlock();
                 continue;
             }
@@ -307,14 +265,11 @@ struct NextMoveFinder
     bool findNextMove() { return tryPop(); }
 };
 
-void deactivateOverloadedBlock(uint8_t *is_overloaded, size_t *num_overloaded_blocks)
-{
-    if(*is_overloaded)
-    {
+void deactivateOverloadedBlock(uint8_t *is_overloaded, size_t *num_overloaded_blocks) {
+    if(*is_overloaded) {
         uint8_t expected = 1;
         if(__atomic_compare_exchange_n(is_overloaded, &expected, 0, false,
-                                       __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
-        {
+                                       __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
             __atomic_fetch_sub(num_overloaded_blocks, 1, __ATOMIC_RELAXED);
         }
     }
@@ -324,19 +279,16 @@ void deactivateOverloadedBlock(uint8_t *is_overloaded, size_t *num_overloaded_bl
 
 template <typename GraphAndGainTypes>
 void AdvancedRebalancer<GraphAndGainTypes>::insertNodesInOverloadedBlocks(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph)
-{
-    auto &phg = utils::cast<PartitionedHypergraph>(hypergraph);
+    mt_kahypar_partitioned_hypergraph_t& hypergraph) {
+    auto& phg = utils::cast<PartitionedHypergraph>(hypergraph);
 
     // init PQs if not done before
     const size_t num_pqs = 2 * _context.shared_memory.num_threads;
-    if(_pqs.size() != num_pqs)
-    {
+    if(_pqs.size() != num_pqs) {
         _pqs.assign(num_pqs,
                     rebalancer::GuardedPQ(_pq_handles.data(), _node_state.size()));
     }
-    for(auto &gpq : _pqs)
-    {
+    for(auto& gpq : _pqs) {
         gpq.reset();
     }
 
@@ -360,13 +312,11 @@ void AdvancedRebalancer<GraphAndGainTypes>::insertNodesInOverloadedBlocks(
         _node_state[u].markAsMovable();
         _target_part[u] = target;
 
-        auto &token = ets_tokens.local();
+        auto& token = ets_tokens.local();
         int my_pq_id = -1;
-        while(true)
-        {
+        while(true) {
             my_pq_id = token.getRandomPQ();
-            if(_pqs[my_pq_id].lock.tryLock())
-            {
+            if(_pqs[my_pq_id].lock.tryLock()) {
                 break;
             }
         }
@@ -375,10 +325,8 @@ void AdvancedRebalancer<GraphAndGainTypes>::insertNodesInOverloadedBlocks(
         _pq_id[u] = my_pq_id;
     });
 
-    for(rebalancer::GuardedPQ &gpq : _pqs)
-    {
-        if(!gpq.pq.empty())
-        {
+    for(rebalancer::GuardedPQ& gpq : _pqs) {
+        if(!gpq.pq.empty()) {
             gpq.top_key = gpq.pq.topKey();
         }
     }
@@ -386,9 +334,8 @@ void AdvancedRebalancer<GraphAndGainTypes>::insertNodesInOverloadedBlocks(
 
 template <typename GraphAndGainTypes>
 std::pair<int64_t, size_t> AdvancedRebalancer<GraphAndGainTypes>::findMoves(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph)
-{
-    auto &phg = utils::cast<PartitionedHypergraph>(hypergraph);
+    mt_kahypar_partitioned_hypergraph_t& hypergraph) {
+    auto& phg = utils::cast<PartitionedHypergraph>(hypergraph);
     int64_t attributed_gain = 0;
     size_t global_move_id = 0;
     size_t num_overloaded_blocks = _overloaded_blocks.size();
@@ -404,14 +351,12 @@ std::pair<int64_t, size_t> AdvancedRebalancer<GraphAndGainTypes>::findMoves(
         impl::NextMoveFinder next_move_finder(seed, _context, phg, _gain_cache, _pqs,
                                               _target_part, _node_state);
 
-        while(num_overloaded_blocks > 0 && next_move_finder.findNextMove())
-        {
-            const Move &m = next_move_finder.next_move;
+        while(num_overloaded_blocks > 0 && next_move_finder.findNextMove()) {
+            const Move& m = next_move_finder.next_move;
             const PartitionID from = phg.partID(m.node);
             _node_state[m.node].markAsMovedAndUnlock();
 
-            if(phg.partWeight(from) <= _context.partition.max_part_weights[from])
-            {
+            if(phg.partWeight(from) <= _context.partition.max_part_weights[from]) {
                 impl::deactivateOverloadedBlock(&_is_overloaded[from],
                                                 &num_overloaded_blocks);
                 continue;
@@ -425,11 +370,10 @@ std::pair<int64_t, size_t> AdvancedRebalancer<GraphAndGainTypes>::findMoves(
                 [&] {
                     move_id = __atomic_fetch_add(&global_move_id, 1, __ATOMIC_RELAXED);
                 },
-                [&](const SynchronizedEdgeUpdate &sync_update) {
+                [&](const SynchronizedEdgeUpdate& sync_update) {
                     local_attributed_gain += AttributedGains::gain(sync_update);
                     if(!PartitionedHypergraph::is_graph &&
-                       GainCache::triggersDeltaGainUpdate(sync_update))
-                    {
+                       GainCache::triggersDeltaGainUpdate(sync_update)) {
                         edges_with_gain_changes.push_back(sync_update.he);
                     }
                 });
@@ -438,12 +382,10 @@ std::pair<int64_t, size_t> AdvancedRebalancer<GraphAndGainTypes>::findMoves(
                 continue;
 
             auto update_neighbor = [&](HypernodeID v) {
-                if(v != m.node && _node_state[v].tryLock())
-                {
+                if(v != m.node && _node_state[v].tryLock()) {
                     int my_pq_id = _pq_id[v];
                     assert(my_pq_id != -1);
-                    if(nodes_to_update[my_pq_id].empty())
-                    {
+                    if(nodes_to_update[my_pq_id].empty()) {
                         pqs_to_update.push_back(my_pq_id);
                     }
                     nodes_to_update[my_pq_id].push_back(v);
@@ -452,52 +394,37 @@ std::pair<int64_t, size_t> AdvancedRebalancer<GraphAndGainTypes>::findMoves(
             };
 
             // update neighbors
-            if constexpr(PartitionedHypergraph::is_graph)
-            {
-                for(const auto e : phg.incidentEdges(m.node))
-                {
+            if constexpr(PartitionedHypergraph::is_graph) {
+                for(const auto e : phg.incidentEdges(m.node)) {
                     HypernodeID v = phg.edgeTarget(e);
                     update_neighbor(v);
                 }
-            }
-            else
-            {
-                for(HyperedgeID e : edges_with_gain_changes)
-                {
+            } else {
+                for(HyperedgeID e : edges_with_gain_changes) {
                     if(phg.edgeSize(e) <
-                       _context.partition.ignore_hyperedge_size_threshold)
-                    {
-                        for(HypernodeID v : phg.pins(e))
-                        {
+                       _context.partition.ignore_hyperedge_size_threshold) {
+                        for(HypernodeID v : phg.pins(e)) {
                             update_neighbor(v);
                         }
                     }
                 }
             }
 
-            while(!pqs_to_update.empty())
-            {
-                for(size_t i = 0; i < pqs_to_update.size(); ++i)
-                {
+            while(!pqs_to_update.empty()) {
+                for(size_t i = 0; i < pqs_to_update.size(); ++i) {
                     int my_pq_id = pqs_to_update[i];
-                    auto &gpq = _pqs[my_pq_id];
-                    auto &pq = gpq.pq;
-                    if(gpq.lock.tryLock())
-                    {
-                        for(HypernodeID v : nodes_to_update[my_pq_id])
-                        {
-                            if(pq.contains(v))
-                            {
-                                if(_target_part[v] != kInvalidPartition)
-                                {
+                    auto& gpq = _pqs[my_pq_id];
+                    auto& pq = gpq.pq;
+                    if(gpq.lock.tryLock()) {
+                        for(HypernodeID v : nodes_to_update[my_pq_id]) {
+                            if(pq.contains(v)) {
+                                if(_target_part[v] != kInvalidPartition) {
                                     Gain new_gain_int = _gain_cache.gain(v, phg.partID(v),
                                                                          _target_part[v]);
                                     float new_gain = impl::transformGain(
                                         new_gain_int, phg.nodeWeight(v));
                                     pq.adjustKey(v, new_gain);
-                                }
-                                else
-                                {
+                                } else {
                                     pq.remove(v);
                                 }
                             }
@@ -518,8 +445,7 @@ std::pair<int64_t, size_t> AdvancedRebalancer<GraphAndGainTypes>::findMoves(
     };
 
     tbb::task_group tg;
-    for(size_t i = 0; i < _context.shared_memory.num_threads; ++i)
-    {
+    for(size_t i = 0; i < _context.shared_memory.num_threads; ++i) {
         tg.run(std::bind(task, i));
     }
     tg.wait();
@@ -529,17 +455,14 @@ std::pair<int64_t, size_t> AdvancedRebalancer<GraphAndGainTypes>::findMoves(
 
 template <typename GraphAndGainTypes>
 bool AdvancedRebalancer<GraphAndGainTypes>::refineInternalParallel(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph, vec<vec<Move> > *moves_by_part,
-    vec<Move> *moves_linear, Metrics &best_metric)
-{
-    auto &phg = utils::cast<PartitionedHypergraph>(hypergraph);
+    mt_kahypar_partitioned_hypergraph_t& hypergraph, vec<vec<Move> > *moves_by_part,
+    vec<Move> *moves_linear, Metrics& best_metric) {
+    auto& phg = utils::cast<PartitionedHypergraph>(hypergraph);
 
     _overloaded_blocks.clear();
     _is_overloaded.assign(_context.partition.k, false);
-    for(PartitionID k = 0; k < _context.partition.k; ++k)
-    {
-        if(phg.partWeight(k) > _context.partition.max_part_weights[k])
-        {
+    for(PartitionID k = 0; k < _context.partition.k; ++k) {
+        if(phg.partWeight(k) > _context.partition.max_part_weights[k]) {
             _overloaded_blocks.push_back(k);
             _is_overloaded[k] = 1;
         }
@@ -549,22 +472,17 @@ bool AdvancedRebalancer<GraphAndGainTypes>::refineInternalParallel(
 
     auto [attributed_gain, num_moves_performed] = findMoves(hypergraph);
 
-    if(moves_by_part != nullptr)
-    {
+    if(moves_by_part != nullptr) {
         moves_by_part->resize(_context.partition.k);
-        for(auto &direction : *moves_by_part)
+        for(auto& direction : *moves_by_part)
             direction.clear();
-        for(size_t i = 0; i < num_moves_performed; ++i)
-        {
+        for(size_t i = 0; i < num_moves_performed; ++i) {
             (*moves_by_part)[_moves[i].from].push_back(_moves[i]);
         }
-    }
-    else if(moves_linear != nullptr)
-    {
+    } else if(moves_linear != nullptr) {
         moves_linear->clear();
         moves_linear->reserve(num_moves_performed);
-        for(size_t i = 0; i < num_moves_performed; ++i)
-        {
+        for(size_t i = 0; i < num_moves_performed; ++i) {
             moves_linear->push_back(_moves[i]);
         }
     }
@@ -573,18 +491,15 @@ bool AdvancedRebalancer<GraphAndGainTypes>::refineInternalParallel(
     best_metric.imbalance = metrics::imbalance(phg, _context);
 
     size_t num_overloaded_blocks = 0;
-    for(PartitionID b = 0; b < _context.partition.k; ++b)
-    {
-        if(phg.partWeight(b) > _context.partition.max_part_weights[b])
-        {
+    for(PartitionID b = 0; b < _context.partition.k; ++b) {
+        if(phg.partWeight(b) > _context.partition.max_part_weights[b]) {
             num_overloaded_blocks++;
         }
     }
 
     phg.doParallelForAllNodes([&](HypernodeID u) { _node_state[u].reset(); });
 
-    for(auto &gpq : _pqs)
-    {
+    for(auto& gpq : _pqs) {
         gpq.pq.clear();
     }
 
@@ -593,57 +508,48 @@ bool AdvancedRebalancer<GraphAndGainTypes>::refineInternalParallel(
 
 template <typename GraphAndGainTypes>
 AdvancedRebalancer<GraphAndGainTypes>::AdvancedRebalancer(HypernodeID num_nodes,
-                                                          const Context &context,
-                                                          GainCache &gain_cache) :
+                                                          const Context& context,
+                                                          GainCache& gain_cache) :
     _context(context),
     _gain_cache(gain_cache), _current_k(_context.partition.k), _gain(context),
     _moves(num_nodes), _target_part(num_nodes, kInvalidPartition),
     _pq_handles(num_nodes, invalid_position), _pq_id(num_nodes, -1),
-    _node_state(num_nodes)
-{
-}
+    _node_state(num_nodes) {}
 
 template <typename GraphAndGainTypes>
 AdvancedRebalancer<GraphAndGainTypes>::AdvancedRebalancer(HypernodeID num_nodes,
-                                                          const Context &context,
+                                                          const Context& context,
                                                           gain_cache_t gain_cache) :
-    AdvancedRebalancer(num_nodes, context, GainCachePtr::cast<GainCache>(gain_cache))
-{
-}
+    AdvancedRebalancer(num_nodes, context, GainCachePtr::cast<GainCache>(gain_cache)) {}
 
 template <typename GraphAndGainTypes>
 bool AdvancedRebalancer<GraphAndGainTypes>::refineImpl(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph, const vec<HypernodeID> &,
-    Metrics &best_metrics, double)
-{
+    mt_kahypar_partitioned_hypergraph_t& hypergraph, const vec<HypernodeID>&,
+    Metrics& best_metrics, double) {
     return refineInternalParallel(hypergraph, nullptr, nullptr, best_metrics);
 }
 
 template <typename GraphAndGainTypes>
 void AdvancedRebalancer<GraphAndGainTypes>::initializeImpl(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph)
-{
-    auto &phg = utils::cast<PartitionedHypergraph>(hypergraph);
+    mt_kahypar_partitioned_hypergraph_t& hypergraph) {
+    auto& phg = utils::cast<PartitionedHypergraph>(hypergraph);
 
-    if(!_gain_cache.isInitialized())
-    {
+    if(!_gain_cache.isInitialized()) {
         _gain_cache.initializeGainCache(phg);
     }
 }
 
 template <typename GraphAndGainTypes>
 bool AdvancedRebalancer<GraphAndGainTypes>::refineAndOutputMovesImpl(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph, const vec<HypernodeID> &,
-    vec<vec<Move> > &moves_by_part, Metrics &best_metrics, const double)
-{
+    mt_kahypar_partitioned_hypergraph_t& hypergraph, const vec<HypernodeID>&,
+    vec<vec<Move> >& moves_by_part, Metrics& best_metrics, const double) {
     return refineInternalParallel(hypergraph, &moves_by_part, nullptr, best_metrics);
 }
 
 template <typename GraphAndGainTypes>
 bool AdvancedRebalancer<GraphAndGainTypes>::refineAndOutputMovesLinearImpl(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph, const vec<HypernodeID> &,
-    vec<Move> &moves, Metrics &best_metrics, const double)
-{
+    mt_kahypar_partitioned_hypergraph_t& hypergraph, const vec<HypernodeID>&,
+    vec<Move>& moves, Metrics& best_metrics, const double) {
     return refineInternalParallel(hypergraph, nullptr, &moves, best_metrics);
 }
 

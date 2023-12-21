@@ -56,31 +56,25 @@ class FixedVertexSupport
   public:
     FixedVertexSupport() :
         _num_nodes(0), _k(kInvalidPartition), _hg(nullptr), _total_fixed_vertex_weight(0),
-        _fixed_vertex_block_weights(), _max_block_weights(), _fixed_vertex_data()
-    {
-    }
+        _fixed_vertex_block_weights(), _max_block_weights(), _fixed_vertex_data() {}
 
     FixedVertexSupport(const HypernodeID num_nodes, const PartitionID k) :
         _num_nodes(num_nodes), _k(k), _hg(nullptr), _total_fixed_vertex_weight(0),
         _fixed_vertex_block_weights(k, CAtomic<HypernodeWeight>(0)),
         _max_block_weights(k, std::numeric_limits<HypernodeWeight>::max()),
         _fixed_vertex_data(num_nodes,
-                           FixedVertexData{ kInvalidPartition, 0, 0, SpinLock() })
-    {
-    }
+                           FixedVertexData{ kInvalidPartition, 0, 0, SpinLock() }) {}
 
-    FixedVertexSupport(const FixedVertexSupport &) = delete;
-    FixedVertexSupport &operator=(const FixedVertexSupport &) = delete;
+    FixedVertexSupport(const FixedVertexSupport&) = delete;
+    FixedVertexSupport& operator=(const FixedVertexSupport&) = delete;
 
-    FixedVertexSupport(FixedVertexSupport &&) = default;
-    FixedVertexSupport &operator=(FixedVertexSupport &&) = default;
+    FixedVertexSupport(FixedVertexSupport&&) = default;
+    FixedVertexSupport& operator=(FixedVertexSupport&&) = default;
 
     void setHypergraph(const Hypergraph *hg) { _hg = hg; }
 
-    void setMaxBlockWeight(const std::vector<HypernodeWeight> max_block_weights)
-    {
-        if(hasFixedVertices())
-        {
+    void setMaxBlockWeight(const std::vector<HypernodeWeight> max_block_weights) {
+        if(hasFixedVertices()) {
             ASSERT(max_block_weights.size() >= static_cast<size_t>(_k));
             _max_block_weights = max_block_weights;
         }
@@ -90,20 +84,17 @@ class FixedVertexSupport
 
     // ####################### Fixed Vertex Block Weights #######################
 
-    bool hasFixedVertices() const
-    {
+    bool hasFixedVertices() const {
         return _total_fixed_vertex_weight.load(std::memory_order_relaxed) > 0;
     }
 
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HypernodeWeight totalFixedVertexWeight() const
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HypernodeWeight totalFixedVertexWeight() const {
         return _total_fixed_vertex_weight.load(std::memory_order_relaxed);
     }
 
     // ! Returns the weight of all fixed vertices assigned to the corresponding block
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HypernodeWeight
-    fixedVertexBlockWeight(const PartitionID block) const
-    {
+    fixedVertexBlockWeight(const PartitionID block) const {
         ASSERT(block != kInvalidPartition && block < _k);
         return _fixed_vertex_block_weights[block].load(std::memory_order_relaxed);
     }
@@ -111,25 +102,21 @@ class FixedVertexSupport
     // ####################### Fixed Vertex Information #######################
 
     // ! Fixes a node to a block
-    void fixToBlock(const HypernodeID hn, const PartitionID block)
-    {
+    void fixToBlock(const HypernodeID hn, const PartitionID block) {
         ASSERT(_hg);
         ASSERT(hn < _num_nodes);
         ASSERT(block != kInvalidPartition && block < _k);
         PartitionID expected = kInvalidPartition;
         PartitionID desired = block;
         if(__atomic_compare_exchange_n(&_fixed_vertex_data[hn].block, &expected, desired,
-                                       false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
-        {
+                                       false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) {
             const HypernodeWeight weight_of_hn = _hg->nodeWeight(hn);
             _fixed_vertex_data[hn].fixed_vertex_contraction_cnt = 1;
             _fixed_vertex_data[hn].fixed_vertex_weight = weight_of_hn;
             _fixed_vertex_block_weights[block].fetch_add(weight_of_hn,
                                                          std::memory_order_relaxed);
             _total_fixed_vertex_weight.fetch_add(weight_of_hn, std::memory_order_relaxed);
-        }
-        else
-        {
+        } else {
             ASSERT(_fixed_vertex_data[hn].block == block,
                    "Try to fix hypernode" << hn << "to block" << block
                                           << ", but it is already fixed to block"
@@ -138,15 +125,13 @@ class FixedVertexSupport
     }
 
     // ! Returns whether or not the node is fixed to a block
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE bool isFixed(const HypernodeID hn) const
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE bool isFixed(const HypernodeID hn) const {
         return hn < _num_nodes && fixedVertexBlock(hn) != kInvalidPartition;
     }
 
     // ! Returns the fixed vertex block of the node
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE PartitionID
-    fixedVertexBlock(const HypernodeID hn) const
-    {
+    fixedVertexBlock(const HypernodeID hn) const {
         ASSERT(hn < _num_nodes);
         return __atomic_load_n(&_fixed_vertex_data[hn].block, __ATOMIC_RELAXED);
     }
@@ -165,8 +150,7 @@ class FixedVertexSupport
 
     // ####################### Miscellaneous #######################
 
-    FixedVertexSupport<Hypergraph> copy() const
-    {
+    FixedVertexSupport<Hypergraph> copy() const {
         FixedVertexSupport<Hypergraph> cpy;
         cpy._num_nodes = _num_nodes;
         cpy._k = _k;
@@ -178,8 +162,7 @@ class FixedVertexSupport
         return cpy;
     }
 
-    size_t size_in_bytes() const
-    {
+    size_t size_in_bytes() const {
         return (sizeof(CAtomic<HypernodeWeight>) + sizeof(HypernodeWeight)) * _k +
                sizeof(FixedVertexData) * _num_nodes;
     }

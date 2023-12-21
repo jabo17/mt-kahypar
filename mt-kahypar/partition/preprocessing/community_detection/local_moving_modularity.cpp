@@ -37,8 +37,7 @@
 
 namespace mt_kahypar::metrics {
 template <typename Hypergraph>
-double modularity(const Graph<Hypergraph> &graph, const ds::Clustering &communities)
-{
+double modularity(const Graph<Hypergraph>& graph, const ds::Clustering& communities) {
     ASSERT(graph.canBeUsed());
     ASSERT(graph.numNodes() == communities.size());
     vec<NodeID> nodes(graph.numNodes());
@@ -56,16 +55,12 @@ double modularity(const Graph<Hypergraph> &graph, const ds::Clustering &communit
         NodeID x = nodes[pos];
         PartitionID comm = communities[x];
         double comm_vol = 0.0, internal = 0.0;
-        if(pos == 0 || communities[nodes[pos - 1]] != comm)
-        {
-            for(size_t i = pos; i < nodes.size() && communities[nodes[i]] == comm; ++i)
-            {
+        if(pos == 0 || communities[nodes[pos - 1]] != comm) {
+            for(size_t i = pos; i < nodes.size() && communities[nodes[i]] == comm; ++i) {
                 NodeID u = nodes[i];
                 comm_vol += graph.nodeVolume(u);
-                for(const Arc &arc : graph.arcsOf(u))
-                {
-                    if(communities[arc.head] != comm)
-                    {
+                for(const Arc& arc : graph.arcsOf(u)) {
+                    if(communities[arc.head] != comm) {
                         internal -= arc.weight;
                     }
                 }
@@ -76,7 +71,7 @@ double modularity(const Graph<Hypergraph> &graph, const ds::Clustering &communit
     });
 
     auto r = tbb::blocked_range<size_t>(UL(0), graph.numNodes(), 1000);
-    auto combine_range = [&](const tbb::blocked_range<size_t> &r, double partial) {
+    auto combine_range = [&](const tbb::blocked_range<size_t>& r, double partial) {
         return std::accumulate(cluster_mod.begin() + r.begin(),
                                cluster_mod.begin() + r.end(), partial);
     };
@@ -85,7 +80,7 @@ double modularity(const Graph<Hypergraph> &graph, const ds::Clustering &communit
 }
 
 namespace {
-#define MODULARITY(X) double modularity(const Graph<X> &, const ds::Clustering &)
+#define MODULARITY(X) double modularity(const Graph<X>&, const ds::Clustering&)
 }
 
 INSTANTIATE_FUNC_WITH_HYPERGRAPHS(MODULARITY)
@@ -95,25 +90,21 @@ INSTANTIATE_FUNC_WITH_HYPERGRAPHS(MODULARITY)
 namespace mt_kahypar::community_detection {
 
 template <class Hypergraph>
-bool ParallelLocalMovingModularity<Hypergraph>::localMoving(Graph<Hypergraph> &graph,
-                                                            ds::Clustering &communities)
-{
+bool ParallelLocalMovingModularity<Hypergraph>::localMoving(Graph<Hypergraph>& graph,
+                                                            ds::Clustering& communities) {
     ASSERT(graph.canBeUsed());
     _max_degree = graph.max_degree();
     _reciprocal_total_volume = 1.0 / graph.totalVolume();
     _vol_multiplier_div_by_node_vol = _reciprocal_total_volume;
 
     // init
-    if(_context.partition.deterministic)
-    {
+    if(_context.partition.deterministic) {
         tbb::parallel_for(UL(0), graph.numNodes(), [&](NodeID u) {
             communities[u] = u;
             _cluster_volumes[u].store(graph.nodeVolume(u), std::memory_order_relaxed);
         });
-    }
-    else
-    {
-        auto &nodes = permutation.permutation;
+    } else {
+        auto& nodes = permutation.permutation;
         nodes.resize(graph.numNodes());
         tbb::parallel_for(0U, static_cast<NodeID>(graph.numNodes()), [&](const NodeID u) {
             nodes[u] = u;
@@ -126,22 +117,17 @@ bool ParallelLocalMovingModularity<Hypergraph>::localMoving(Graph<Hypergraph> &g
 
     // local moving
     bool clustering_changed = false;
-    if(graph.numArcs() > 0)
-    {
+    if(graph.numArcs() > 0) {
         size_t number_of_nodes_moved = graph.numNodes();
         for(size_t round = 0;
             number_of_nodes_moved >=
                 _context.preprocessing.community_detection.min_vertex_move_fraction *
                     graph.numNodes() &&
             round < _context.preprocessing.community_detection.max_pass_iterations;
-            round++)
-        {
-            if(_context.partition.deterministic)
-            {
+            round++) {
+            if(_context.partition.deterministic) {
                 number_of_nodes_moved = synchronousParallelRound(graph, communities);
-            }
-            else
-            {
+            } else {
                 number_of_nodes_moved = parallelNonDeterministicRound(graph, communities);
             }
             clustering_changed |= number_of_nodes_moved > 0;
@@ -154,10 +140,8 @@ bool ParallelLocalMovingModularity<Hypergraph>::localMoving(Graph<Hypergraph> &g
 
 template <class Hypergraph>
 size_t ParallelLocalMovingModularity<Hypergraph>::synchronousParallelRound(
-    const Graph<Hypergraph> &graph, ds::Clustering &communities)
-{
-    if(graph.numNodes() < 200)
-    {
+    const Graph<Hypergraph>& graph, ds::Clustering& communities) {
+    if(graph.numNodes() < 200) {
         return sequentialRound(graph, communities);
     }
 
@@ -172,8 +156,7 @@ size_t ParallelLocalMovingModularity<Hypergraph>::synchronousParallelRound(
         parallel::chunking::idiv_ceil(num_buckets, num_sub_rounds);
 
     size_t max_round_size = 0;
-    for(size_t sub_round = 0; sub_round < num_sub_rounds; ++sub_round)
-    {
+    for(size_t sub_round = 0; sub_round < num_sub_rounds; ++sub_round) {
         auto [first_bucket, last_bucket] =
             parallel::chunking::bounds(sub_round, num_buckets, num_buckets_per_sub_round);
         max_round_size =
@@ -183,8 +166,7 @@ size_t ParallelLocalMovingModularity<Hypergraph>::synchronousParallelRound(
     volume_updates_to.adapt_capacity(max_round_size);
     volume_updates_from.adapt_capacity(max_round_size);
 
-    for(size_t sub_round = 0; sub_round < num_sub_rounds; ++sub_round)
-    {
+    for(size_t sub_round = 0; sub_round < num_sub_rounds; ++sub_round) {
         auto [first_bucket, last_bucket] =
             parallel::chunking::bounds(sub_round, num_buckets, num_buckets_per_sub_round);
         assert(first_bucket < last_bucket &&
@@ -196,8 +178,7 @@ size_t ParallelLocalMovingModularity<Hypergraph>::synchronousParallelRound(
         tbb::parallel_for(first, last, [&](size_t pos) {
             HypernodeID u = permutation.at(pos);
             PartitionID best_cluster = computeMaxGainCluster(graph, communities, u);
-            if(best_cluster != communities[u])
-            {
+            if(best_cluster != communities[u]) {
                 volume_updates_from.push_back_buffered({ communities[u], u });
                 volume_updates_to.push_back_buffered({ best_cluster, u });
                 num_moved_local.local() += 1;
@@ -224,11 +205,9 @@ size_t ParallelLocalMovingModularity<Hypergraph>::synchronousParallelRound(
         const size_t sz_to = volume_updates_to.size();
         tbb::parallel_for(UL(0), sz_to, [&](size_t pos) {
             PartitionID c = volume_updates_to[pos].cluster;
-            if(pos == 0 || volume_updates_to[pos - 1].cluster != c)
-            {
+            if(pos == 0 || volume_updates_to[pos - 1].cluster != c) {
                 ArcWeight vol_delta = 0.0;
-                for(; pos < sz_to && volume_updates_to[pos].cluster == c; ++pos)
-                {
+                for(; pos < sz_to && volume_updates_to[pos].cluster == c; ++pos) {
                     vol_delta += graph.nodeVolume(volume_updates_to[pos].node);
                     communities[volume_updates_to[pos].node] = c;
                 }
@@ -242,11 +221,9 @@ size_t ParallelLocalMovingModularity<Hypergraph>::synchronousParallelRound(
         const size_t sz_from = volume_updates_from.size();
         tbb::parallel_for(UL(0), sz_from, [&](size_t pos) {
             PartitionID c = volume_updates_from[pos].cluster;
-            if(pos == 0 || volume_updates_from[pos - 1].cluster != c)
-            {
+            if(pos == 0 || volume_updates_from[pos - 1].cluster != c) {
                 ArcWeight vol_delta = 0.0;
-                for(; pos < sz_from && volume_updates_from[pos].cluster == c; ++pos)
-                {
+                for(; pos < sz_from && volume_updates_from[pos].cluster == c; ++pos) {
                     vol_delta -= graph.nodeVolume(volume_updates_from[pos].node);
                 }
                 _cluster_volumes[c].store(
@@ -262,18 +239,15 @@ size_t ParallelLocalMovingModularity<Hypergraph>::synchronousParallelRound(
 
 template <class Hypergraph>
 size_t
-ParallelLocalMovingModularity<Hypergraph>::sequentialRound(const Graph<Hypergraph> &graph,
-                                                           ds::Clustering &communities)
-{
+ParallelLocalMovingModularity<Hypergraph>::sequentialRound(const Graph<Hypergraph>& graph,
+                                                           ds::Clustering& communities) {
     size_t seed = prng();
     permutation.sequential_fallback(graph.numNodes(), seed);
     size_t num_moved = 0;
-    for(size_t i = 0; i < graph.numNodes(); ++i)
-    {
+    for(size_t i = 0; i < graph.numNodes(); ++i) {
         NodeID u = permutation.at(i);
         PartitionID best_cluster = computeMaxGainCluster(graph, communities, u);
-        if(best_cluster != communities[u])
-        {
+        if(best_cluster != communities[u]) {
             _cluster_volumes[best_cluster] += graph.nodeVolume(u);
             _cluster_volumes[communities[u]] -= graph.nodeVolume(u);
             communities[u] = best_cluster;
@@ -285,11 +259,9 @@ ParallelLocalMovingModularity<Hypergraph>::sequentialRound(const Graph<Hypergrap
 
 template <class Hypergraph>
 size_t ParallelLocalMovingModularity<Hypergraph>::parallelNonDeterministicRound(
-    const Graph<Hypergraph> &graph, ds::Clustering &communities)
-{
-    auto &nodes = permutation.permutation;
-    if(!_disable_randomization)
-    {
+    const Graph<Hypergraph>& graph, ds::Clustering& communities) {
+    auto& nodes = permutation.permutation;
+    if(!_disable_randomization) {
         utils::Randomize::instance().parallelShuffleVector(nodes, UL(0), nodes.size());
     }
 
@@ -298,8 +270,7 @@ size_t ParallelLocalMovingModularity<Hypergraph>::parallelNonDeterministicRound(
         const ArcWeight volU = graph.nodeVolume(u);
         const PartitionID from = communities[u];
         PartitionID best_cluster = computeMaxGainCluster(graph, communities, u);
-        if(best_cluster != from)
-        {
+        if(best_cluster != from) {
             _cluster_volumes[best_cluster] += volU;
             _cluster_volumes[from] -= volU;
             communities[u] = best_cluster;
@@ -318,11 +289,9 @@ size_t ParallelLocalMovingModularity<Hypergraph>::parallelNonDeterministicRound(
 
 template <class Hypergraph>
 bool ParallelLocalMovingModularity<Hypergraph>::verifyGain(
-    const Graph<Hypergraph> &graph, const ds::Clustering &communities, const NodeID u,
-    const PartitionID to, double gain, double weight_from, double weight_to)
-{
-    if(_context.partition.deterministic)
-    {
+    const Graph<Hypergraph>& graph, const ds::Clustering& communities, const NodeID u,
+    const PartitionID to, double gain, double weight_from, double weight_to) {
+    if(_context.partition.deterministic) {
         // the check is omitted, since changing the cluster volumes breaks determinism
         return true;
     }
@@ -337,8 +306,7 @@ bool ParallelLocalMovingModularity<Hypergraph>::verifyGain(
         modGain, weight_from, _cluster_volumes[from], graph.nodeVolume(u));
     unused(adjustedGainRecomputed);
 
-    if(from == to)
-    {
+    if(from == to) {
         adjustedGainRecomputed = 0.0L;
         adjustedGain = 0.0L;
     }
@@ -384,18 +352,15 @@ bool ParallelLocalMovingModularity<Hypergraph>::verifyGain(
 
 template <class Hypergraph>
 std::pair<ArcWeight, ArcWeight> ParallelLocalMovingModularity<Hypergraph>::
-    intraClusterWeightsAndSumOfSquaredClusterVolumes(const Graph<Hypergraph> &graph,
-                                                     const ds::Clustering &communities)
-{
+    intraClusterWeightsAndSumOfSquaredClusterVolumes(const Graph<Hypergraph>& graph,
+                                                     const ds::Clustering& communities) {
     ArcWeight intraClusterWeights = 0;
     ArcWeight sumOfSquaredClusterVolumes = 0;
     vec<ArcWeight> cluster_volumes(graph.numNodes(), 0);
 
-    for(NodeID u : graph.nodes())
-    {
+    for(NodeID u : graph.nodes()) {
         ArcWeight arcVol = 0;
-        for(const Arc &arc : graph.arcsOf(u))
-        {
+        for(const Arc& arc : graph.arcsOf(u)) {
             if(communities[u] == communities[arc.head])
                 intraClusterWeights += arc.weight;
             arcVol += arc.weight;
@@ -408,8 +373,7 @@ std::pair<ArcWeight, ArcWeight> ParallelLocalMovingModularity<Hypergraph>::
         cluster_volumes[communities[u]] += graph.nodeVolume(u);
     }
 
-    for(NodeID cluster : graph.nodes())
-    { // unused cluster IDs have volume 0
+    for(NodeID cluster : graph.nodes()) { // unused cluster IDs have volume 0
         sumOfSquaredClusterVolumes += cluster_volumes[cluster] * cluster_volumes[cluster];
     }
     return std::make_pair(intraClusterWeights, sumOfSquaredClusterVolumes);
@@ -417,8 +381,7 @@ std::pair<ArcWeight, ArcWeight> ParallelLocalMovingModularity<Hypergraph>::
 
 template <class Hypergraph>
 void ParallelLocalMovingModularity<Hypergraph>::initializeClusterVolumes(
-    const Graph<Hypergraph> &graph, ds::Clustering &communities)
-{
+    const Graph<Hypergraph>& graph, ds::Clustering& communities) {
     _reciprocal_total_volume = 1.0 / graph.totalVolume();
     _vol_multiplier_div_by_node_vol = _reciprocal_total_volume;
     tbb::parallel_for(0U, static_cast<NodeID>(graph.numNodes()), [&](const NodeID u) {
@@ -428,8 +391,7 @@ void ParallelLocalMovingModularity<Hypergraph>::initializeClusterVolumes(
 }
 
 template <class Hypergraph>
-ParallelLocalMovingModularity<Hypergraph>::~ParallelLocalMovingModularity()
-{
+ParallelLocalMovingModularity<Hypergraph>::~ParallelLocalMovingModularity() {
     /*
       tbb::parallel_invoke([&] {
         parallel::parallel_free_thread_local_internal_data(

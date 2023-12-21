@@ -8,8 +8,7 @@
 // Install library interface via 'sudo make install.mtkahypar' in build folder
 // Compile with: g++ -std=c++14 -DNDEBUG -O3 map_hypergraph_onto_target_graph.cc -o
 // example -lmtkahypar
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 
     // Initialize thread pool
     mt_kahypar_initialize_thread_pool(
@@ -60,8 +59,7 @@ int main(int argc, char *argv[])
     std::cout << "Partitioning Results:" << std::endl;
     std::cout << "Imbalance           = " << imbalance << std::endl;
     std::cout << "Steiner Tree Metric = " << steiner_tree_metric << std::endl;
-    for(size_t i = 0; i < 8; ++i)
-    {
+    for(size_t i = 0; i < 8; ++i) {
         std::cout << "Weight of Block " << i << "   = " << block_weights[i] << std::endl;
     }
 

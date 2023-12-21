@@ -80,7 +80,7 @@ using FlowRefinementDispatcher = kahypar::meta::StaticMultiDispatchFactory<
     static kahypar::meta::Registrar<LabelPropagationFactory> register_##dispatcher(      \
         id,                                                                              \
         [](const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,           \
-           const Context &context, gain_cache_t gain_cache, IRebalancer &rebalancer) {   \
+           const Context& context, gain_cache_t gain_cache, IRebalancer& rebalancer) {   \
             return dispatcher::create(std::forward_as_tuple(num_hypernodes,              \
                                                             num_hyperedges, context,     \
                                                             gain_cache, rebalancer),     \
@@ -92,8 +92,8 @@ using FlowRefinementDispatcher = kahypar::meta::StaticMultiDispatchFactory<
                                                                   t)(                    \
         id,                                                                              \
         [](const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,           \
-           const Context &context, gain_cache_t gain_cache,                              \
-           IRebalancer &rebalancer) -> IRefiner * {                                      \
+           const Context& context, gain_cache_t gain_cache,                              \
+           IRebalancer& rebalancer) -> IRefiner * {                                      \
             return new refiner(num_hypernodes, num_hyperedges, context, gain_cache,      \
                                rebalancer);                                              \
         })
@@ -102,7 +102,7 @@ using FlowRefinementDispatcher = kahypar::meta::StaticMultiDispatchFactory<
     static kahypar::meta::Registrar<FMFactory> register_##dispatcher(                    \
         id,                                                                              \
         [](const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,           \
-           const Context &context, gain_cache_t gain_cache, IRebalancer &rebalancer) {   \
+           const Context& context, gain_cache_t gain_cache, IRebalancer& rebalancer) {   \
             return dispatcher::create(std::forward_as_tuple(num_hypernodes,              \
                                                             num_hyperedges, context,     \
                                                             gain_cache, rebalancer),     \
@@ -113,15 +113,15 @@ using FlowRefinementDispatcher = kahypar::meta::StaticMultiDispatchFactory<
     static kahypar::meta::Registrar<FMFactory> JOIN(register_##refiner, t)(              \
         id,                                                                              \
         [](const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,           \
-           const Context &context, gain_cache_t gain_cache,                              \
-           IRebalancer &rebalancer) -> IRefiner * {                                      \
+           const Context& context, gain_cache_t gain_cache,                              \
+           IRebalancer& rebalancer) -> IRefiner * {                                      \
             return new refiner(num_hypernodes, num_hyperedges, context, gain_cache,      \
                                rebalancer);                                              \
         })
 
 #define REGISTER_DISPATCHED_FM_STRATEGY(id, dispatcher, ...)                             \
     static kahypar::meta::Registrar<FMStrategyFactory> register_##dispatcher(            \
-        id, [](const Context &context, FMSharedData &shared_data) {                      \
+        id, [](const Context& context, FMSharedData& shared_data) {                      \
             return dispatcher::create(std::forward_as_tuple(context, shared_data),       \
                                       __VA_ARGS__);                                      \
         })
@@ -129,7 +129,7 @@ using FlowRefinementDispatcher = kahypar::meta::StaticMultiDispatchFactory<
 #define REGISTER_DISPATCHED_FLOW_SCHEDULER(id, dispatcher, ...)                          \
     static kahypar::meta::Registrar<FlowSchedulerFactory> register_##dispatcher(         \
         id, [](const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,       \
-               const Context &context, gain_cache_t gain_cache) {                        \
+               const Context& context, gain_cache_t gain_cache) {                        \
             return dispatcher::create(std::forward_as_tuple(num_hypernodes,              \
                                                             num_hyperedges, context,     \
                                                             gain_cache),                 \
@@ -140,13 +140,13 @@ using FlowRefinementDispatcher = kahypar::meta::StaticMultiDispatchFactory<
     static kahypar::meta::Registrar<FlowSchedulerFactory> JOIN(register_##refiner, t)(   \
         id,                                                                              \
         [](const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,           \
-           const Context &context, gain_cache_t gain_cache) -> IRefiner * {              \
+           const Context& context, gain_cache_t gain_cache) -> IRefiner * {              \
             return new refiner(num_hypernodes, num_hyperedges, context, gain_cache);     \
         })
 
 #define REGISTER_DISPATCHED_REBALANCER(id, dispatcher, ...)                              \
     static kahypar::meta::Registrar<RebalancerFactory> register_##dispatcher(            \
-        id, [](HypernodeID num_hypernodes, const Context &context,                       \
+        id, [](HypernodeID num_hypernodes, const Context& context,                       \
                gain_cache_t gain_cache) {                                                \
             return dispatcher::create(                                                   \
                 std::forward_as_tuple(num_hypernodes, context, gain_cache),              \
@@ -156,14 +156,14 @@ using FlowRefinementDispatcher = kahypar::meta::StaticMultiDispatchFactory<
 #define REGISTER_REBALANCER(id, refiner, t)                                              \
     static kahypar::meta::Registrar<RebalancerFactory> JOIN(register_##refiner, t)(      \
         id,                                                                              \
-        [](HypernodeID num_hypernodes, const Context &context,                           \
+        [](HypernodeID num_hypernodes, const Context& context,                           \
            gain_cache_t gain_cache) -> IRebalancer * {                                   \
             return new refiner(num_hypernodes, context, gain_cache);                     \
         })
 
 #define REGISTER_DISPATCHED_FLOW_REFINER(id, dispatcher, ...)                            \
     static kahypar::meta::Registrar<FlowRefinementFactory> register_##dispatcher(        \
-        id, [](const HyperedgeID num_hyperedges, const Context &context) {               \
+        id, [](const HyperedgeID num_hyperedges, const Context& context) {               \
             return dispatcher::create(std::forward_as_tuple(num_hyperedges, context),    \
                                       __VA_ARGS__);                                      \
         })
@@ -171,16 +171,14 @@ using FlowRefinementDispatcher = kahypar::meta::StaticMultiDispatchFactory<
 #define REGISTER_FLOW_REFINER(id, refiner, t)                                            \
     static kahypar::meta::Registrar<FlowRefinementFactory> JOIN(register_##refiner, t)(  \
         id,                                                                              \
-        [](const HyperedgeID num_Hyperedges, const Context &context) -> IFlowRefiner * { \
+        [](const HyperedgeID num_Hyperedges, const Context& context) -> IFlowRefiner * { \
             return new refiner(num_Hyperedges, context);                                 \
         })
 
-kahypar::meta::PolicyBase &
+kahypar::meta::PolicyBase&
 getGraphAndGainTypesPolicy(mt_kahypar_partition_type_t partition_type,
-                           GainPolicy gain_policy)
-{
-    switch(partition_type)
-    {
+                           GainPolicy gain_policy) {
+    switch(partition_type) {
     case MULTILEVEL_HYPERGRAPH_PARTITIONING:
         SWITCH_HYPERGRAPH_GAIN_TYPES(StaticHypergraphTypeTraits, gain_policy);
     case MULTILEVEL_GRAPH_PARTITIONING:

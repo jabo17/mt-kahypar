@@ -45,23 +45,20 @@ using HwTopology = mt_kahypar::parallel::HardwareTopology<TopoMock, parallel::to
 using TBB = mt_kahypar::parallel::TBBInitializer<HwTopology, false>;
 
 template <class F, class K>
-void executeConcurrent(F f1, K f2)
-{
+void executeConcurrent(F f1, K f2) {
     std::atomic<int> cnt(0);
     tbb::task_group group;
 
     group.run([&] {
         cnt++;
-        while(cnt < 2)
-        {
+        while(cnt < 2) {
         }
         f1();
     });
 
     group.run([&] {
         cnt++;
-        while(cnt < 2)
-        {
+        while(cnt < 2) {
         }
         f2();
     });
@@ -69,8 +66,7 @@ void executeConcurrent(F f1, K f2)
     group.wait();
 }
 
-static void setupMemoryPool(const bool optimize_allocations)
-{
+static void setupMemoryPool(const bool optimize_allocations) {
     MemoryPool::instance().deactivate_minimum_allocation_size();
     MemoryPool::instance().register_memory_group("TEST_GROUP_1", 1);
     MemoryPool::instance().register_memory_chunk("TEST_GROUP_1", "TEST_CHUNK_1", 5,
@@ -85,8 +81,7 @@ static void setupMemoryPool(const bool optimize_allocations)
     MemoryPool::instance().allocate_memory_chunks(optimize_allocations);
 }
 
-TEST(AMemoryPool, AllocatesMemory)
-{
+TEST(AMemoryPool, AllocatesMemory) {
     setupMemoryPool(false);
 
     ASSERT_NE(nullptr, MemoryPool::instance().mem_chunk("TEST_GROUP_1", "TEST_CHUNK_1"));
@@ -97,8 +92,7 @@ TEST(AMemoryPool, AllocatesMemory)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, CanHandleARequest)
-{
+TEST(AMemoryPool, CanHandleARequest) {
     setupMemoryPool(false);
 
     ASSERT_EQ(MemoryPool::instance().mem_chunk("TEST_GROUP_1", "TEST_CHUNK_1"),
@@ -108,8 +102,7 @@ TEST(AMemoryPool, CanHandleARequest)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, CanHandleSeveralRequests)
-{
+TEST(AMemoryPool, CanHandleSeveralRequests) {
     setupMemoryPool(false);
 
     ASSERT_EQ(MemoryPool::instance().mem_chunk("TEST_GROUP_1", "TEST_CHUNK_1"),
@@ -122,8 +115,7 @@ TEST(AMemoryPool, CanHandleSeveralRequests)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, ReturnsNullptrIfMemoryChunkAlreadyRequested)
-{
+TEST(AMemoryPool, ReturnsNullptrIfMemoryChunkAlreadyRequested) {
     setupMemoryPool(false);
 
     ASSERT_EQ(MemoryPool::instance().mem_chunk("TEST_GROUP_1", "TEST_CHUNK_1"),
@@ -135,8 +127,7 @@ TEST(AMemoryPool, ReturnsNullptrIfMemoryChunkAlreadyRequested)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, ReturnsNullptrOnOverallocation)
-{
+TEST(AMemoryPool, ReturnsNullptrOnOverallocation) {
     setupMemoryPool(false);
 
     ASSERT_EQ(nullptr, MemoryPool::instance().request_mem_chunk(
@@ -145,8 +136,7 @@ TEST(AMemoryPool, ReturnsNullptrOnOverallocation)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, ReturnsNullptrIfMemoryChunkIsNotAvailable)
-{
+TEST(AMemoryPool, ReturnsNullptrIfMemoryChunkIsNotAvailable) {
     setupMemoryPool(false);
 
     ASSERT_EQ(nullptr, MemoryPool::instance().request_mem_chunk(
@@ -155,8 +145,7 @@ TEST(AMemoryPool, ReturnsNullptrIfMemoryChunkIsNotAvailable)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, RequestMemoryAfterRelease)
-{
+TEST(AMemoryPool, RequestMemoryAfterRelease) {
     setupMemoryPool(false);
 
     ASSERT_EQ(MemoryPool::instance().mem_chunk("TEST_GROUP_1", "TEST_CHUNK_1"),
@@ -170,8 +159,7 @@ TEST(AMemoryPool, RequestMemoryAfterRelease)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, OnlyOneRequestSucceedsOnConcurrentAccess)
-{
+TEST(AMemoryPool, OnlyOneRequestSucceedsOnConcurrentAccess) {
     setupMemoryPool(false);
 
     char *chunk_1 = nullptr;
@@ -188,13 +176,10 @@ TEST(AMemoryPool, OnlyOneRequestSucceedsOnConcurrentAccess)
 
     char *expected_chunk =
         MemoryPool::instance().mem_chunk("TEST_GROUP_1", "TEST_CHUNK_1");
-    if(chunk_1)
-    {
+    if(chunk_1) {
         ASSERT_EQ(nullptr, chunk_2);
         ASSERT_EQ(expected_chunk, chunk_1);
-    }
-    else
-    {
+    } else {
         ASSERT_EQ(nullptr, chunk_1);
         ASSERT_EQ(expected_chunk, chunk_2);
     }
@@ -202,8 +187,7 @@ TEST(AMemoryPool, OnlyOneRequestSucceedsOnConcurrentAccess)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, AllocatesMemoryWithOptimizedAllocationUsage)
-{
+TEST(AMemoryPool, AllocatesMemoryWithOptimizedAllocationUsage) {
     MemoryPool::instance().register_memory_group("TEST_GROUP_1", 1);
     MemoryPool::instance().register_memory_chunk("TEST_GROUP_1", "TEST_CHUNK_1", 10,
                                                  sizeof(char));
@@ -247,8 +231,7 @@ TEST(AMemoryPool, AllocatesMemoryWithOptimizedAllocationUsage)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, MemoryIsTransferedToNextGroupIfGroupIsReleased1)
-{
+TEST(AMemoryPool, MemoryIsTransferedToNextGroupIfGroupIsReleased1) {
     MemoryPool::instance().register_memory_group("TEST_GROUP_1", 1);
     MemoryPool::instance().register_memory_chunk("TEST_GROUP_1", "TEST_CHUNK_1", 10,
                                                  sizeof(char));
@@ -294,8 +277,7 @@ TEST(AMemoryPool, MemoryIsTransferedToNextGroupIfGroupIsReleased1)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, MemoryIsTransferedToNextGroupIfGroupIsReleased2)
-{
+TEST(AMemoryPool, MemoryIsTransferedToNextGroupIfGroupIsReleased2) {
     MemoryPool::instance().register_memory_group("TEST_GROUP_1", 1);
     MemoryPool::instance().register_memory_chunk("TEST_GROUP_1", "TEST_CHUNK_1", 10,
                                                  sizeof(char));
@@ -342,8 +324,7 @@ TEST(AMemoryPool, MemoryIsTransferedToNextGroupIfGroupIsReleased2)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, RequestsAnUnsedChunk1)
-{
+TEST(AMemoryPool, RequestsAnUnsedChunk1) {
     MemoryPool::instance().deactivate_round_robin_assignment();
     MemoryPool::instance().register_memory_group("TEST_GROUP_1", 1);
     MemoryPool::instance().register_memory_chunk("TEST_GROUP_1", "TEST_CHUNK_1", 10,
@@ -378,8 +359,7 @@ TEST(AMemoryPool, RequestsAnUnsedChunk1)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, RequestsAnUnsedChunk2)
-{
+TEST(AMemoryPool, RequestsAnUnsedChunk2) {
     MemoryPool::instance().deactivate_round_robin_assignment();
     MemoryPool::instance().register_memory_group("TEST_GROUP_1", 1);
     MemoryPool::instance().register_memory_chunk("TEST_GROUP_1", "TEST_CHUNK_1", 10,
@@ -412,8 +392,7 @@ TEST(AMemoryPool, RequestsAnUnsedChunk2)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, RequestsAnUnsedChunk3)
-{
+TEST(AMemoryPool, RequestsAnUnsedChunk3) {
     MemoryPool::instance().deactivate_round_robin_assignment();
     MemoryPool::instance().register_memory_group("TEST_GROUP_1", 1);
     MemoryPool::instance().register_memory_chunk("TEST_GROUP_1", "TEST_CHUNK_1", 10,
@@ -446,8 +425,7 @@ TEST(AMemoryPool, RequestsAnUnsedChunk3)
     MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AMemoryPool, MemoryPoolIsCorrectlyResetted)
-{
+TEST(AMemoryPool, MemoryPoolIsCorrectlyResetted) {
     MemoryPool::instance().register_memory_group("TEST_GROUP_1", 1);
     MemoryPool::instance().register_memory_chunk("TEST_GROUP_1", "TEST_CHUNK_1", 10,
                                                  sizeof(char));

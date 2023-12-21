@@ -52,8 +52,8 @@ class KerninghanLin
     // ! node is swapped at most once, the algorithm rolls back to the
     // ! best seen solution. This is repeated several times until no
     // ! further improvements are possible.
-    static void improve(CommunicationHypergraph &communication_hg,
-                        const TargetGraph &target_graph);
+    static void improve(CommunicationHypergraph& communication_hg,
+                        const TargetGraph& target_graph);
 
   private:
     KerninghanLin() {}

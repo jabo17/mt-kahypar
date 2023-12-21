@@ -40,8 +40,7 @@ class Stats
     static constexpr bool debug = false;
 
   public:
-    enum class Type : uint8_t
-    {
+    enum class Type : uint8_t {
         BOOLEAN = 0,
         INT32 = 1,
         INT64 = 2,
@@ -54,38 +53,26 @@ class Stats
       public:
         explicit Stat(const bool value) :
             _type(Type::BOOLEAN), _value_1(value), _value_2(0), _value_3(0),
-            _value_4(0.0), _value_5(0.0)
-        {
-        }
+            _value_4(0.0), _value_5(0.0) {}
 
         explicit Stat(const int32_t value) :
             _type(Type::INT32), _value_1(false), _value_2(value), _value_3(0),
-            _value_4(0.0), _value_5(0.0)
-        {
-        }
+            _value_4(0.0), _value_5(0.0) {}
 
         explicit Stat(const int64_t value) :
             _type(Type::INT64), _value_1(false), _value_2(0), _value_3(value),
-            _value_4(0.0), _value_5(0.0)
-        {
-        }
+            _value_4(0.0), _value_5(0.0) {}
 
         explicit Stat(const float value) :
             _type(Type::FLOAT), _value_1(false), _value_2(0), _value_3(0),
-            _value_4(value), _value_5(0.0)
-        {
-        }
+            _value_4(value), _value_5(0.0) {}
 
         explicit Stat(const double value) :
             _type(Type::DOUBLE), _value_1(false), _value_2(0), _value_3(0), _value_4(0.0),
-            _value_5(value)
-        {
-        }
+            _value_5(value) {}
 
         template <typename T>
-        void update(const T)
-        {
-        }
+        void update(const T) {}
 
         void update(const bool value) { _value_1 = value; }
 
@@ -97,7 +84,7 @@ class Stats
 
         void update(const double delta) { _value_5 += delta; }
 
-        friend std::ostream &operator<<(std::ostream &str, const Stat &stat);
+        friend std::ostream& operator<<(std::ostream& str, const Stat& stat);
 
       private:
         Type _type;
@@ -111,39 +98,31 @@ class Stats
   public:
     explicit Stats() : _stat_mutex(), _stats(), _enable(true) {}
 
-    Stats(const Stats &other) :
-        _stat_mutex(), _stats(other._stats), _enable(other._enable)
-    {
-    }
+    Stats(const Stats& other) :
+        _stat_mutex(), _stats(other._stats), _enable(other._enable) {}
 
-    Stats &operator=(const Stats &) = delete;
+    Stats& operator=(const Stats&) = delete;
 
-    Stats(Stats &&other) :
-        _stat_mutex(), _stats(std::move(other._stats)), _enable(std::move(other._enable))
-    {
-    }
+    Stats(Stats&& other) :
+        _stat_mutex(), _stats(std::move(other._stats)),
+        _enable(std::move(other._enable)) {}
 
-    Stats &operator=(Stats &&) = delete;
+    Stats& operator=(Stats&&) = delete;
 
-    void enable()
-    {
+    void enable() {
         std::lock_guard<std::mutex> lock(_stat_mutex);
         _enable = true;
     }
 
-    void disable()
-    {
+    void disable() {
         std::lock_guard<std::mutex> lock(_stat_mutex);
         _enable = false;
     }
     template <typename T>
-    void add_stat(const std::string &key, const T value)
-    {
+    void add_stat(const std::string& key, const T value) {
         std::lock_guard<std::mutex> lock(_stat_mutex);
-        if(_enable)
-        {
-            if(_stats.find(key) == _stats.end())
-            {
+        if(_enable) {
+            if(_stats.find(key) == _stats.end()) {
                 _stats.emplace(std::piecewise_construct, std::forward_as_tuple(key),
                                std::forward_as_tuple(value));
             }
@@ -151,18 +130,13 @@ class Stats
     }
 
     template <typename T>
-    void update_stat(const std::string &key, const T delta)
-    {
+    void update_stat(const std::string& key, const T delta) {
         std::lock_guard<std::mutex> lock(_stat_mutex);
-        if(_enable)
-        {
-            if(_stats.find(key) == _stats.end())
-            {
+        if(_enable) {
+            if(_stats.find(key) == _stats.end()) {
                 _stats.emplace(std::piecewise_construct, std::forward_as_tuple(key),
                                std::forward_as_tuple(delta));
-            }
-            else
-            {
+            } else {
                 _stats.at(key).update(delta);
             }
         }
@@ -170,7 +144,7 @@ class Stats
 
     void clear() { _stats.clear(); }
 
-    friend std::ostream &operator<<(std::ostream &str, const Stats &stats);
+    friend std::ostream& operator<<(std::ostream& str, const Stats& stats);
 
   private:
     std::mutex _stat_mutex;
@@ -178,10 +152,8 @@ class Stats
     bool _enable;
 };
 
-inline std::ostream &operator<<(std::ostream &str, const Stats::Stat &stat)
-{
-    switch(stat._type)
-    {
+inline std::ostream& operator<<(std::ostream& str, const Stats::Stat& stat) {
+    switch(stat._type) {
     case Stats::Type::BOOLEAN:
         str << std::boolalpha << stat._value_1;
         break;
@@ -203,17 +175,14 @@ inline std::ostream &operator<<(std::ostream &str, const Stats::Stat &stat)
     return str;
 }
 
-inline std::ostream &operator<<(std::ostream &str, const Stats &stats)
-{
+inline std::ostream& operator<<(std::ostream& str, const Stats& stats) {
     std::vector<std::string> keys;
-    for(const auto &stat : stats._stats)
-    {
+    for(const auto& stat : stats._stats) {
         keys.emplace_back(stat.first);
     }
     std::sort(keys.begin(), keys.end());
 
-    for(const std::string &key : keys)
-    {
+    for(const std::string& key : keys) {
         str << " " << key << "=" << stats._stats.at(key);
     }
     return str;

@@ -58,9 +58,7 @@ class ProblemConstruction
             queue(), next_queue(), visited_hn(num_nodes, false),
             visited_he(num_edges, false), contained_hes(num_edges, false),
             locked_blocks(k, false), queue_weight_block_0(0), queue_weight_block_1(0),
-            lock_queue(false)
-        {
-        }
+            lock_queue(false) {}
 
         void clearQueue();
 
@@ -68,8 +66,8 @@ class ProblemConstruction
 
         HypernodeID pop_hypernode();
 
-        void add_pins_of_hyperedge_to_queue(const HyperedgeID &he,
-                                            const PartitionedHypergraph &phg,
+        void add_pins_of_hyperedge_to_queue(const HyperedgeID& he,
+                                            const PartitionedHypergraph& phg,
                                             const size_t max_bfs_distance,
                                             const HypernodeWeight max_weight_block_0,
                                             const HypernodeWeight max_weight_block_1);
@@ -78,10 +76,8 @@ class ProblemConstruction
 
         bool is_next_empty() const { return next_queue.empty(); }
 
-        void swap_with_next_queue()
-        {
-            if(!is_next_empty())
-            {
+        void swap_with_next_queue() {
+            if(!is_next_empty()) {
                 std::swap(queue, next_queue);
                 ++current_distance;
             }
@@ -103,7 +99,7 @@ class ProblemConstruction
   public:
     explicit ProblemConstruction(const HypernodeID num_hypernodes,
                                  const HyperedgeID num_hyperedges,
-                                 const Context &context) :
+                                 const Context& context) :
         _context(context),
         _scaling(1.0 + _context.refinement.flows.alpha *
                            std::min(0.05, _context.partition.epsilon)),
@@ -112,33 +108,30 @@ class ProblemConstruction
             // differently. Thus we use a lambda that reads the current number of
             // blocks from the context
             return constructBFSData();
-        })
-    {
-    }
+        }) {}
 
-    ProblemConstruction(const ProblemConstruction &) = delete;
-    ProblemConstruction(ProblemConstruction &&) = delete;
+    ProblemConstruction(const ProblemConstruction&) = delete;
+    ProblemConstruction(ProblemConstruction&&) = delete;
 
-    ProblemConstruction &operator=(const ProblemConstruction &) = delete;
-    ProblemConstruction &operator=(ProblemConstruction &&) = delete;
+    ProblemConstruction& operator=(const ProblemConstruction&) = delete;
+    ProblemConstruction& operator=(ProblemConstruction&&) = delete;
 
     Subhypergraph construct(const SearchID search_id,
-                            QuotientGraph<TypeTraits> &quotient_graph,
-                            const PartitionedHypergraph &phg);
+                            QuotientGraph<TypeTraits>& quotient_graph,
+                            const PartitionedHypergraph& phg);
 
     void changeNumberOfBlocks(const PartitionID new_k);
 
   private:
-    BFSData constructBFSData() const
-    {
+    BFSData constructBFSData() const {
         return BFSData(_num_hypernodes, _num_hyperedges, _context.partition.k);
     }
 
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE bool isMaximumProblemSizeReached(
-        const Subhypergraph &sub_hg, const HypernodeWeight max_weight_block_0,
-        const HypernodeWeight max_weight_block_1, vec<bool> &locked_blocks) const;
+        const Subhypergraph& sub_hg, const HypernodeWeight max_weight_block_0,
+        const HypernodeWeight max_weight_block_1, vec<bool>& locked_blocks) const;
 
-    const Context &_context;
+    const Context& _context;
     double _scaling;
     HypernodeID _num_hypernodes;
     HyperedgeID _num_hyperedges;

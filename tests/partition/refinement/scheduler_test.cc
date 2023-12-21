@@ -55,8 +55,7 @@ class AFlowRefinementScheduler : public Test
         hg(HypergraphFactory::construct(
             7, 4, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } }, nullptr,
             nullptr, true)),
-        phg(2, hg, parallel_tag_t()), context()
-    {
+        phg(2, hg, parallel_tag_t()), context() {
         context.partition.k = 2;
         context.partition.perfect_balance_part_weights.assign(2, 3);
         context.partition.max_part_weights.assign(2, 4);
@@ -83,39 +82,33 @@ class AFlowRefinementScheduler : public Test
 };
 
 template <class F, class K>
-void executeConcurrent(F f1, K f2)
-{
+void executeConcurrent(F f1, K f2) {
     std::atomic<int> cnt(0);
 
     tbb::parallel_invoke(
         [&] {
             cnt++;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
             f1();
         },
         [&] {
             cnt++;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
             f2();
         });
 }
 
 void verifyPartWeights(const vec<HypernodeWeight> actual_weights,
-                       const vec<HypernodeWeight> expected_weights)
-{
+                       const vec<HypernodeWeight> expected_weights) {
     ASSERT_EQ(actual_weights.size(), expected_weights.size());
-    for(size_t i = 0; i < actual_weights.size(); ++i)
-    {
+    for(size_t i = 0; i < actual_weights.size(); ++i) {
         ASSERT_EQ(actual_weights[i], expected_weights[i]);
     }
 }
 
-TEST_F(AFlowRefinementScheduler, MovesOneVertex)
-{
+TEST_F(AFlowRefinementScheduler, MovesOneVertex) {
     Km1GainCache gain_cache;
     FlowRefinementScheduler<GraphAndGainTypes<TypeTraits, Km1GainTypes> > refiner(
         hg.initialNumNodes(), hg.initialNumEdges(), context, gain_cache);
@@ -131,8 +124,7 @@ TEST_F(AFlowRefinementScheduler, MovesOneVertex)
     verifyPartWeights(refiner.partWeights(), { 3, 4 });
 }
 
-TEST_F(AFlowRefinementScheduler, MovesVerticesWithIntermediateBalanceViolation)
-{
+TEST_F(AFlowRefinementScheduler, MovesVerticesWithIntermediateBalanceViolation) {
     Km1GainCache gain_cache;
     FlowRefinementScheduler<GraphAndGainTypes<TypeTraits, Km1GainTypes> > refiner(
         hg.initialNumNodes(), hg.initialNumEdges(), context, gain_cache);
@@ -150,8 +142,7 @@ TEST_F(AFlowRefinementScheduler, MovesVerticesWithIntermediateBalanceViolation)
     verifyPartWeights(refiner.partWeights(), { 3, 4 });
 }
 
-TEST_F(AFlowRefinementScheduler, MovesAVertexThatWorsenSolutionQuality)
-{
+TEST_F(AFlowRefinementScheduler, MovesAVertexThatWorsenSolutionQuality) {
     Km1GainCache gain_cache;
     FlowRefinementScheduler<GraphAndGainTypes<TypeTraits, Km1GainTypes> > refiner(
         hg.initialNumNodes(), hg.initialNumEdges(), context, gain_cache);
@@ -167,8 +158,7 @@ TEST_F(AFlowRefinementScheduler, MovesAVertexThatWorsenSolutionQuality)
     verifyPartWeights(refiner.partWeights(), { 4, 3 });
 }
 
-TEST_F(AFlowRefinementScheduler, MovesAVertexThatViolatesBalanceConstraint)
-{
+TEST_F(AFlowRefinementScheduler, MovesAVertexThatViolatesBalanceConstraint) {
     Km1GainCache gain_cache;
     FlowRefinementScheduler<GraphAndGainTypes<TypeTraits, Km1GainTypes> > refiner(
         hg.initialNumNodes(), hg.initialNumEdges(), context, gain_cache);
@@ -184,8 +174,7 @@ TEST_F(AFlowRefinementScheduler, MovesAVertexThatViolatesBalanceConstraint)
     verifyPartWeights(refiner.partWeights(), { 4, 3 });
 }
 
-TEST_F(AFlowRefinementScheduler, MovesTwoVerticesConcurrently)
-{
+TEST_F(AFlowRefinementScheduler, MovesTwoVerticesConcurrently) {
     context.partition.max_part_weights.assign(2, 5);
     Km1GainCache gain_cache;
     FlowRefinementScheduler<GraphAndGainTypes<TypeTraits, Km1GainTypes> > refiner(
@@ -216,8 +205,7 @@ TEST_F(AFlowRefinementScheduler, MovesTwoVerticesConcurrently)
 }
 
 TEST_F(AFlowRefinementScheduler,
-       MovesTwoVerticesConcurrentlyWhereOneViolateBalanceConstraint)
-{
+       MovesTwoVerticesConcurrentlyWhereOneViolateBalanceConstraint) {
     Km1GainCache gain_cache;
     FlowRefinementScheduler<GraphAndGainTypes<TypeTraits, Km1GainTypes> > refiner(
         hg.initialNumNodes(), hg.initialNumEdges(), context, gain_cache);
@@ -241,15 +229,12 @@ TEST_F(AFlowRefinementScheduler,
                 sequence_2.state == MoveSequenceState::VIOLATES_BALANCE_CONSTRAINT);
     ASSERT_TRUE(sequence_1.state == MoveSequenceState::SUCCESS ||
                 sequence_2.state == MoveSequenceState::SUCCESS);
-    if(sequence_1.state == MoveSequenceState::SUCCESS)
-    {
+    if(sequence_1.state == MoveSequenceState::SUCCESS) {
         ASSERT_EQ(improvement_1, sequence_1.expected_improvement);
         ASSERT_EQ(1, phg.partID(3));
         ASSERT_EQ(improvement_2, 0);
         ASSERT_EQ(0, phg.partID(1));
-    }
-    else
-    {
+    } else {
         ASSERT_EQ(improvement_1, 0);
         ASSERT_EQ(0, phg.partID(3));
         ASSERT_EQ(improvement_2, sequence_2.expected_improvement);
@@ -265,8 +250,7 @@ class AFlowRefinementEndToEnd : public Test
 
   public:
     AFlowRefinementEndToEnd() :
-        hg(), phg(), context(), max_part_weights(8, 200), mover(nullptr)
-    {
+        hg(), phg(), context(), max_part_weights(8, 200), mover(nullptr) {
 
         context.partition.graph_filename = "../tests/instances/ibm01.hgr";
         context.partition.k = 8;
@@ -288,7 +272,7 @@ class AFlowRefinementEndToEnd : public Test
         std::vector<PartitionID> partition;
         io::readPartitionFile("../tests/instances/ibm01.hgr.part8", partition);
         phg.doParallelForAllNodes(
-            [&](const HypernodeID &hn) { phg.setOnlyNodePart(hn, partition[hn]); });
+            [&](const HypernodeID& hn) { phg.setOnlyNodePart(hn, partition[hn]); });
         phg.initializePartition();
 
         FlowRefinerMockControl::instance().reset();
@@ -296,7 +280,7 @@ class AFlowRefinementEndToEnd : public Test
         mover = std::make_unique<GainCalculator>(context);
         // Refine solution with simple label propagation
         FlowRefinerMockControl::instance().refine_func =
-            [&](const PartitionedHypergraph &phg, const Subhypergraph &sub_hg,
+            [&](const PartitionedHypergraph& phg, const Subhypergraph& sub_hg,
                 const size_t) {
                 MoveSequence sequence{ {}, 0 };
                 vec<HypernodeID> nodes;
@@ -304,11 +288,9 @@ class AFlowRefinementEndToEnd : public Test
                              sub_hg.nodes_of_block_0.end());
                 nodes.insert(nodes.end(), sub_hg.nodes_of_block_1.begin(),
                              sub_hg.nodes_of_block_1.end());
-                for(const HypernodeID &hn : nodes)
-                {
+                for(const HypernodeID& hn : nodes) {
                     Move move = mover->computeMaxGainMove(phg, hn);
-                    if(move.from != move.to)
-                    {
+                    if(move.from != move.to) {
                         sequence.moves.emplace_back(std::move(move));
                         sequence.expected_improvement -= move.gain;
                     }
@@ -318,16 +300,14 @@ class AFlowRefinementEndToEnd : public Test
 
         // Move approx. 0.5% of the vertices randomly to a different block
         double p = 0.05;
-        phg.doParallelForAllNodes([&](const HypernodeID &hn) {
+        phg.doParallelForAllNodes([&](const HypernodeID& hn) {
             const int rand_int =
                 utils::Randomize::instance().getRandomInt(0, 100, THREAD_ID);
-            if(rand_int <= p * 100)
-            {
+            if(rand_int <= p * 100) {
                 const PartitionID from = phg.partID(hn);
                 PartitionID to = utils::Randomize::instance().getRandomInt(
                     0, context.partition.k - 1, THREAD_ID);
-                while(from == to)
-                {
+                while(from == to) {
                     to = utils::Randomize::instance().getRandomInt(
                         0, context.partition.k - 1, THREAD_ID);
                 }
@@ -348,8 +328,7 @@ class AFlowRefinementEndToEnd : public Test
     std::unique_ptr<GainCalculator> mover;
 };
 
-TEST_F(AFlowRefinementEndToEnd, SmokeTestWithTwoBlocksPerRefiner)
-{
+TEST_F(AFlowRefinementEndToEnd, SmokeTestWithTwoBlocksPerRefiner) {
     const bool debug = false;
     Km1GainCache gain_cache;
     FlowRefinementScheduler<GraphAndGainTypes<TypeTraits, Km1GainTypes> > scheduler(
@@ -359,8 +338,7 @@ TEST_F(AFlowRefinementEndToEnd, SmokeTestWithTwoBlocksPerRefiner)
     metrics.quality = metrics::quality(phg, context);
     metrics.imbalance = metrics::imbalance(phg, context);
 
-    if(debug)
-    {
+    if(debug) {
         LOG << "Start Solution km1 =" << metrics.quality;
     }
 
@@ -368,13 +346,11 @@ TEST_F(AFlowRefinementEndToEnd, SmokeTestWithTwoBlocksPerRefiner)
     scheduler.initialize(partitioned_hg);
     scheduler.refine(partitioned_hg, {}, metrics, 0.0);
 
-    if(debug)
-    {
+    if(debug) {
         LOG << "Final Solution km1 =" << metrics.quality;
     }
 
-    if(debug)
-    {
+    if(debug) {
         utils::Utilities::instance()
             .getTimer(context.utility_id)
             .showDetailedTimings(true);
@@ -384,14 +360,12 @@ TEST_F(AFlowRefinementEndToEnd, SmokeTestWithTwoBlocksPerRefiner)
 
     ASSERT_EQ(metrics::quality(phg, Objective::km1), metrics.quality);
     ASSERT_EQ(metrics::imbalance(phg, context), metrics.imbalance);
-    for(PartitionID i = 0; i < context.partition.k; ++i)
-    {
+    for(PartitionID i = 0; i < context.partition.k; ++i) {
         ASSERT_LE(phg.partWeight(i), context.partition.max_part_weights[i]);
     }
 }
 
-TEST_F(AFlowRefinementEndToEnd, SmokeTestWithFourBlocksPerRefiner)
-{
+TEST_F(AFlowRefinementEndToEnd, SmokeTestWithFourBlocksPerRefiner) {
     const bool debug = false;
     FlowRefinerMockControl::instance().max_num_blocks = 4;
     Km1GainCache gain_cache;
@@ -402,8 +376,7 @@ TEST_F(AFlowRefinementEndToEnd, SmokeTestWithFourBlocksPerRefiner)
     metrics.quality = metrics::quality(phg, context);
     metrics.imbalance = metrics::imbalance(phg, context);
 
-    if(debug)
-    {
+    if(debug) {
         LOG << "Start Solution km1 =" << metrics.quality;
     }
 
@@ -411,13 +384,11 @@ TEST_F(AFlowRefinementEndToEnd, SmokeTestWithFourBlocksPerRefiner)
     scheduler.initialize(partitioned_hg);
     scheduler.refine(partitioned_hg, {}, metrics, 0.0);
 
-    if(debug)
-    {
+    if(debug) {
         LOG << "Final Solution km1 =" << metrics.quality;
     }
 
-    if(debug)
-    {
+    if(debug) {
         utils::Utilities::instance()
             .getTimer(context.utility_id)
             .showDetailedTimings(true);
@@ -427,8 +398,7 @@ TEST_F(AFlowRefinementEndToEnd, SmokeTestWithFourBlocksPerRefiner)
 
     ASSERT_EQ(metrics::quality(phg, Objective::km1), metrics.quality);
     ASSERT_EQ(metrics::imbalance(phg, context), metrics.imbalance);
-    for(PartitionID i = 0; i < context.partition.k; ++i)
-    {
+    for(PartitionID i = 0; i < context.partition.k; ++i) {
         ASSERT_LE(phg.partWeight(i), context.partition.max_part_weights[i]);
     }
 }

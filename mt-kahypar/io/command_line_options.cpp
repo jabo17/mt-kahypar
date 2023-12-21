@@ -44,8 +44,7 @@ namespace po = boost::program_options;
 
 namespace mt_kahypar {
 namespace platform {
-int getTerminalWidth()
-{
+int getTerminalWidth() {
     int columns = 0;
 #if defined(_WIN32)
     CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -59,8 +58,7 @@ int getTerminalWidth()
     return columns;
 }
 
-int getProcessID()
-{
+int getProcessID() {
 #if defined(_WIN32)
     return _getpid();
 #else
@@ -69,9 +67,8 @@ int getProcessID()
 }
 } // namespace platform
 
-po::options_description createGeneralOptionsDescription(Context &context,
-                                                        const int num_columns)
-{
+po::options_description createGeneralOptionsDescription(Context& context,
+                                                        const int num_columns) {
     po::options_description options("General Options", num_columns);
     options.add_options()("help", "show help message")(
         "deterministic",
@@ -97,7 +94,7 @@ po::options_description createGeneralOptionsDescription(Context &context,
         "Output folder for partition file")("mode,m",
                                             po::value<std::string>()
                                                 ->value_name("<string>")
-                                                ->notifier([&](const std::string &mode) {
+                                                ->notifier([&](const std::string& mode) {
                                                     context.partition.mode =
                                                         modeFromString(mode);
                                                 }),
@@ -108,13 +105,10 @@ po::options_description createGeneralOptionsDescription(Context &context,
         "input-file-format",
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&](const std::string &s) {
-                if(s == "hmetis")
-                {
+            ->notifier([&](const std::string& s) {
+                if(s == "hmetis") {
                     context.partition.file_format = FileFormat::hMetis;
-                }
-                else if(s == "metis")
-                {
+                } else if(s == "metis") {
                     context.partition.file_format = FileFormat::Metis;
                 }
             }),
@@ -124,7 +118,7 @@ po::options_description createGeneralOptionsDescription(Context &context,
         "instance-type",
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&](const std::string &type) {
+            ->notifier([&](const std::string& type) {
                 context.partition.instance_type = instanceTypeFromString(type);
             }),
         "Instance Type: \n"
@@ -132,7 +126,7 @@ po::options_description createGeneralOptionsDescription(Context &context,
         " - hypergraph")("preset-type",
                          po::value<std::string>()
                              ->value_name("<string>")
-                             ->notifier([&](const std::string &type) {
+                             ->notifier([&](const std::string& type) {
                                  context.partition.preset_type =
                                      presetTypeFromString(type);
                              }),
@@ -235,9 +229,8 @@ po::options_description createGeneralOptionsDescription(Context &context,
     return options;
 }
 
-po::options_description createPreprocessingOptionsDescription(Context &context,
-                                                              const int num_columns)
-{
+po::options_description createPreprocessingOptionsDescription(Context& context,
+                                                              const int num_columns) {
     po::options_description options("Preprocessing Options", num_columns);
     options.add_options()(
         "p-stable-io",
@@ -263,7 +256,7 @@ po::options_description createPreprocessingOptionsDescription(Context &context,
         "p-louvain-edge-weight-function",
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&](const std::string &type) {
+            ->notifier([&](const std::string& type) {
                 context.preprocessing.community_detection.edge_weight_function =
                     louvainEdgeWeightFromString(type);
             })
@@ -306,14 +299,13 @@ po::options_description createPreprocessingOptionsDescription(Context &context,
     return options;
 }
 
-po::options_description createCoarseningOptionsDescription(Context &context,
-                                                           const int num_columns)
-{
+po::options_description createCoarseningOptionsDescription(Context& context,
+                                                           const int num_columns) {
     po::options_description options("Coarsening Options", num_columns);
     options.add_options()("c-type",
                           po::value<std::string>()
                               ->value_name("<string>")
-                              ->notifier([&](const std::string &ctype) {
+                              ->notifier([&](const std::string& ctype) {
                                   context.coarsening.algorithm =
                                       mt_kahypar::coarseningAlgorithmFromString(ctype);
                               })
@@ -359,7 +351,7 @@ po::options_description createCoarseningOptionsDescription(Context &context,
         "c-rating-score",
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&](const std::string &rating_score) {
+            ->notifier([&](const std::string& rating_score) {
                 context.coarsening.rating.rating_function =
                     mt_kahypar::ratingFunctionFromString(rating_score);
             })
@@ -371,7 +363,7 @@ po::options_description createCoarseningOptionsDescription(Context &context,
         "- heavy_edge")("c-rating-heavy-node-penalty",
                         po::value<std::string>()
                             ->value_name("<string>")
-                            ->notifier([&](const std::string &penalty) {
+                            ->notifier([&](const std::string& penalty) {
                                 context.coarsening.rating.heavy_node_penalty_policy =
                                     heavyNodePenaltyFromString(penalty);
                             })
@@ -385,7 +377,7 @@ po::options_description createCoarseningOptionsDescription(Context &context,
         "c-rating-acceptance-criterion",
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&](const std::string &crit) {
+            ->notifier([&](const std::string& crit) {
                 context.coarsening.rating.acceptance_policy =
                     acceptanceCriterionFromString(crit);
             })
@@ -410,9 +402,8 @@ po::options_description createCoarseningOptionsDescription(Context &context,
 }
 
 po::options_description
-createRefinementOptionsDescription(Context &context, const int num_columns,
-                                   const bool initial_partitioning)
-{
+createRefinementOptionsDescription(Context& context, const int num_columns,
+                                   const bool initial_partitioning) {
     po::options_description options("Refinement Options", num_columns);
     options.add_options()(
         (initial_partitioning ? "i-r-refine-until-no-improvement" :
@@ -455,14 +446,11 @@ createRefinementOptionsDescription(Context &context, const int num_columns,
         (initial_partitioning ? "i-r-lp-type" : "r-lp-type"),
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&, initial_partitioning](const std::string &type) {
-                if(initial_partitioning)
-                {
+            ->notifier([&, initial_partitioning](const std::string& type) {
+                if(initial_partitioning) {
                     context.initial_partitioning.refinement.label_propagation.algorithm =
                         labelPropagationAlgorithmFromString(type);
-                }
-                else
-                {
+                } else {
                     context.refinement.label_propagation.algorithm =
                         labelPropagationAlgorithmFromString(type);
                 }
@@ -540,14 +528,11 @@ createRefinementOptionsDescription(Context &context, const int num_columns,
         (initial_partitioning ? "i-r-fm-type" : "r-fm-type"),
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&, initial_partitioning](const std::string &type) {
-                if(initial_partitioning)
-                {
+            ->notifier([&, initial_partitioning](const std::string& type) {
+                if(initial_partitioning) {
                     context.initial_partitioning.refinement.fm.algorithm =
                         fmAlgorithmFromString(type);
-                }
-                else
-                {
+                } else {
                     context.refinement.fm.algorithm = fmAlgorithmFromString(type);
                 }
             })
@@ -768,14 +753,11 @@ createRefinementOptionsDescription(Context &context, const int num_columns,
         (initial_partitioning ? "i-r-rebalancer-type" : "r-rebalancer-type"),
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&, initial_partitioning](const std::string &type) {
-                if(initial_partitioning)
-                {
+            ->notifier([&, initial_partitioning](const std::string& type) {
+                if(initial_partitioning) {
                     context.initial_partitioning.refinement.rebalancer =
                         rebalancingAlgorithmFromString(type);
-                }
-                else
-                {
+                } else {
                     context.refinement.rebalancer = rebalancingAlgorithmFromString(type);
                 }
             })
@@ -788,22 +770,18 @@ createRefinementOptionsDescription(Context &context, const int num_columns,
 }
 
 po::options_description
-createFlowRefinementOptionsDescription(Context &context, const int num_columns,
-                                       const bool initial_partitioning)
-{
+createFlowRefinementOptionsDescription(Context& context, const int num_columns,
+                                       const bool initial_partitioning) {
     po::options_description options("Initial Partitioning Options", num_columns);
     options.add_options()(
         (initial_partitioning ? "i-r-flow-algo" : "r-flow-algo"),
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&, initial_partitioning](const std::string &algo) {
-                if(initial_partitioning)
-                {
+            ->notifier([&, initial_partitioning](const std::string& algo) {
+                if(initial_partitioning) {
                     context.initial_partitioning.refinement.flows.algorithm =
                         flowAlgorithmFromString(algo);
-                }
-                else
-                {
+                } else {
                     context.refinement.flows.algorithm = flowAlgorithmFromString(algo);
                 }
             })
@@ -903,14 +881,11 @@ createFlowRefinementOptionsDescription(Context &context, const int num_columns,
                                 "r-flow-process-mapping-policy"),
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&, initial_partitioning](const std::string &policy) {
-                if(initial_partitioning)
-                {
+            ->notifier([&, initial_partitioning](const std::string& policy) {
+                if(initial_partitioning) {
                     context.initial_partitioning.refinement.flows.steiner_tree_policy =
                         steinerTreeFlowValuePolicyFromString(policy);
-                }
-                else
-                {
+                } else {
                     context.refinement.flows.steiner_tree_policy =
                         steinerTreeFlowValuePolicyFromString(policy);
                 }
@@ -927,14 +902,13 @@ createFlowRefinementOptionsDescription(Context &context, const int num_columns,
     return options;
 }
 
-po::options_description createInitialPartitioningOptionsDescription(Context &context,
-                                                                    const int num_columns)
-{
+po::options_description
+createInitialPartitioningOptionsDescription(Context& context, const int num_columns) {
     po::options_description options("Initial Partitioning Options", num_columns);
     options.add_options()("i-mode",
                           po::value<std::string>()
                               ->value_name("<string>")
-                              ->notifier([&](const std::string &mode) {
+                              ->notifier([&](const std::string& mode) {
                                   context.initial_partitioning.mode =
                                       modeFromString(mode);
                               })
@@ -1022,9 +996,8 @@ po::options_description createInitialPartitioningOptionsDescription(Context &con
     return options;
 }
 
-po::options_description createMappingOptionsDescription(Context &context,
-                                                        const int num_columns)
-{
+po::options_description createMappingOptionsDescription(Context& context,
+                                                        const int num_columns) {
     po::options_description mapping_options("Mapping Options", num_columns);
     mapping_options.add_options()(
         "target-graph-file,g",
@@ -1034,7 +1007,7 @@ po::options_description createMappingOptionsDescription(Context &context,
         "one-to-one-mapping-strategy",
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&](const std::string &strategy) {
+            ->notifier([&](const std::string& strategy) {
                 context.mapping.strategy = oneToOneMappingStrategyFromString(strategy);
             }),
         "Strategy for solving the one-to-one mapping problem after initial partitioning.\n"
@@ -1071,9 +1044,8 @@ po::options_description createMappingOptionsDescription(Context &context,
     return mapping_options;
 }
 
-po::options_description createSharedMemoryOptionsDescription(Context &context,
-                                                             const int num_columns)
-{
+po::options_description createSharedMemoryOptionsDescription(Context& context,
+                                                             const int num_columns) {
     po::options_description shared_memory_options("Shared Memory Options", num_columns);
     shared_memory_options.add_options()(
         "s-num-threads,t",
@@ -1109,8 +1081,7 @@ po::options_description createSharedMemoryOptionsDescription(Context &context,
     return shared_memory_options;
 }
 
-void processCommandLineInput(Context &context, int argc, char *argv[])
-{
+void processCommandLineInput(Context& context, int argc, char *argv[]) {
     const int num_columns = platform::getTerminalWidth();
 
     po::options_description required_options("Required Options", num_columns);
@@ -1130,7 +1101,7 @@ void processCommandLineInput(Context &context, int argc, char *argv[])
         po::value<std::string>()
             ->value_name("<string>")
             ->required()
-            ->notifier([&](const std::string &s) {
+            ->notifier([&](const std::string& s) {
                 context.partition.objective = objectiveFromString(s);
             }),
         "Objective: \n"
@@ -1182,19 +1153,16 @@ void processCommandLineInput(Context &context, int argc, char *argv[])
 
     // placing vm.count("help") here prevents required attributes raising an
     // error if only help was supplied
-    if(cmd_vm.count("help") != 0 || argc == 1)
-    {
+    if(cmd_vm.count("help") != 0 || argc == 1) {
         LOG << cmd_line_options;
         exit(0);
     }
 
     po::notify(cmd_vm);
 
-    if(context.partition.preset_file != "")
-    {
+    if(context.partition.preset_file != "") {
         std::ifstream file(context.partition.preset_file.c_str());
-        if(!file)
-        {
+        if(!file) {
             throw InvalidInputException("Could not load context file at: " +
                                         context.partition.preset_file);
         }
@@ -1216,15 +1184,12 @@ void processCommandLineInput(Context &context, int argc, char *argv[])
     std::string epsilon_str = std::to_string(context.partition.epsilon);
     epsilon_str.erase(epsilon_str.find_last_not_of('0') + 1, std::string::npos);
 
-    if(context.partition.graph_partition_output_folder != "")
-    {
+    if(context.partition.graph_partition_output_folder != "") {
         std::string graph_base_name = context.partition.graph_filename.substr(
             context.partition.graph_filename.find_last_of("/") + 1);
         context.partition.graph_partition_filename =
             context.partition.graph_partition_output_folder + "/" + graph_base_name;
-    }
-    else
-    {
+    } else {
         context.partition.graph_partition_filename = context.partition.graph_filename;
     }
     context.partition.graph_partition_filename =
@@ -1234,17 +1199,14 @@ void processCommandLineInput(Context &context, int argc, char *argv[])
     context.partition.graph_community_filename =
         context.partition.graph_filename + ".community";
 
-    if(context.partition.deterministic)
-    {
+    if(context.partition.deterministic) {
         context.preprocessing.stable_construction_of_incident_edges = true;
     }
 }
 
-void parseIniToContext(Context &context, const std::string &ini_filename)
-{
+void parseIniToContext(Context& context, const std::string& ini_filename) {
     std::ifstream file(ini_filename.c_str());
-    if(!file)
-    {
+    if(!file) {
         throw InvalidInputException("Could not load context file at: " + ini_filename);
     }
     const int num_columns = 80;
@@ -1280,8 +1242,7 @@ void parseIniToContext(Context &context, const std::string &ini_filename)
     po::store(po::parse_config_file(file, ini_line_options, true), cmd_vm);
     po::notify(cmd_vm);
 
-    if(context.partition.deterministic)
-    {
+    if(context.partition.deterministic) {
         context.preprocessing.stable_construction_of_incident_edges = true;
     }
 }

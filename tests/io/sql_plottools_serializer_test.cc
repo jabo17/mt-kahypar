@@ -110,43 +110,34 @@ std::set<std::string> excluded_members = { "verbose_output",
                                            "degree_of_parallelism",
                                            "mapping_target_graph_file" };
 
-bool is_target_struct(const std::string &line)
-{
-    for(const std::string &target_struct : target_structs)
-    {
-        if(line.find("struct " + target_struct) != std::string::npos)
-        {
+bool is_target_struct(const std::string& line) {
+    for(const std::string& target_struct : target_structs) {
+        if(line.find("struct " + target_struct) != std::string::npos) {
             return true;
         }
     }
     return false;
 }
 
-std::string get_target_struct_prefix(const std::string &line)
-{
+std::string get_target_struct_prefix(const std::string& line) {
     std::string prefix = "";
-    for(const std::string &target_struct : target_structs)
-    {
-        if(line.find("struct " + target_struct) != std::string::npos)
-        {
+    for(const std::string& target_struct : target_structs) {
+        if(line.find("struct " + target_struct) != std::string::npos) {
             return target_struct_prefix[target_struct];
         }
     }
     return "";
 }
 
-void read_all_members_of_target_struct(std::ifstream &context_file,
-                                       const std::string &target_struct_line,
-                                       std::vector<std::string> &members)
-{
+void read_all_members_of_target_struct(std::ifstream& context_file,
+                                       const std::string& target_struct_line,
+                                       std::vector<std::string>& members) {
     std::string prefix = get_target_struct_prefix(target_struct_line);
     std::string line;
     std::getline(context_file, line);
-    while(line != "};")
-    {
+    while(line != "};") {
         if(line == "" || line.find("//") != std::string::npos ||
-           line.find("#") != std::string::npos)
-        {
+           line.find("#") != std::string::npos) {
             std::getline(context_file, line);
             continue;
         }
@@ -157,17 +148,14 @@ void read_all_members_of_target_struct(std::ifstream &context_file,
            strcmp(
                input,
                "    enabled_ip_algos(static_cast<size_t>(InitialPartitioningAlgorithm::UNDEFINED), true) { }") !=
-               0)
-        {
+               0) {
             char *token = std::strtok(input, " ;");
-            if(strcmp(token, "mutable") == 0)
-            {
+            if(strcmp(token, "mutable") == 0) {
                 token = std::strtok(NULL, " ;");
             }
             // Second value is member name
             token = std::strtok(NULL, " ;");
-            if(strcmp(token, "double") == 0)
-            { // long double
+            if(strcmp(token, "double") == 0) { // long double
                 token = std::strtok(NULL, " ;");
             }
             members.emplace_back(prefix + std::string(token));
@@ -176,33 +164,26 @@ void read_all_members_of_target_struct(std::ifstream &context_file,
     }
 }
 
-std::vector<std::string> get_all_members_in_context()
-{
+std::vector<std::string> get_all_members_in_context() {
     std::vector<std::string> members;
 
     std::ifstream context_file("../mt-kahypar/partition/context.h");
-    if(context_file)
-    {
+    if(context_file) {
         std::string line;
-        while(std::getline(context_file, line))
-        {
-            if(is_target_struct(line))
-            {
+        while(std::getline(context_file, line)) {
+            if(is_target_struct(line)) {
                 read_all_members_of_target_struct(context_file, line, members);
             }
         }
         context_file.close();
-    }
-    else
-    {
+    } else {
         ERR("Context file not found");
     }
 
     return members;
 }
 
-std::set<std::string> get_all_members_from_result_line(const std::string &result)
-{
+std::set<std::string> get_all_members_from_result_line(const std::string& result) {
     std::set<std::string> members;
 
     char *input = new char[result.length() + 1];
@@ -210,10 +191,8 @@ std::set<std::string> get_all_members_from_result_line(const std::string &result
     char *token = std::strtok(input, " =");
     token = std::strtok(NULL, " =");
     int idx = 0;
-    while(token != NULL)
-    {
-        if(idx % 2 == 0)
-        {
+    while(token != NULL) {
+        if(idx % 2 == 0) {
             members.emplace(token);
         }
         token = std::strtok(NULL, " =");
@@ -224,50 +203,35 @@ std::set<std::string> get_all_members_from_result_line(const std::string &result
     return members;
 }
 
-std::string map_context_member_to_result_line_member(const std::string &context_member)
-{
-    if(context_member == "perfect_balance_part_weights")
-    {
+std::string map_context_member_to_result_line_member(const std::string& context_member) {
+    if(context_member == "perfect_balance_part_weights") {
         return "perfect_balance_part_weight";
-    }
-    else if(context_member == "max_part_weights")
-    {
+    } else if(context_member == "max_part_weights") {
         return "max_part_weight";
-    }
-    else if(context_member == "graph_filename")
-    {
+    } else if(context_member == "graph_filename") {
         return "graph";
-    }
-    else if(context_member == "community_redistribution_use_community_redistribution")
-    {
+    } else if(context_member == "community_redistribution_use_community_redistribution") {
         return "use_community_redistribution";
-    }
-    else if(context_member == "rating_rating_function")
-    {
+    } else if(context_member == "rating_rating_function") {
         return "rating_function";
     }
     return context_member;
 }
 
 bool check_if_member_is_contained_in_result_line(
-    const std::string &context_member, const std::set<std::string> &members_result)
-{
+    const std::string& context_member, const std::set<std::string>& members_result) {
     std::string mapped_context_member =
         map_context_member_to_result_line_member(context_member);
-    if(excluded_members.find(mapped_context_member) != excluded_members.end())
-    {
+    if(excluded_members.find(mapped_context_member) != excluded_members.end()) {
         return true;
-    }
-    else if(members_result.find(mapped_context_member) == members_result.end())
-    {
+    } else if(members_result.find(mapped_context_member) == members_result.end()) {
         return false;
     }
 
     return true;
 }
 
-TEST(ASqlPlotSerializerTest, ChecksIfSomeParametersFromContextAreMissing)
-{
+TEST(ASqlPlotSerializerTest, ChecksIfSomeParametersFromContextAreMissing) {
     tests::HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     tests::Hypergraph dummy_hypergraph;
     tests::PartitionedHypergraph dummy_partitioned_hypergraph(2, dummy_hypergraph);
@@ -288,10 +252,8 @@ TEST(ASqlPlotSerializerTest, ChecksIfSomeParametersFromContextAreMissing)
     std::set<std::string> members_result = get_all_members_from_result_line(result);
     std::vector<std::string> members_context = get_all_members_in_context();
     bool any_error = false;
-    for(const std::string &member : members_context)
-    {
-        if(!check_if_member_is_contained_in_result_line(member, members_result))
-        {
+    for(const std::string& member : members_context) {
+        if(!check_if_member_is_contained_in_result_line(member, members_result)) {
             any_error = true;
             LOG << "Context member" << member << "not found in result line."
                 << "Maybe it has a different name or should be excluded from this test.";
@@ -300,8 +262,7 @@ TEST(ASqlPlotSerializerTest, ChecksIfSomeParametersFromContextAreMissing)
     ASSERT_FALSE(any_error);
 }
 
-TEST(CSVTest, HeaderAndRowContainSameNumberOfColumns)
-{
+TEST(CSVTest, HeaderAndRowContainSameNumberOfColumns) {
     std::string header = csv::header();
     tests::Hypergraph dummy_hypergraph;
     tests::PartitionedHypergraph dummy_partitioned_hypergraph(2, dummy_hypergraph);

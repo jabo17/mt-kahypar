@@ -45,193 +45,158 @@ using HwTopology = mt_kahypar::parallel::HardwareTopology<TopoMock, parallel::to
                                                           parallel::node_t>;
 using TBB = mt_kahypar::parallel::TBBInitializer<HwTopology, false>;
 
-TEST(AArray, WritesAnValueToStrippedVector1)
-{
+TEST(AArray, WritesAnValueToStrippedVector1) {
     Array<int> vec(256, 0);
     vec[0] = 31;
     ASSERT_EQ(31, vec[0]);
 }
 
-TEST(AArray, WritesAnValueToStrippedVector2)
-{
+TEST(AArray, WritesAnValueToStrippedVector2) {
     Array<int> vec(256, 0);
     vec[65] = 35;
     ASSERT_EQ(35, vec[65]);
 }
 
-TEST(AArray, WritesAnValueToStrippedVector3)
-{
+TEST(AArray, WritesAnValueToStrippedVector3) {
     Array<int> vec(256, 0);
     vec[127] = 42;
     ASSERT_EQ(42, vec[127]);
 }
 
-TEST(AArray, WritesAnValueToStrippedVector4)
-{
+TEST(AArray, WritesAnValueToStrippedVector4) {
     Array<int> vec(256, 0);
     vec[128] = 43;
     ASSERT_EQ(43, vec[128]);
 }
 
-TEST(AArray, WritesValuesToWholeVector)
-{
+TEST(AArray, WritesValuesToWholeVector) {
     Array<int> vec(256, 0);
 
-    for(size_t i = 0; i < vec.size(); ++i)
-    {
+    for(size_t i = 0; i < vec.size(); ++i) {
         vec[i] = i;
     }
-    for(size_t i = 0; i < vec.size(); ++i)
-    {
+    for(size_t i = 0; i < vec.size(); ++i) {
         ASSERT_EQ(i, vec[i]);
     }
 }
 
-TEST(AArray, IsInitializedWithNonDefaultValues)
-{
+TEST(AArray, IsInitializedWithNonDefaultValues) {
     Array<int> vec(256, 42);
 
-    for(size_t i = 0; i < vec.size(); ++i)
-    {
+    for(size_t i = 0; i < vec.size(); ++i) {
         ASSERT_EQ(42, vec[i]);
     }
 }
 
-TEST(AArray, AssignValuesToAlreadyInitializedVector1)
-{
+TEST(AArray, AssignValuesToAlreadyInitializedVector1) {
     Array<int> vec(256, 0);
 
     const size_t count = 31;
     vec.assign(count, 42);
-    for(size_t i = 0; i < count; ++i)
-    {
+    for(size_t i = 0; i < count; ++i) {
         ASSERT_EQ(42, vec[i]);
     }
-    for(size_t i = count; i < vec.size(); ++i)
-    {
+    for(size_t i = count; i < vec.size(); ++i) {
         ASSERT_EQ(0, vec[i]);
     }
 }
 
-TEST(AArray, AssignValuesToAlreadyInitializedVector2)
-{
+TEST(AArray, AssignValuesToAlreadyInitializedVector2) {
     Array<int> vec(256, 0);
 
     const size_t count = 42;
     vec.assign(count, 42);
-    for(size_t i = 0; i < count; ++i)
-    {
+    for(size_t i = 0; i < count; ++i) {
         ASSERT_EQ(42, vec[i]);
     }
-    for(size_t i = count; i < vec.size(); ++i)
-    {
+    for(size_t i = count; i < vec.size(); ++i) {
         ASSERT_EQ(0, vec[i]);
     }
 }
 
-TEST(AArray, AssignValuesToAlreadyInitializedVector3)
-{
+TEST(AArray, AssignValuesToAlreadyInitializedVector3) {
     Array<int> vec(256, 0);
 
     const size_t count = 127;
     vec.assign(count, 42);
-    for(size_t i = 0; i < count; ++i)
-    {
+    for(size_t i = 0; i < count; ++i) {
         ASSERT_EQ(42, vec[i]);
     }
-    for(size_t i = count; i < vec.size(); ++i)
-    {
+    for(size_t i = count; i < vec.size(); ++i) {
         ASSERT_EQ(0, vec[i]);
     }
 }
 
-TEST(AArray, AssignValuesToAlreadyInitializedVector4)
-{
+TEST(AArray, AssignValuesToAlreadyInitializedVector4) {
     Array<int> vec(256, 0);
 
     const size_t count = 128;
     vec.assign(count, 42);
-    for(size_t i = 0; i < count; ++i)
-    {
+    for(size_t i = 0; i < count; ++i) {
         ASSERT_EQ(42, vec[i]);
     }
-    for(size_t i = count; i < vec.size(); ++i)
-    {
+    for(size_t i = count; i < vec.size(); ++i) {
         ASSERT_EQ(0, vec[i]);
     }
 }
 
-TEST(AArray, AssignValuesToAlreadyInitializedVector5)
-{
+TEST(AArray, AssignValuesToAlreadyInitializedVector5) {
     Array<int> vec(256, 0);
 
     const size_t count = 256;
     vec.assign(count, 42);
-    for(size_t i = 0; i < count; ++i)
-    {
+    for(size_t i = 0; i < count; ++i) {
         ASSERT_EQ(42, vec[i]);
     }
-    for(size_t i = count; i < vec.size(); ++i)
-    {
+    for(size_t i = count; i < vec.size(); ++i) {
         ASSERT_EQ(0, vec[i]);
     }
 }
 
-TEST(AArray, FilledWithNumbersFromZeroToN)
-{
+TEST(AArray, FilledWithNumbersFromZeroToN) {
     Array<int> vec(256, 0);
     std::iota(vec.begin(), vec.end(), 0);
-    for(size_t i = 0; i < vec.size(); ++i)
-    {
+    for(size_t i = 0; i < vec.size(); ++i) {
         ASSERT_EQ(i, vec[i]);
     }
 }
 
-TEST(AArray, ChecksDistanceBetweenTwoPointers1)
-{
+TEST(AArray, ChecksDistanceBetweenTwoPointers1) {
     Array<int> vec(256, 0);
     ASSERT_EQ(5, std::distance(vec.begin(), vec.begin() + 5));
 }
 
-TEST(AArray, ChecksDistanceBetweenTwoPointers2)
-{
+TEST(AArray, ChecksDistanceBetweenTwoPointers2) {
     Array<int> vec(256, 0);
     ASSERT_EQ(42, std::distance(vec.begin() + 24, vec.begin() + 66));
 }
 
-TEST(AArray, ChecksDistanceBetweenTwoPointers3)
-{
+TEST(AArray, ChecksDistanceBetweenTwoPointers3) {
     Array<int> vec(256, 0);
     ASSERT_EQ(256, std::distance(vec.begin(), vec.end()));
 }
 
-TEST(AArray, CanBeSorted)
-{
+TEST(AArray, CanBeSorted) {
     Array<int> vec(256, 0);
-    for(size_t i = 0; i < vec.size(); ++i)
-    {
+    for(size_t i = 0; i < vec.size(); ++i) {
         vec[i] = (vec.size() - 1) - i;
     }
     std::sort(vec.begin(), vec.end());
-    for(size_t i = 0; i < vec.size(); ++i)
-    {
+    for(size_t i = 0; i < vec.size(); ++i) {
         ASSERT_EQ(i, vec[i]);
     }
 }
 
-TEST(AArray, MemcopiesContentToVector)
-{
+TEST(AArray, MemcopiesContentToVector) {
     Array<int> vec(256, 0);
     std::vector<int> vec2(256, 5);
     memcpy(vec.data(), vec2.data(), sizeof(int) * 256);
-    for(size_t i = 0; i < vec.size(); ++i)
-    {
+    for(size_t i = 0; i < vec.size(); ++i) {
         ASSERT_EQ(5, vec[i]);
     }
 }
 
-TEST(AArray, IsInitializedWithMemoryChunkFromMemoryPool)
-{
+TEST(AArray, IsInitializedWithMemoryChunkFromMemoryPool) {
     parallel::MemoryPool::instance().deactivate_minimum_allocation_size();
     parallel::MemoryPool::instance().register_memory_group("TEST_GROUP", 1);
     parallel::MemoryPool::instance().register_memory_chunk("TEST_GROUP", "TEST_CHUNK", 5,
@@ -245,8 +210,7 @@ TEST(AArray, IsInitializedWithMemoryChunkFromMemoryPool)
     parallel::MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AArray, IsInitializedWithSeveralMemoryChunksFromMemoryPool)
-{
+TEST(AArray, IsInitializedWithSeveralMemoryChunksFromMemoryPool) {
     parallel::MemoryPool::instance().deactivate_minimum_allocation_size();
     parallel::MemoryPool::instance().register_memory_group("TEST_GROUP", 1);
     parallel::MemoryPool::instance().register_memory_chunk("TEST_GROUP", "TEST_CHUNK_1",
@@ -266,8 +230,7 @@ TEST(AArray, IsInitializedWithSeveralMemoryChunksFromMemoryPool)
     parallel::MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AArray, ReleasesMemoryChunkFromMemoryPoolInDestructor)
-{
+TEST(AArray, ReleasesMemoryChunkFromMemoryPoolInDestructor) {
     parallel::MemoryPool::instance().deactivate_minimum_allocation_size();
     parallel::MemoryPool::instance().register_memory_group("TEST_GROUP", 1);
     parallel::MemoryPool::instance().register_memory_chunk("TEST_GROUP", "TEST_CHUNK", 5,
@@ -288,8 +251,7 @@ TEST(AArray, ReleasesMemoryChunkFromMemoryPoolInDestructor)
     parallel::MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AArray, AllocatesOwnMemoryIfNotAvailableInMemoryPool)
-{
+TEST(AArray, AllocatesOwnMemoryIfNotAvailableInMemoryPool) {
     parallel::MemoryPool::instance().deactivate_minimum_allocation_size();
     parallel::MemoryPool::instance().register_memory_group("TEST_GROUP", 1);
     parallel::MemoryPool::instance().register_memory_chunk("TEST_GROUP", "TEST_CHUNK", 5,
@@ -304,8 +266,7 @@ TEST(AArray, AllocatesOwnMemoryIfNotAvailableInMemoryPool)
     parallel::MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AArray, AllocatesOwnMemoryOnOverAllocationInMemoryPool)
-{
+TEST(AArray, AllocatesOwnMemoryOnOverAllocationInMemoryPool) {
     parallel::MemoryPool::instance().deactivate_minimum_allocation_size();
     parallel::MemoryPool::instance().register_memory_group("TEST_GROUP", 1);
     parallel::MemoryPool::instance().register_memory_chunk("TEST_GROUP", "TEST_CHUNK", 5,
@@ -320,8 +281,7 @@ TEST(AArray, AllocatesOwnMemoryOnOverAllocationInMemoryPool)
     parallel::MemoryPool::instance().free_memory_chunks();
 }
 
-TEST(AArray, AllocatesOwnMemoryIfAlreadyRequestedInMemoryPool)
-{
+TEST(AArray, AllocatesOwnMemoryIfAlreadyRequestedInMemoryPool) {
     parallel::MemoryPool::instance().deactivate_minimum_allocation_size();
     parallel::MemoryPool::instance().register_memory_group("TEST_GROUP", 1);
     parallel::MemoryPool::instance().register_memory_chunk("TEST_GROUP", "TEST_CHUNK", 5,

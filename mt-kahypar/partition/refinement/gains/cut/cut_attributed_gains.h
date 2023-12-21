@@ -37,8 +37,7 @@ namespace mt_kahypar {
  */
 struct CutAttributedGains
 {
-    static HyperedgeWeight gain(const SynchronizedEdgeUpdate &sync_update)
-    {
+    static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update) {
         return sync_update.edge_size > 1 ?
                    (sync_update.pin_count_in_from_part_after ==
                     sync_update.edge_size - 1) *

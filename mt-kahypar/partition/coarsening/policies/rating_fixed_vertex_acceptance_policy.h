@@ -43,10 +43,9 @@ class FixedVertexAcceptancePolicy final : public kahypar::meta::PolicyBase
     // fixed vertices.
     template <typename Hypergraph>
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool
-    acceptContraction(const Hypergraph &hypergraph,
-                      const ds::FixedVertexSupport<Hypergraph> &fixed_vertices,
-                      const Context &context, const HypernodeID u, const HypernodeID v)
-    {
+    acceptContraction(const Hypergraph& hypergraph,
+                      const ds::FixedVertexSupport<Hypergraph>& fixed_vertices,
+                      const Context& context, const HypernodeID u, const HypernodeID v) {
         // We allow the following contractions:
         // 1.) u = Fixed Vertex <- Free Vertex = v
         // 2.) u = Free Vertex <- Free Vertex = v
@@ -69,14 +68,12 @@ class FixedVertexAcceptancePolicy final : public kahypar::meta::PolicyBase
     // partitioning more leeway to improve the solution.
     template <typename Hypergraph>
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool
-    acceptImbalance(const Hypergraph &hypergraph,
-                    const ds::FixedVertexSupport<Hypergraph> &fixed_vertices,
-                    const Context &context, const HypernodeID u, const HypernodeID v)
-    {
+    acceptImbalance(const Hypergraph& hypergraph,
+                    const ds::FixedVertexSupport<Hypergraph>& fixed_vertices,
+                    const Context& context, const HypernodeID u, const HypernodeID v) {
         const bool is_fixed_u = fixed_vertices.isFixed(u);
         const bool is_fixed_v = fixed_vertices.isFixed(v);
-        if((is_fixed_u && is_fixed_v) || (!is_fixed_u && !is_fixed_v))
-        {
+        if((is_fixed_u && is_fixed_v) || (!is_fixed_u && !is_fixed_v)) {
             // Contracting a fixed onto a fixed vertex, or an free onto a free vertex does
             // not increase the fixed vertex block weight.
             return true;

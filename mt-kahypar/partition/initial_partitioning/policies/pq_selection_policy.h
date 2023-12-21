@@ -40,20 +40,17 @@ class RoundRobinPQSelectionPolicy
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
   public:
-    static inline bool pop(const PartitionedHypergraph &hypergraph, KWayPriorityQueue &pq,
-                           HypernodeID &hn, PartitionID &to, Gain &gain, const bool)
-    {
+    static inline bool pop(const PartitionedHypergraph& hypergraph, KWayPriorityQueue& pq,
+                           HypernodeID& hn, PartitionID& to, Gain& gain, const bool) {
         ASSERT(to >= kInvalidPartition && to < hypergraph.k());
         hn = kInvalidHypernode;
         gain = kInvalidGain;
 
         to = (to + 1) % hypergraph.k();
         const PartitionID start_block = to;
-        while(!pq.isEnabled(to))
-        {
+        while(!pq.isEnabled(to)) {
             to = (to + 1) % hypergraph.k();
-            if(start_block == to)
-            {
+            if(start_block == to) {
                 to = kInvalidPartition;
                 return false;
             }
@@ -81,21 +78,17 @@ class GlobalPQSelectionPolicy
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
   public:
-    static inline bool pop(const PartitionedHypergraph &, KWayPriorityQueue &pq,
-                           HypernodeID &hn, PartitionID &to, Gain &gain, const bool)
-    {
+    static inline bool pop(const PartitionedHypergraph&, KWayPriorityQueue& pq,
+                           HypernodeID& hn, PartitionID& to, Gain& gain, const bool) {
         hn = kInvalidHypernode;
         to = kInvalidPartition;
         gain = kInvalidGain;
 
-        if(pq.numNonEmptyParts() > 0 && pq.numEnabledParts() > 0)
-        {
+        if(pq.numNonEmptyParts() > 0 && pq.numEnabledParts() > 0) {
             pq.deleteMax(hn, gain, to);
             ASSERT(hn != kInvalidHypernode);
             return true;
-        }
-        else
-        {
+        } else {
             return false;
         }
     }
@@ -115,39 +108,30 @@ class SequentialPQSelectionPolicy
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
   public:
-    static inline bool pop(const PartitionedHypergraph &hypergraph, KWayPriorityQueue &pq,
-                           HypernodeID &hn, PartitionID &to, Gain &gain,
-                           const bool use_perfect_balanced_as_upper_bound)
-    {
+    static inline bool pop(const PartitionedHypergraph& hypergraph, KWayPriorityQueue& pq,
+                           HypernodeID& hn, PartitionID& to, Gain& gain,
+                           const bool use_perfect_balanced_as_upper_bound) {
         hn = kInvalidHypernode;
         gain = kInvalidGain;
 
-        if(use_perfect_balanced_as_upper_bound)
-        {
-            if(to == kInvalidPartition)
-            {
+        if(use_perfect_balanced_as_upper_bound) {
+            if(to == kInvalidPartition) {
                 to = 0;
             }
 
-            while(to < hypergraph.k() && !pq.isEnabled(to))
-            {
+            while(to < hypergraph.k() && !pq.isEnabled(to)) {
                 ++to;
             }
 
-            if(to < hypergraph.k())
-            {
+            if(to < hypergraph.k()) {
                 ASSERT(pq.size(to) > 0);
                 pq.deleteMaxFromPartition(hn, gain, to);
                 ASSERT(hn != kInvalidHypernode);
                 return true;
-            }
-            else
-            {
+            } else {
                 return false;
             }
-        }
-        else
-        {
+        } else {
             return GlobalPQSelectionPolicy<TypeTraits>::pop(
                 hypergraph, pq, hn, to, gain, use_perfect_balanced_as_upper_bound);
         }

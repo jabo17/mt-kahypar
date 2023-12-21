@@ -8,8 +8,7 @@
 // Install library interface via 'sudo make install.mtkahypar' in build folder
 // Compile with: g++ -std=c++14 -DNDEBUG -O3 partition_with_fixed_vertices.cc -o example
 // -lmtkahypar
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 
     // Initialize thread pool
     mt_kahypar_initialize_thread_pool(
@@ -36,8 +35,7 @@ int main(int argc, char *argv[])
     std::unique_ptr<mt_kahypar_partition_id_t[]> fixed_vertices =
         std::make_unique<mt_kahypar_partition_id_t[]>(
             mt_kahypar_num_hypernodes(hypergraph));
-    for(size_t i = 0; i < 100; ++i)
-    {
+    for(size_t i = 0; i < 100; ++i) {
         std::cout << fixed_vertices[i] << std::endl;
     }
     mt_kahypar_read_fixed_vertices_from_file("ibm01.k4.p1.fix", fixed_vertices.get());
@@ -73,18 +71,15 @@ int main(int argc, char *argv[])
 
     bool correct_assignment = true;
     for(mt_kahypar_hypernode_id_t hn = 0; hn < mt_kahypar_num_hypernodes(hypergraph);
-        ++hn)
-    {
-        if(fixed_vertices[hn] != -1 && fixed_vertices[hn] != partition[hn])
-        {
+        ++hn) {
+        if(fixed_vertices[hn] != -1 && fixed_vertices[hn] != partition[hn]) {
             std::cout << "Node " << hn << " is fixed to block " << fixed_vertices[hn]
                       << ", but assigned to block " << partition[hn] << std::endl;
             correct_assignment = false;
         }
     }
 
-    if(correct_assignment)
-    {
+    if(correct_assignment) {
         std::cout << "\033[1;92mFixed vertex assignment was successful :)\033[0m"
                   << std::endl;
     }

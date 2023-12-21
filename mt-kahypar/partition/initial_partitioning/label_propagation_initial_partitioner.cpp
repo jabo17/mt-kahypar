@@ -35,33 +35,26 @@
 namespace mt_kahypar {
 
 template <typename TypeTraits>
-void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl()
-{
+void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl() {
     if(_ip_data.should_initial_partitioner_run(
-           InitialPartitioningAlgorithm::label_propagation))
-    {
+           InitialPartitioningAlgorithm::label_propagation)) {
         HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
-        PartitionedHypergraph &hg = _ip_data.local_partitioned_hypergraph();
+        PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
         _ip_data.reset_unassigned_hypernodes(_rng);
         _ip_data.preassignFixedVertices(hg);
         vec<vec<HypernodeID> > start_nodes =
             PseudoPeripheralStartNodes<TypeTraits>::computeStartNodes(
                 _ip_data, _context, kInvalidPartition, _rng);
-        for(PartitionID block = 0; block < _context.partition.k; ++block)
-        {
+        for(PartitionID block = 0; block < _context.partition.k; ++block) {
             size_t i = 0;
             for(; i < std::min(start_nodes[block].size(),
                                _context.initial_partitioning.lp_initial_block_size);
-                ++i)
-            {
+                ++i) {
                 const HypernodeID hn = start_nodes[block][i];
-                if(hg.partID(hn) == kInvalidPartition && fitsIntoBlock(hg, hn, block))
-                {
+                if(hg.partID(hn) == kInvalidPartition && fitsIntoBlock(hg, hn, block)) {
                     hg.setNodePart(hn, block);
-                }
-                else
-                {
+                } else {
                     std::swap(start_nodes[block][i--],
                               start_nodes[block][start_nodes[block].size() - 1]);
                     start_nodes[block].pop_back();
@@ -69,18 +62,15 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl()
             }
 
             // Remove remaining unassigned seed nodes
-            for(; i < start_nodes[block].size(); ++i)
-            {
+            for(; i < start_nodes[block].size(); ++i) {
                 start_nodes[block].pop_back();
             }
 
-            if(start_nodes[block].size() == 0)
-            {
+            if(start_nodes[block].size() == 0) {
                 // There has been no seed node assigned to the block
                 // => find an unassigned node and assign it to the block
                 const HypernodeID hn = _ip_data.get_unassigned_hypernode();
-                if(hn != kInvalidHypernode)
-                {
+                if(hn != kInvalidHypernode) {
                     hg.setNodePart(hn, block);
                     start_nodes[block].push_back(hn);
                 }
@@ -90,35 +80,28 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl()
         // Each block is extended with 5 additional vertices which are adjacent
         // to their corresponding seed vertices. This should prevent that block
         // becomes empty after several label propagation rounds.
-        for(PartitionID block = 0; block < _context.partition.k; ++block)
-        {
+        for(PartitionID block = 0; block < _context.partition.k; ++block) {
             if(!start_nodes[block].empty() &&
                start_nodes[block].size() <
-                   _context.initial_partitioning.lp_initial_block_size)
-            {
+                   _context.initial_partitioning.lp_initial_block_size) {
                 extendBlockToInitialBlockSize(hg, start_nodes[block], block);
             }
         }
 
         bool converged = false;
         for(size_t i = 0;
-            i < _context.initial_partitioning.lp_maximum_iterations && !converged; ++i)
-        {
+            i < _context.initial_partitioning.lp_maximum_iterations && !converged; ++i) {
             converged = true;
 
-            for(const HypernodeID &hn : hg.nodes())
-            {
-                if(hg.nodeDegree(hn) > 0 && !hg.isFixed(hn))
-                {
+            for(const HypernodeID& hn : hg.nodes()) {
+                if(hg.nodeDegree(hn) > 0 && !hg.isFixed(hn)) {
                     // Assign vertex to the block where FM gain is maximized
                     MaxGainMove max_gain_move = computeMaxGainMove(hg, hn);
 
                     const PartitionID to = max_gain_move.block;
-                    if(to != kInvalidPartition)
-                    {
+                    if(to != kInvalidPartition) {
                         const PartitionID from = hg.partID(hn);
-                        if(from == kInvalidPartition)
-                        {
+                        if(from == kInvalidPartition) {
                             ASSERT(fitsIntoBlock(hg, hn, to));
 
                             HEAVY_INITIAL_PARTITIONING_ASSERT(
@@ -126,8 +109,7 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl()
                                     Gain expected_gain =
                                         CutGainPolicy<TypeTraits>::calculateGain(hg, hn,
                                                                                  to);
-                                    if(expected_gain != max_gain_move.gain)
-                                    {
+                                    if(expected_gain != max_gain_move.gain) {
                                         LOG << V(hn);
                                         LOG << V(from);
                                         LOG << V(to);
@@ -140,9 +122,7 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl()
 
                             converged = false;
                             hg.setNodePart(hn, to);
-                        }
-                        else if(from != to)
-                        {
+                        } else if(from != to) {
                             ASSERT(fitsIntoBlock(hg, hn, to));
                             converged = false;
 
@@ -156,10 +136,8 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl()
                                     const HypernodeID pin_count_in_from_part_after,
                                     const HypernodeID pin_count_in_to_part_after) {
                                     HypernodeID adjusted_edge_size = 0;
-                                    for(const HypernodeID &pin : hg.pins(he))
-                                    {
-                                        if(hg.partID(pin) != kInvalidPartition)
-                                        {
+                                    for(const HypernodeID& pin : hg.pins(he)) {
+                                        if(hg.partID(pin) != kInvalidPartition) {
                                             ++adjusted_edge_size;
                                         }
                                     }
@@ -175,9 +153,7 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl()
 #endif
                         }
                     }
-                }
-                else if(hg.partID(hn) == kInvalidPartition)
-                {
+                } else if(hg.partID(hn) == kInvalidPartition) {
                     // In case vertex hn is a degree zero vertex we assign it
                     // to the block with minimum weight
                     assignVertexToBlockWithMinimumWeight(hg, hn);
@@ -187,8 +163,7 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl()
 
         // If there are still unassigned vertices left, we assign them to the
         // block with minimum weight.
-        while(_ip_data.get_unassigned_hypernode() != kInvalidHypernode)
-        {
+        while(_ip_data.get_unassigned_hypernode() != kInvalidHypernode) {
             const HypernodeID unassigned_hn = _ip_data.get_unassigned_hypernode();
             assignVertexToBlockWithMinimumWeight(hg, unassigned_hn);
         }
@@ -203,8 +178,7 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl()
 template <typename TypeTraits>
 MaxGainMove
 LabelPropagationInitialPartitioner<TypeTraits>::computeMaxGainMoveForUnassignedVertex(
-    PartitionedHypergraph &hypergraph, const HypernodeID hn)
-{
+    PartitionedHypergraph& hypergraph, const HypernodeID hn) {
     ASSERT(hypergraph.partID(hn) == kInvalidPartition);
     ASSERT(std::all_of(_tmp_scores.begin(), _tmp_scores.end(),
                        [](Gain i) { return i == 0; }),
@@ -212,11 +186,9 @@ LabelPropagationInitialPartitioner<TypeTraits>::computeMaxGainMoveForUnassignedV
     _valid_blocks.reset();
 
     HyperedgeWeight internal_weight = 0;
-    for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
-    {
+    for(const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
         const HyperedgeWeight he_weight = hypergraph.edgeWeight(he);
-        if(hypergraph.connectivity(he) == 1)
-        {
+        if(hypergraph.connectivity(he) == 1) {
             // In case, connectivity is one we would make the hyperedge cut if would
             // assign the vertex to an different block than the one already contained
             // in the hyperedge
@@ -224,13 +196,10 @@ LabelPropagationInitialPartitioner<TypeTraits>::computeMaxGainMoveForUnassignedV
             _valid_blocks.set(connected_block, true);
             internal_weight += he_weight;
             _tmp_scores[connected_block] += he_weight;
-        }
-        else
-        {
+        } else {
             // Otherwise we can assign the vertex to a block already contained
             // in the hyperedge without affecting cut
-            for(const PartitionID &target_part : hypergraph.connectivitySet(he))
-            {
+            for(const PartitionID& target_part : hypergraph.connectivitySet(he)) {
                 _valid_blocks.set(target_part, true);
             }
         }
@@ -242,8 +211,7 @@ LabelPropagationInitialPartitioner<TypeTraits>::computeMaxGainMoveForUnassignedV
 template <typename TypeTraits>
 MaxGainMove
 LabelPropagationInitialPartitioner<TypeTraits>::computeMaxGainMoveForAssignedVertex(
-    PartitionedHypergraph &hypergraph, const HypernodeID hn)
-{
+    PartitionedHypergraph& hypergraph, const HypernodeID hn) {
     ASSERT(hypergraph.partID(hn) != kInvalidPartition);
     ASSERT(std::all_of(_tmp_scores.begin(), _tmp_scores.end(),
                        [](Gain i) { return i == 0; }),
@@ -252,38 +220,29 @@ LabelPropagationInitialPartitioner<TypeTraits>::computeMaxGainMoveForAssignedVer
 
     const PartitionID from = hypergraph.partID(hn);
     HyperedgeWeight internal_weight = 0;
-    for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
-    {
+    for(const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
         const HyperedgeWeight he_weight = hypergraph.edgeWeight(he);
         const PartitionID connectivity = hypergraph.connectivity(he);
         const HypernodeID pins_in_from_part = hypergraph.pinCountInPart(he, from);
 
-        if(connectivity == 1 && pins_in_from_part > 1)
-        {
+        if(connectivity == 1 && pins_in_from_part > 1) {
             // If connectivity is one and there is more than one vertex in block
             // of hypernode hn, we would make the hyperedge cut, if we would assign
             // hn to an different block.
             internal_weight += he_weight;
-        }
-        else if(connectivity == 2)
-        {
-            for(const PartitionID &to : hypergraph.connectivitySet(he))
-            {
+        } else if(connectivity == 2) {
+            for(const PartitionID& to : hypergraph.connectivitySet(he)) {
                 _valid_blocks.set(to, true);
                 // In case connectivity is two and hn is the last vertex in hyperedge
                 // he of block from, we would make that hyperedge a non-cut hyperedge.
-                if(pins_in_from_part == 1 && hypergraph.pinCountInPart(he, to) > 0)
-                {
+                if(pins_in_from_part == 1 && hypergraph.pinCountInPart(he, to) > 0) {
                     _tmp_scores[to] += he_weight;
                 }
             }
-        }
-        else
-        {
+        } else {
             // Otherwise we can assign the vertex to a block already contained
             // in the hyperedge without affecting cut
-            for(const PartitionID &to : hypergraph.connectivitySet(he))
-            {
+            for(const PartitionID& to : hypergraph.connectivitySet(he)) {
                 _valid_blocks.set(to, true);
             }
         }
@@ -294,22 +253,18 @@ LabelPropagationInitialPartitioner<TypeTraits>::computeMaxGainMoveForAssignedVer
 
 template <typename TypeTraits>
 MaxGainMove LabelPropagationInitialPartitioner<TypeTraits>::findMaxGainMove(
-    PartitionedHypergraph &hypergraph, const HypernodeID hn,
-    const HypernodeWeight internal_weight)
-{
+    PartitionedHypergraph& hypergraph, const HypernodeID hn,
+    const HypernodeWeight internal_weight) {
     const PartitionID from = hypergraph.partID(hn);
     PartitionID best_block = from;
     Gain best_score = from == kInvalidPartition ? std::numeric_limits<Gain>::min() : 0;
-    for(PartitionID block = 0; block < _context.partition.k; ++block)
-    {
-        if(from != block && _valid_blocks[block])
-        {
+    for(PartitionID block = 0; block < _context.partition.k; ++block) {
+        if(from != block && _valid_blocks[block]) {
             _tmp_scores[block] -= internal_weight;
 
             // Since we perform size-constraint label propagation, the move to the
             // corresponding block is only valid, if it fullfils the balanced constraint.
-            if(fitsIntoBlock(hypergraph, hn, block) && _tmp_scores[block] > best_score)
-            {
+            if(fitsIntoBlock(hypergraph, hn, block) && _tmp_scores[block] > best_score) {
                 best_score = _tmp_scores[block];
                 best_block = block;
             }
@@ -321,23 +276,18 @@ MaxGainMove LabelPropagationInitialPartitioner<TypeTraits>::findMaxGainMove(
 
 template <typename TypeTraits>
 void LabelPropagationInitialPartitioner<TypeTraits>::extendBlockToInitialBlockSize(
-    PartitionedHypergraph &hypergraph, const vec<HypernodeID> &seed_vertices,
-    const PartitionID block)
-{
+    PartitionedHypergraph& hypergraph, const vec<HypernodeID>& seed_vertices,
+    const PartitionID block) {
     ASSERT(seed_vertices.size() > 0);
     size_t block_size = seed_vertices.size();
 
     // We search for _context.initial_partitioning.lp_initial_block_size vertices
     // around the seed vertex to extend the corresponding block
-    for(const HypernodeID &seed_vertex : seed_vertices)
-    {
-        for(const HyperedgeID &he : hypergraph.incidentEdges(seed_vertex))
-        {
-            for(const HypernodeID &pin : hypergraph.pins(he))
-            {
+    for(const HypernodeID& seed_vertex : seed_vertices) {
+        for(const HyperedgeID& he : hypergraph.incidentEdges(seed_vertex)) {
+            for(const HypernodeID& pin : hypergraph.pins(he)) {
                 if(hypergraph.partID(pin) == kInvalidPartition &&
-                   fitsIntoBlock(hypergraph, pin, block))
-                {
+                   fitsIntoBlock(hypergraph, pin, block)) {
                     hypergraph.setNodePart(pin, block);
                     block_size++;
                     if(block_size >= _context.initial_partitioning.lp_initial_block_size)
@@ -354,17 +304,13 @@ void LabelPropagationInitialPartitioner<TypeTraits>::extendBlockToInitialBlockSi
     // If there are less than _context.initial_partitioning.lp_initial_block_size
     // adjacent vertices to the seed vertex, we find a new seed vertex and call
     // this function recursive
-    while(block_size < _context.initial_partitioning.lp_initial_block_size)
-    {
+    while(block_size < _context.initial_partitioning.lp_initial_block_size) {
         const HypernodeID seed_vertex = _ip_data.get_unassigned_hypernode();
         if(seed_vertex != kInvalidHypernode &&
-           fitsIntoBlock(hypergraph, seed_vertex, block))
-        {
+           fitsIntoBlock(hypergraph, seed_vertex, block)) {
             hypergraph.setNodePart(seed_vertex, block);
             block_size++;
-        }
-        else
-        {
+        } else {
             break;
         }
     }
@@ -372,16 +318,13 @@ void LabelPropagationInitialPartitioner<TypeTraits>::extendBlockToInitialBlockSi
 
 template <typename TypeTraits>
 void LabelPropagationInitialPartitioner<TypeTraits>::assignVertexToBlockWithMinimumWeight(
-    PartitionedHypergraph &hypergraph, const HypernodeID hn)
-{
+    PartitionedHypergraph& hypergraph, const HypernodeID hn) {
     ASSERT(hypergraph.partID(hn) == kInvalidPartition);
     PartitionID minimum_weight_block = kInvalidPartition;
     HypernodeWeight minimum_weight = std::numeric_limits<HypernodeWeight>::max();
-    for(PartitionID block = 0; block < _context.partition.k; ++block)
-    {
+    for(PartitionID block = 0; block < _context.partition.k; ++block) {
         const HypernodeWeight block_weight = hypergraph.partWeight(block);
-        if(block_weight < minimum_weight)
-        {
+        if(block_weight < minimum_weight) {
             minimum_weight = block_weight;
             minimum_weight_block = block;
         }

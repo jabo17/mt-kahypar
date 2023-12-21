@@ -43,35 +43,30 @@ namespace po = boost::program_options;
 
 using Hypergraph = ds::StaticHypergraph;
 
-static void writeZoltanHypergraph(const Hypergraph &hypergraph,
-                                  const std::string &hgr_filename)
-{
+static void writeZoltanHypergraph(const Hypergraph& hypergraph,
+                                  const std::string& hgr_filename) {
     std::ofstream out_stream(hgr_filename.c_str());
     out_stream << 0; // 0-based indexing
     out_stream << " " << hypergraph.initialNumNodes() << " "
                << hypergraph.initialNumEdges() << " " << hypergraph.initialNumPins();
     out_stream << " " << 3 << std::endl; // weighting scheme: both edge and node weights
 
-    for(const HyperedgeID &he : hypergraph.edges())
-    {
+    for(const HyperedgeID& he : hypergraph.edges()) {
         out_stream << hypergraph.edgeWeight(he) << " ";
-        for(const HypernodeID &pin : hypergraph.pins(he))
-        {
+        for(const HypernodeID& pin : hypergraph.pins(he)) {
             out_stream << pin << " ";
         }
         out_stream << "\n";
     }
 
-    for(const HypernodeID &hn : hypergraph.nodes())
-    {
+    for(const HypernodeID& hn : hypergraph.nodes()) {
         out_stream << hypergraph.nodeWeight(hn) << "\n";
     }
     out_stream << std::endl;
     out_stream.close();
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     std::string hgr_filename;
     std::string out_filename;
 
@@ -91,7 +86,7 @@ int main(int argc, char *argv[])
     mt_kahypar_hypergraph_t hypergraph =
         mt_kahypar::io::readInputFile(hgr_filename, PresetType::default_preset,
                                       InstanceType::hypergraph, FileFormat::hMetis, true);
-    Hypergraph &hg = utils::cast<Hypergraph>(hypergraph);
+    Hypergraph& hg = utils::cast<Hypergraph>(hypergraph);
 
     writeZoltanHypergraph(hg, out_filename);
 

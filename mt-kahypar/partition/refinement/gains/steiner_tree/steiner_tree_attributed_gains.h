@@ -39,20 +39,17 @@ namespace mt_kahypar {
  */
 struct SteinerTreeAttributedGains
 {
-    static HyperedgeWeight gain(const SynchronizedEdgeUpdate &sync_update)
-    {
+    static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update) {
         ASSERT(sync_update.target_graph);
-        ds::Bitset &connectivity_set = *sync_update.connectivity_set_after;
+        ds::Bitset& connectivity_set = *sync_update.connectivity_set_after;
         // Distance between blocks of the hyperedge after the syncronized edge update
         const HyperedgeWeight distance_after =
             sync_update.target_graph->distance(connectivity_set);
-        if(sync_update.pin_count_in_from_part_after == 0)
-        {
+        if(sync_update.pin_count_in_from_part_after == 0) {
             ASSERT(!connectivity_set.isSet(sync_update.from));
             connectivity_set.set(sync_update.from);
         }
-        if(sync_update.pin_count_in_to_part_after == 1)
-        {
+        if(sync_update.pin_count_in_to_part_after == 1) {
             ASSERT(connectivity_set.isSet(sync_update.to));
             connectivity_set.unset(sync_update.to);
         }
@@ -60,13 +57,11 @@ struct SteinerTreeAttributedGains
         const HyperedgeWeight distance_before =
             sync_update.target_graph->distance(connectivity_set);
         // Reset connectivity set
-        if(sync_update.pin_count_in_from_part_after == 0)
-        {
+        if(sync_update.pin_count_in_from_part_after == 0) {
             ASSERT(connectivity_set.isSet(sync_update.from));
             connectivity_set.unset(sync_update.from);
         }
-        if(sync_update.pin_count_in_to_part_after == 1)
-        {
+        if(sync_update.pin_count_in_to_part_after == 1) {
             ASSERT(!connectivity_set.isSet(sync_update.to));
             connectivity_set.set(sync_update.to);
         }

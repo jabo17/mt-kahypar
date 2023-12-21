@@ -49,8 +49,7 @@ class ALouvain : public ds::HypergraphFixture<Hypergraph>
 
   public:
     ALouvain() :
-        Base(), graph(nullptr), context(), karate_club_hg(), karate_club_graph(nullptr)
-    {
+        Base(), graph(nullptr), context(), karate_club_hg(), karate_club_graph(nullptr) {
         context.partition.graph_filename = "../tests/instances/karate_club.graph.hgr";
         context.preprocessing.community_detection.edge_weight_function =
             LouvainEdgeWeight::uniform;
@@ -73,18 +72,15 @@ class ALouvain : public ds::HypergraphFixture<Hypergraph>
     std::unique_ptr<Graph<Hypergraph> > karate_club_graph;
 };
 
-ds::Clustering clustering(const std::vector<PartitionID> &communities)
-{
+ds::Clustering clustering(const std::vector<PartitionID>& communities) {
     ds::Clustering c(communities.size());
-    for(size_t i = 0; i < communities.size(); ++i)
-    {
+    for(size_t i = 0; i < communities.size(); ++i) {
         c[i] = communities[i];
     }
     return c;
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove1)
-{
+TEST_F(ALouvain, ComputesMaxGainMove1) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 2, 3, 4, 5, 1, 2, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -93,8 +89,7 @@ TEST_F(ALouvain, ComputesMaxGainMove1)
     ASSERT_EQ(0, to);
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove2)
-{
+TEST_F(ALouvain, ComputesMaxGainMove2) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 3, 3, 4, 5, 1, 2, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -103,8 +98,7 @@ TEST_F(ALouvain, ComputesMaxGainMove2)
     ASSERT_EQ(3, to);
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove3)
-{
+TEST_F(ALouvain, ComputesMaxGainMove3) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 2, 3, 4, 5, 1, 2, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -113,8 +107,7 @@ TEST_F(ALouvain, ComputesMaxGainMove3)
     ASSERT_EQ(2, to);
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove4)
-{
+TEST_F(ALouvain, ComputesMaxGainMove4) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 2, 3, 4, 5, 1, 2, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -123,8 +116,7 @@ TEST_F(ALouvain, ComputesMaxGainMove4)
     ASSERT_EQ(3, to);
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove5)
-{
+TEST_F(ALouvain, ComputesMaxGainMove5) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 2, 2, 4, 5, 1, 2, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -133,8 +125,7 @@ TEST_F(ALouvain, ComputesMaxGainMove5)
     ASSERT_EQ(2, to);
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove6)
-{
+TEST_F(ALouvain, ComputesMaxGainMove6) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 2, 2, 4, 5, 1, 2, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -143,8 +134,7 @@ TEST_F(ALouvain, ComputesMaxGainMove6)
     ASSERT_EQ(4, to);
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove7)
-{
+TEST_F(ALouvain, ComputesMaxGainMove7) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 2, 2, 4, 0, 1, 2, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -153,8 +143,7 @@ TEST_F(ALouvain, ComputesMaxGainMove7)
     ASSERT_EQ(0, to);
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove8)
-{
+TEST_F(ALouvain, ComputesMaxGainMove8) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 2, 2, 4, 0, 1, 1, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -163,8 +152,7 @@ TEST_F(ALouvain, ComputesMaxGainMove8)
     ASSERT_EQ(1, to);
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove9)
-{
+TEST_F(ALouvain, ComputesMaxGainMove9) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 2, 2, 4, 0, 1, 3, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -173,8 +161,7 @@ TEST_F(ALouvain, ComputesMaxGainMove9)
     ASSERT_EQ(3, to);
 }
 
-TEST_F(ALouvain, ComputesMaxGainMove10)
-{
+TEST_F(ALouvain, ComputesMaxGainMove10) {
     ParallelLocalMovingModularity<Hypergraph> plm(context, graph->numNodes());
     ds::Clustering communities = clustering({ 0, 1, 0, 2, 2, 0, 4, 1, 3, 3, 4 });
     plm.initializeClusterVolumes(*graph, communities);
@@ -183,8 +170,7 @@ TEST_F(ALouvain, ComputesMaxGainMove10)
     ASSERT_EQ(4, to);
 }
 
-TEST_F(ALouvain, KarateClubTest)
-{
+TEST_F(ALouvain, KarateClubTest) {
     tbb::task_arena sequential_arena(1);
 #ifdef KAHYPAR_TRAVIS_BUILD
     ds::Clustering communities(0);

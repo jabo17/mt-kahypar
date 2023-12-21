@@ -56,8 +56,7 @@ class ADeltaPartitionedGraph : public Test
             7, 6, { { 1, 2 }, { 2, 3 }, { 1, 4 }, { 4, 5 }, { 4, 6 }, { 5, 6 } }, nullptr,
             nullptr, true)),
         phg(3, hg, parallel_tag_t()), context(), gain_cache(), delta_phg(nullptr),
-        delta_gain_cache(nullptr)
-    {
+        delta_gain_cache(nullptr) {
         phg.setOnlyNodePart(0, 0);
         phg.setOnlyNodePart(1, 0);
         phg.setOnlyNodePart(2, 0);
@@ -75,30 +74,23 @@ class ADeltaPartitionedGraph : public Test
     }
 
     void verifyPinCounts(const HyperedgeID he,
-                         const std::vector<HypernodeID> &expected_pin_counts)
-    {
+                         const std::vector<HypernodeID>& expected_pin_counts) {
         ASSERT(expected_pin_counts.size() == static_cast<size_t>(phg.k()));
-        for(PartitionID block = 0; block < 3; ++block)
-        {
+        for(PartitionID block = 0; block < 3; ++block) {
             ASSERT_EQ(expected_pin_counts[block], delta_phg->pinCountInPart(he, block))
                 << V(he) << V(block);
         }
     }
 
     void verifyGain(const HypernodeID hn,
-                    const std::vector<HyperedgeWeight> &expected_penalties)
-    {
+                    const std::vector<HyperedgeWeight>& expected_penalties) {
         ASSERT(expected_penalties.size() == static_cast<size_t>(phg.k()));
-        for(PartitionID block = 0; block < 3; ++block)
-        {
-            if(block != delta_phg->partID(hn))
-            {
+        for(PartitionID block = 0; block < 3; ++block) {
+            if(block != delta_phg->partID(hn)) {
                 ASSERT_EQ(expected_penalties[block],
                           delta_gain_cache->gain(hn, delta_phg->partID(hn), block))
                     << V(hn) << "; " << V(block);
-            }
-            else
-            {
+            } else {
                 ASSERT_EQ(delta_gain_cache->benefitTerm(hn, block),
                           delta_gain_cache->penaltyTerm(hn, delta_phg->partID(hn)))
                     << V(hn) << "; " << V(block);
@@ -107,9 +99,8 @@ class ADeltaPartitionedGraph : public Test
     }
 
     void changeNodePartWithGainCacheUpdate(const HypernodeID hn, const PartitionID from,
-                                           const PartitionID to)
-    {
-        auto delta_gain_update = [&](const SynchronizedEdgeUpdate &sync_update) {
+                                           const PartitionID to) {
+        auto delta_gain_update = [&](const SynchronizedEdgeUpdate& sync_update) {
             delta_gain_cache->deltaGainUpdate(*delta_phg, sync_update);
         };
         delta_phg->changeNodePart(hn, from, to, 1000, delta_gain_update);
@@ -123,8 +114,7 @@ class ADeltaPartitionedGraph : public Test
     std::unique_ptr<DeltaGainCache> delta_gain_cache;
 };
 
-TEST_F(ADeltaPartitionedGraph, VerifiesInitialPinCounts)
-{
+TEST_F(ADeltaPartitionedGraph, VerifiesInitialPinCounts) {
     // edge 1 - 2
     verifyPinCounts(0, { 2, 0, 0 });
     verifyPinCounts(2, { 2, 0, 0 });
@@ -145,8 +135,7 @@ TEST_F(ADeltaPartitionedGraph, VerifiesInitialPinCounts)
     verifyPinCounts(11, { 0, 0, 2 });
 }
 
-TEST_F(ADeltaPartitionedGraph, VerifyInitialKm1Gain)
-{
+TEST_F(ADeltaPartitionedGraph, VerifyInitialKm1Gain) {
     verifyGain(0, { 0, 0, 0 });
     verifyGain(1, { 0, 0, -1 });
     verifyGain(2, { 0, 0, -1 });
@@ -156,8 +145,7 @@ TEST_F(ADeltaPartitionedGraph, VerifyInitialKm1Gain)
     verifyGain(6, { -1, 0, 0 });
 }
 
-TEST_F(ADeltaPartitionedGraph, MovesVertices)
-{
+TEST_F(ADeltaPartitionedGraph, MovesVertices) {
     changeNodePartWithGainCacheUpdate(1, 0, 1);
     ASSERT_EQ(0, phg.partID(1));
     ASSERT_EQ(1, delta_phg->partID(1));

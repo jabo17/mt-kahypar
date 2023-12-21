@@ -37,8 +37,7 @@ namespace mt_kahypar {
  */
 struct SoedAttributedGains
 {
-    static HyperedgeWeight gain(const SynchronizedEdgeUpdate &sync_update)
-    {
+    static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update) {
         const HypernodeID edge_size = sync_update.edge_size;
         const HyperedgeWeight edge_weight = sync_update.edge_weight;
         const HypernodeID pin_count_in_from_part_after =

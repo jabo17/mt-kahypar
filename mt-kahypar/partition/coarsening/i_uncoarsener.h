@@ -42,17 +42,15 @@ class IUncoarsener
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
   public:
-    IUncoarsener(const IUncoarsener &) = delete;
-    IUncoarsener(IUncoarsener &&) = delete;
-    IUncoarsener &operator=(const IUncoarsener &) = delete;
-    IUncoarsener &operator=(IUncoarsener &&) = delete;
+    IUncoarsener(const IUncoarsener&) = delete;
+    IUncoarsener(IUncoarsener&&) = delete;
+    IUncoarsener& operator=(const IUncoarsener&) = delete;
+    IUncoarsener& operator=(IUncoarsener&&) = delete;
 
-    PartitionedHypergraph &&uncoarsen()
-    {
+    PartitionedHypergraph&& uncoarsen() {
         initialize();
 
-        while(!isTopLevel())
-        {
+        while(!isTopLevel()) {
             projectToNextLevelAndRefine();
         }
 
@@ -77,15 +75,13 @@ class IUncoarsener
 
     void updateMetrics() { updateMetricsImpl(); }
 
-    PartitionedHypergraph &currentPartitionedHypergraph()
-    {
+    PartitionedHypergraph& currentPartitionedHypergraph() {
         return currentPartitionedHypergraphImpl();
     }
 
     HypernodeID currentNumberOfNodes() const { return currentNumberOfNodesImpl(); }
 
-    PartitionedHypergraph &&movePartitionedHypergraph()
-    {
+    PartitionedHypergraph&& movePartitionedHypergraph() {
         return movePartitionedHypergraphImpl();
     }
 
@@ -103,8 +99,8 @@ class IUncoarsener
     virtual gain_cache_t getGainCacheImpl() = 0;
     virtual HyperedgeWeight getObjectiveImpl() const = 0;
     virtual void updateMetricsImpl() = 0;
-    virtual PartitionedHypergraph &currentPartitionedHypergraphImpl() = 0;
+    virtual PartitionedHypergraph& currentPartitionedHypergraphImpl() = 0;
     virtual HypernodeID currentNumberOfNodesImpl() const = 0;
-    virtual PartitionedHypergraph &&movePartitionedHypergraphImpl() = 0;
+    virtual PartitionedHypergraph&& movePartitionedHypergraphImpl() = 0;
 };
 }

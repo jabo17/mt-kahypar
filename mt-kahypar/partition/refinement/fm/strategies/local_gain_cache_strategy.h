@@ -60,19 +60,16 @@ class LocalGainCacheStrategy
     static constexpr bool maintain_gain_cache_between_rounds = true;
     static constexpr bool is_unconstrained = false;
 
-    LocalGainCacheStrategy(const Context &context, FMSharedData &sharedData,
-                           BlockPriorityQueue &blockPQ,
-                           vec<VertexPriorityQueue> &vertexPQs) :
+    LocalGainCacheStrategy(const Context& context, FMSharedData& sharedData,
+                           BlockPriorityQueue& blockPQ,
+                           vec<VertexPriorityQueue>& vertexPQs) :
         context(context),
-        sharedData(sharedData), blockPQ(blockPQ), vertexPQs(vertexPQs)
-    {
-    }
+        sharedData(sharedData), blockPQ(blockPQ), vertexPQs(vertexPQs) {}
 
     template <typename PartitionedHypergraph, typename GainCache>
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void insertIntoPQ(const PartitionedHypergraph &phg,
-                                                         const GainCache &gain_cache,
-                                                         const HypernodeID v)
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void insertIntoPQ(const PartitionedHypergraph& phg,
+                                                         const GainCache& gain_cache,
+                                                         const HypernodeID v) {
         const PartitionID pv = phg.partID(v);
         ASSERT(pv < context.partition.k);
         auto [target, gain] = computeBestTargetBlock(phg, gain_cache, v, pv, true);
@@ -83,9 +80,8 @@ class LocalGainCacheStrategy
 
     template <typename PartitionedHypergraph, typename GainCache>
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void
-    updateGain(const PartitionedHypergraph &phg, const GainCache &gain_cache,
-               const HypernodeID v, const Move &move)
-    {
+    updateGain(const PartitionedHypergraph& phg, const GainCache& gain_cache,
+               const HypernodeID v, const Move& move) {
         const PartitionID pv = phg.partID(v);
         ASSERT(vertexPQs[pv].contains(v));
         const PartitionID designatedTargetV = sharedData.targetPart[v];
@@ -98,15 +94,12 @@ class LocalGainCacheStrategy
         // best of the three could be overloaded). As soon as the move is pulled from the
         // PQ, only balanced targets are considered
         if(context.partition.k < 4 || designatedTargetV == move.from ||
-           designatedTargetV == move.to)
-        {
+           designatedTargetV == move.to) {
             // penalty term of designatedTargetV is affected.
             // and may now be greater than that of other blocks --> recompute full
             std::tie(newTarget, gain) =
                 computeBestTargetBlock(phg, gain_cache, v, pv, true);
-        }
-        else
-        {
+        } else {
             // penalty term of designatedTargetV is not affected.
             // only move.from and move.to may be better
             std::tie(newTarget, gain) = bestOfThree(
@@ -119,17 +112,14 @@ class LocalGainCacheStrategy
 
     template <typename PartitionedHypergraph, typename GainCache>
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE bool
-    findNextMove(const PartitionedHypergraph &phg, const GainCache &gain_cache, Move &m)
-    {
+    findNextMove(const PartitionedHypergraph& phg, const GainCache& gain_cache, Move& m) {
         updatePQs();
 
-        if(blockPQ.empty())
-        {
+        if(blockPQ.empty()) {
             return false;
         }
 
-        while(true)
-        {
+        while(true) {
             const PartitionID from = blockPQ.top();
             const HypernodeID u = vertexPQs[from].top();
             const Gain estimated_gain = vertexPQs[from].topKey();
@@ -137,8 +127,7 @@ class LocalGainCacheStrategy
             auto [to, gain] =
                 computeBestTargetBlock(phg, gain_cache, u, phg.partID(u), false);
 
-            if(gain >= estimated_gain)
-            { // accept any gain that is at least as good
+            if(gain >= estimated_gain) { // accept any gain that is at least as good
                 m.node = u;
                 m.to = to;
                 m.from = from;
@@ -146,13 +135,10 @@ class LocalGainCacheStrategy
                 vertexPQs[from]
                     .deleteTop(); // blockPQ updates are done later, collectively.
                 return true;
-            }
-            else
-            {
+            } else {
                 vertexPQs[from].adjustKey(u, gain);
                 sharedData.targetPart[u] = to;
-                if(vertexPQs[from].topKey() != blockPQ.keyOf(from))
-                {
+                if(vertexPQs[from].topKey() != blockPQ.keyOf(from)) {
                     blockPQ.adjustKey(from, vertexPQs[from].topKey());
                 }
             }
@@ -160,36 +146,29 @@ class LocalGainCacheStrategy
     }
 
     template <typename PartitionedHypergraph, typename GainCache>
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void applyMove(const PartitionedHypergraph &,
-                                                      const GainCache &, Move)
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void applyMove(const PartitionedHypergraph&,
+                                                      const GainCache&, Move) {
         // nothing to do here
     }
 
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-    void flushLocalChanges()
-    {
+    void flushLocalChanges() {
         // nothing to do here
     }
 
-    void reset()
-    {
+    void reset() {
         // release all nodes that were not moved
-        if(sharedData.release_nodes)
-        {
+        if(sharedData.release_nodes) {
             // Release all nodes contained in PQ
-            for(PartitionID i = 0; i < context.partition.k; ++i)
-            {
-                for(PosT j = 0; j < vertexPQs[i].size(); ++j)
-                {
+            for(PartitionID i = 0; i < context.partition.k; ++i) {
+                for(PosT j = 0; j < vertexPQs[i].size(); ++j) {
                     const HypernodeID v = vertexPQs[i].at(j);
                     sharedData.nodeTracker.releaseNode(v);
                 }
             }
         }
 
-        for(PartitionID i = 0; i < context.partition.k; ++i)
-        {
+        for(PartitionID i = 0; i < context.partition.k; ++i) {
             vertexPQs[i].clear();
         }
         blockPQ.clear();
@@ -200,24 +179,18 @@ class LocalGainCacheStrategy
     // something
     template <typename PartitionedHypergraph, typename GainCache>
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void
-    deltaGainUpdates(PartitionedHypergraph &phg, GainCache &gain_cache,
-                     const SynchronizedEdgeUpdate &sync_update)
-    {
+    deltaGainUpdates(PartitionedHypergraph& phg, GainCache& gain_cache,
+                     const SynchronizedEdgeUpdate& sync_update) {
         gain_cache.deltaGainUpdate(phg, sync_update);
     }
 
   private:
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-    void updatePQs()
-    {
-        for(PartitionID i = 0; i < context.partition.k; ++i)
-        {
-            if(!vertexPQs[i].empty())
-            {
+    void updatePQs() {
+        for(PartitionID i = 0; i < context.partition.k; ++i) {
+            if(!vertexPQs[i].empty()) {
                 blockPQ.insertOrAdjustKey(i, vertexPQs[i].topKey());
-            }
-            else if(blockPQ.contains(i))
-            {
+            } else if(blockPQ.contains(i)) {
                 blockPQ.remove(i);
             }
         }
@@ -225,26 +198,22 @@ class LocalGainCacheStrategy
 
     template <typename PartitionedHypergraph, typename GainCache>
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE std::pair<PartitionID, HyperedgeWeight>
-    computeBestTargetBlock(const PartitionedHypergraph &phg, const GainCache &gain_cache,
+    computeBestTargetBlock(const PartitionedHypergraph& phg, const GainCache& gain_cache,
                            const HypernodeID u, const PartitionID from,
-                           bool ignore_balance)
-    {
+                           bool ignore_balance) {
         const HypernodeWeight wu = phg.nodeWeight(u);
         const HypernodeWeight from_weight = phg.partWeight(from);
         PartitionID to = kInvalidPartition;
         HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
         HypernodeWeight best_to_weight = from_weight - wu;
-        for(const PartitionID &i : gain_cache.adjacentBlocks(u))
-        {
-            if(i != from)
-            {
+        for(const PartitionID& i : gain_cache.adjacentBlocks(u)) {
+            if(i != from) {
                 const HypernodeWeight to_weight = phg.partWeight(i);
                 const HyperedgeWeight penalty = gain_cache.benefitTerm(u, i);
                 if((penalty > to_benefit ||
                     (penalty == to_benefit && to_weight < best_to_weight)) &&
                    (ignore_balance ||
-                    to_weight + wu <= context.partition.max_part_weights[i]))
-                {
+                    to_weight + wu <= context.partition.max_part_weights[i])) {
                     to_benefit = penalty;
                     to = i;
                     best_to_weight = to_weight;
@@ -259,9 +228,8 @@ class LocalGainCacheStrategy
 
     template <typename PartitionedHypergraph, typename GainCache>
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE std::pair<PartitionID, HyperedgeWeight>
-    bestOfThree(const PartitionedHypergraph &phg, const GainCache &gain_cache,
-                HypernodeID u, PartitionID from, std::array<PartitionID, 3> parts)
-    {
+    bestOfThree(const PartitionedHypergraph& phg, const GainCache& gain_cache,
+                HypernodeID u, PartitionID from, std::array<PartitionID, 3> parts) {
         // We ignore balance here to avoid recomputations that involve all blocks (see
         // `updateGain` for details)
         const HypernodeWeight wu = phg.nodeWeight(u);
@@ -269,15 +237,12 @@ class LocalGainCacheStrategy
         PartitionID to = kInvalidPartition;
         HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
         HypernodeWeight best_to_weight = from_weight - wu;
-        for(PartitionID i : parts)
-        {
-            if(i != from && i != kInvalidPartition)
-            {
+        for(PartitionID i : parts) {
+            if(i != from && i != kInvalidPartition) {
                 const HypernodeWeight to_weight = phg.partWeight(i);
                 const HyperedgeWeight penalty = gain_cache.benefitTerm(u, i);
                 if((penalty > to_benefit ||
-                    (penalty == to_benefit && to_weight < best_to_weight)))
-                {
+                    (penalty == to_benefit && to_weight < best_to_weight))) {
                     to_benefit = penalty;
                     to = i;
                     best_to_weight = to_weight;
@@ -290,18 +255,18 @@ class LocalGainCacheStrategy
         return std::make_pair(to, gain);
     }
 
-    const Context &context;
+    const Context& context;
 
   protected:
-    FMSharedData &sharedData;
+    FMSharedData& sharedData;
 
     // ! Priority Queue that contains for each block of the partition
     // ! the vertex with the best gain value
-    BlockPriorityQueue &blockPQ;
+    BlockPriorityQueue& blockPQ;
 
     // ! From PQs -> For each block it contains the vertices (contained
     // ! in that block) touched by the current local search associated
     // ! with their gain values
-    vec<VertexPriorityQueue> &vertexPQs;
+    vec<VertexPriorityQueue>& vertexPQs;
 };
 }

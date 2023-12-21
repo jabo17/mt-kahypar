@@ -42,8 +42,7 @@ struct GuardedPQ
     SpinLock lock;
     ds::MaxHeap<float, HypernodeID> pq;
     float top_key = std::numeric_limits<float>::min();
-    void reset()
-    {
+    void reset() {
         pq.clear();
         top_key = std::numeric_limits<float>::min();
     }
@@ -61,8 +60,7 @@ struct NodeState
 
     // Returns true if the node is marked as movable, is not locked and taking the lock
     // now succeeds
-    bool tryLock()
-    {
+    bool tryLock() {
         uint8_t expected = 1;
         return state == 1 &&
                __atomic_compare_exchange_n(&state, &expected, 2, false, __ATOMIC_ACQUIRE,
@@ -93,40 +91,40 @@ class AdvancedRebalancer final : public IRebalancer
     static constexpr bool enable_heavy_assert = false;
 
   public:
-    explicit AdvancedRebalancer(HypernodeID num_nodes, const Context &context,
-                                GainCache &gain_cache);
+    explicit AdvancedRebalancer(HypernodeID num_nodes, const Context& context,
+                                GainCache& gain_cache);
 
-    explicit AdvancedRebalancer(HypernodeID num_nodes, const Context &context,
+    explicit AdvancedRebalancer(HypernodeID num_nodes, const Context& context,
                                 gain_cache_t gain_cache);
 
   private:
-    bool refineImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-                    const vec<HypernodeID> &refinement_nodes, Metrics &best_metrics,
+    bool refineImpl(mt_kahypar_partitioned_hypergraph_t& hypergraph,
+                    const vec<HypernodeID>& refinement_nodes, Metrics& best_metrics,
                     double);
 
-    void initializeImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph) final;
+    void initializeImpl(mt_kahypar_partitioned_hypergraph_t& hypergraph) final;
 
-    bool refineAndOutputMovesImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-                                  const vec<HypernodeID> &refinement_nodes,
-                                  vec<vec<Move> > &moves_by_part, Metrics &best_metrics,
+    bool refineAndOutputMovesImpl(mt_kahypar_partitioned_hypergraph_t& hypergraph,
+                                  const vec<HypernodeID>& refinement_nodes,
+                                  vec<vec<Move> >& moves_by_part, Metrics& best_metrics,
                                   const double);
 
-    bool refineAndOutputMovesLinearImpl(mt_kahypar_partitioned_hypergraph_t &hypergraph,
-                                        const vec<HypernodeID> &refinement_nodes,
-                                        vec<Move> &moves, Metrics &best_metrics,
+    bool refineAndOutputMovesLinearImpl(mt_kahypar_partitioned_hypergraph_t& hypergraph,
+                                        const vec<HypernodeID>& refinement_nodes,
+                                        vec<Move>& moves, Metrics& best_metrics,
                                         const double);
 
-    bool refineInternalParallel(mt_kahypar_partitioned_hypergraph_t &hypergraph,
+    bool refineInternalParallel(mt_kahypar_partitioned_hypergraph_t& hypergraph,
                                 vec<vec<Move> > *moves_by_part, vec<Move> *moves_linear,
-                                Metrics &best_metric);
+                                Metrics& best_metric);
 
-    const Context &_context;
-    GainCache &_gain_cache;
+    const Context& _context;
+    GainCache& _gain_cache;
     PartitionID _current_k;
     GainCalculator _gain;
 
-    void insertNodesInOverloadedBlocks(mt_kahypar_partitioned_hypergraph_t &hypergraph);
-    std::pair<int64_t, size_t> findMoves(mt_kahypar_partitioned_hypergraph_t &hypergraph);
+    void insertNodesInOverloadedBlocks(mt_kahypar_partitioned_hypergraph_t& hypergraph);
+    std::pair<int64_t, size_t> findMoves(mt_kahypar_partitioned_hypergraph_t& hypergraph);
 
     ds::Array<Move> _moves;
     vec<rebalancer::GuardedPQ> _pqs;

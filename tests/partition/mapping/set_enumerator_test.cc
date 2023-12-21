@@ -33,14 +33,11 @@ using ::testing::Test;
 namespace mt_kahypar {
 
 template <typename Iterator>
-void verifyIterator(Iterator &it, const vec<vec<PartitionID> > &expected)
-{
+void verifyIterator(Iterator& it, const vec<vec<PartitionID> >& expected) {
     size_t cnt = 0;
-    for(const auto &set : it)
-    {
+    for(const auto& set : it) {
         size_t i = 0;
-        for(const PartitionID block : set)
-        {
+        for(const PartitionID block : set) {
             ASSERT_EQ(block, expected[cnt][i]) << V(cnt) << V(i);
             ++i;
         }
@@ -50,8 +47,7 @@ void verifyIterator(Iterator &it, const vec<vec<PartitionID> > &expected)
     ASSERT_EQ(cnt, expected.size());
 }
 
-TEST(ASetEnumerator, IteratesOverAllSetsOfSizeTwo)
-{
+TEST(ASetEnumerator, IteratesOverAllSetsOfSizeTwo) {
     SetEnumerator sets(5, 2);
     verifyIterator(sets, { { 0, 1 },
                            { 0, 2 },
@@ -65,8 +61,7 @@ TEST(ASetEnumerator, IteratesOverAllSetsOfSizeTwo)
                            { 3, 4 } });
 }
 
-TEST(ASetEnumerator, IteratesOverAllSetsOfSizeThree)
-{
+TEST(ASetEnumerator, IteratesOverAllSetsOfSizeThree) {
     SetEnumerator sets(5, 3);
     verifyIterator(sets, { { 0, 1, 2 },
                            { 0, 1, 3 },
@@ -80,8 +75,7 @@ TEST(ASetEnumerator, IteratesOverAllSetsOfSizeThree)
                            { 2, 3, 4 } });
 }
 
-TEST(ASetEnumerator, IteratesOverAllSetsOfSizeFour)
-{
+TEST(ASetEnumerator, IteratesOverAllSetsOfSizeFour) {
     SetEnumerator sets(5, 4);
     verifyIterator(sets, { { 0, 1, 2, 3 },
                            { 0, 1, 2, 4 },
@@ -90,8 +84,7 @@ TEST(ASetEnumerator, IteratesOverAllSetsOfSizeFour)
                            { 1, 2, 3, 4 } });
 }
 
-TEST(ASubsetEnumerator, IteratesOverAllSubsets1)
-{
+TEST(ASubsetEnumerator, IteratesOverAllSubsets1) {
     ds::Bitset bits(8);
     bits.set(0);
     bits.set(1);
@@ -100,8 +93,7 @@ TEST(ASubsetEnumerator, IteratesOverAllSubsets1)
     verifyIterator(subsets, { { 0 }, { 1 } });
 }
 
-TEST(ASubsetEnumerator, IteratesOverAllSubsets2)
-{
+TEST(ASubsetEnumerator, IteratesOverAllSubsets2) {
     ds::Bitset bits(8);
     bits.set(1);
     bits.set(3);
@@ -111,8 +103,7 @@ TEST(ASubsetEnumerator, IteratesOverAllSubsets2)
     verifyIterator(subsets, { { 1 }, { 3 }, { 1, 3 }, { 5 }, { 1, 5 }, { 3, 5 } });
 }
 
-TEST(ASubsetEnumerator, IteratesOverAllSubsets3)
-{
+TEST(ASubsetEnumerator, IteratesOverAllSubsets3) {
     ds::Bitset bits(8);
     bits.set(1);
     bits.set(3);

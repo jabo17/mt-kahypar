@@ -62,36 +62,30 @@ class PinCountInPart
     PinCountInPart() :
         _num_hyperedges(0), _k(0), _max_value(0), _bits_per_element(0),
         _entries_per_value(0), _values_per_hyperedge(0), _extraction_mask(0),
-        _pin_count_in_part(), _ets_pin_counts([&] { return initPinCountSnapshot(); })
-    {
-    }
+        _pin_count_in_part(), _ets_pin_counts([&] { return initPinCountSnapshot(); }) {}
 
     PinCountInPart(const HyperedgeID num_hyperedges, const PartitionID k,
                    const HypernodeID max_value, const bool assign_parallel = true) :
         _num_hyperedges(0),
         _k(0), _max_value(0), _bits_per_element(0), _entries_per_value(0),
         _values_per_hyperedge(0), _extraction_mask(0), _pin_count_in_part(),
-        _ets_pin_counts([&] { return initPinCountSnapshot(); })
-    {
+        _ets_pin_counts([&] { return initPinCountSnapshot(); }) {
         initialize(num_hyperedges, k, max_value, assign_parallel);
     }
 
-    PinCountInPart(const PinCountInPart &) = delete;
-    PinCountInPart &operator=(const PinCountInPart &) = delete;
+    PinCountInPart(const PinCountInPart&) = delete;
+    PinCountInPart& operator=(const PinCountInPart&) = delete;
 
-    PinCountInPart(PinCountInPart &&other) :
+    PinCountInPart(PinCountInPart&& other) :
         _num_hyperedges(other._num_hyperedges), _k(other._k),
         _max_value(other._max_value), _bits_per_element(other._bits_per_element),
         _entries_per_value(other._entries_per_value),
         _values_per_hyperedge(other._values_per_hyperedge),
         _extraction_mask(other._extraction_mask),
         _pin_count_in_part(std::move(other._pin_count_in_part)),
-        _ets_pin_counts([&] { return initPinCountSnapshot(); })
-    {
-    }
+        _ets_pin_counts([&] { return initPinCountSnapshot(); }) {}
 
-    PinCountInPart &operator=(PinCountInPart &&other)
-    {
+    PinCountInPart& operator=(PinCountInPart&& other) {
         _num_hyperedges = other._num_hyperedges;
         _k = other._k;
         _max_value = other._max_value;
@@ -107,11 +101,9 @@ class PinCountInPart
 
     // ! Initializes the data structure
     void initialize(const HyperedgeID num_hyperedges, const PartitionID k,
-                    const HypernodeID max_value, const bool assign_parallel = true)
-    {
+                    const HypernodeID max_value, const bool assign_parallel = true) {
         ASSERT(_num_hyperedges == 0);
-        if(num_hyperedges > 0)
-        {
+        if(num_hyperedges > 0) {
             _num_hyperedges = num_hyperedges;
             _k = k;
             _max_value = max_value;
@@ -125,22 +117,19 @@ class PinCountInPart
         }
     }
 
-    void reset(const bool assign_parallel = true)
-    {
+    void reset(const bool assign_parallel = true) {
         _pin_count_in_part.assign(_pin_count_in_part.size(), 0, assign_parallel);
     }
 
     // ! Returns a snapshot of the connectivity set of hyperedge he
-    inline PinCountSnapshot &snapshot(const HyperedgeID he)
-    {
-        PinCountSnapshot &cpy = _ets_pin_counts.local();
+    inline PinCountSnapshot& snapshot(const HyperedgeID he) {
+        PinCountSnapshot& cpy = _ets_pin_counts.local();
         cpy.snapshot(_pin_count_in_part.data() + he * _values_per_hyperedge);
         return cpy;
     }
 
     // ! Returns the pin count of the hyperedge in the corresponding block
-    inline HypernodeID pinCountInPart(const HyperedgeID he, const PartitionID id) const
-    {
+    inline HypernodeID pinCountInPart(const HyperedgeID he, const PartitionID id) const {
         ASSERT(he < _num_hyperedges);
         ASSERT(id != kInvalidPartition && id < _k);
         const size_t value_pos = he * _values_per_hyperedge + id / _entries_per_value;
@@ -151,8 +140,7 @@ class PinCountInPart
 
     // ! Sets the pin count of the hyperedge in the corresponding block to value
     inline void setPinCountInPart(const HyperedgeID he, const PartitionID id,
-                                  const HypernodeID value)
-    {
+                                  const HypernodeID value) {
         ASSERT(he < _num_hyperedges);
         ASSERT(id != kInvalidPartition && id < _k);
         const size_t value_pos = he * _values_per_hyperedge + id / _entries_per_value;
@@ -161,14 +149,14 @@ class PinCountInPart
     }
 
     // ! Increments the pin count of the hyperedge in the corresponding block
-    inline HypernodeID incrementPinCountInPart(const HyperedgeID he, const PartitionID id)
-    {
+    inline HypernodeID incrementPinCountInPart(const HyperedgeID he,
+                                               const PartitionID id) {
         ASSERT(he < _num_hyperedges);
         ASSERT(id != kInvalidPartition && id < _k);
         const size_t value_pos = he * _values_per_hyperedge + id / _entries_per_value;
         const size_t bit_pos = (id % _entries_per_value) * _bits_per_element;
         const Value mask = _extraction_mask << bit_pos;
-        Value &current_value = _pin_count_in_part[value_pos];
+        Value& current_value = _pin_count_in_part[value_pos];
         Value pin_count_in_part = (current_value & mask) >> bit_pos;
         ASSERT(pin_count_in_part + 1 <= _max_value);
         updateEntry(current_value, bit_pos, pin_count_in_part + 1);
@@ -176,14 +164,14 @@ class PinCountInPart
     }
 
     // ! Decrements the pin count of the hyperedge in the corresponding block
-    inline HypernodeID decrementPinCountInPart(const HyperedgeID he, const PartitionID id)
-    {
+    inline HypernodeID decrementPinCountInPart(const HyperedgeID he,
+                                               const PartitionID id) {
         ASSERT(he < _num_hyperedges);
         ASSERT(id != kInvalidPartition && id < _k);
         const size_t value_pos = he * _values_per_hyperedge + id / _entries_per_value;
         const size_t bit_pos = (id % _entries_per_value) * _bits_per_element;
         const Value mask = _extraction_mask << bit_pos;
-        Value &current_value = _pin_count_in_part[value_pos];
+        Value& current_value = _pin_count_in_part[value_pos];
         Value pin_count_in_part = (current_value & mask) >> bit_pos;
         ASSERT(pin_count_in_part > UL(0));
         updateEntry(current_value, bit_pos, pin_count_in_part - 1);
@@ -195,50 +183,44 @@ class PinCountInPart
 
     void freeInternalData() { parallel::free(_pin_count_in_part); }
 
-    void memoryConsumption(utils::MemoryTreeNode *parent) const
-    {
+    void memoryConsumption(utils::MemoryTreeNode *parent) const {
         ASSERT(parent);
         parent->addChild("Pin Count Values", sizeof(Value) * _pin_count_in_part.size());
     }
 
     static size_t num_elements(const HyperedgeID num_hyperedges, const PartitionID k,
-                               const HypernodeID max_value)
-    {
+                               const HypernodeID max_value) {
         return num_hyperedges * num_values_per_hyperedge(k, max_value);
     }
 
   private:
-    inline void updateEntry(Value &value, const size_t bit_pos, const Value new_value)
-    {
+    inline void updateEntry(Value& value, const size_t bit_pos, const Value new_value) {
         ASSERT(new_value <= _max_value);
         const Value zero_mask = ~(_extraction_mask << bit_pos);
         const Value value_mask = new_value << bit_pos;
         value = (value & zero_mask) | value_mask;
     }
 
-    PinCountSnapshot initPinCountSnapshot() const
-    {
+    PinCountSnapshot initPinCountSnapshot() const {
         return PinCountSnapshot(_k, _max_value);
     }
 
     static size_t num_values_per_hyperedge(const PartitionID k,
-                                           const HypernodeID max_value)
-    {
+                                           const HypernodeID max_value) {
         const size_t entries_per_value = num_entries_per_value(k, max_value);
         ASSERT(entries_per_value <= static_cast<size_t>(k));
         return k / entries_per_value + (k % entries_per_value != 0);
     }
 
-    static size_t num_entries_per_value(const PartitionID k, const HypernodeID max_value)
-    {
+    static size_t num_entries_per_value(const PartitionID k,
+                                        const HypernodeID max_value) {
         const size_t bits_per_element = num_bits_per_element(max_value);
         const size_t bits_per_value = sizeof(Value) * 8UL;
         ASSERT(bits_per_element <= bits_per_value);
         return std::min(bits_per_value / bits_per_element, static_cast<size_t>(k));
     }
 
-    static size_t num_bits_per_element(const HypernodeID max_value)
-    {
+    static size_t num_bits_per_element(const HypernodeID max_value) {
         return std::ceil(std::log2(static_cast<double>(max_value + 1)));
     }
 

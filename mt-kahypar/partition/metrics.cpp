@@ -40,15 +40,13 @@ namespace {
 
 template <typename PartitionedHypergraph, Objective objective>
 struct ObjectiveFunction
-{
-};
+{};
 
 template <typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::cut>
 {
-    HyperedgeWeight operator()(const PartitionedHypergraph &phg,
-                               const HyperedgeID &he) const
-    {
+    HyperedgeWeight operator()(const PartitionedHypergraph& phg,
+                               const HyperedgeID& he) const {
         return phg.connectivity(he) > 1 ? phg.edgeWeight(he) : 0;
     }
 };
@@ -56,9 +54,8 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::cut>
 template <typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::km1>
 {
-    HyperedgeWeight operator()(const PartitionedHypergraph &phg,
-                               const HyperedgeID &he) const
-    {
+    HyperedgeWeight operator()(const PartitionedHypergraph& phg,
+                               const HyperedgeID& he) const {
         return std::max(phg.connectivity(he) - 1, 0) * phg.edgeWeight(he);
     }
 };
@@ -66,9 +63,8 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::km1>
 template <typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::soed>
 {
-    HyperedgeWeight operator()(const PartitionedHypergraph &phg,
-                               const HyperedgeID &he) const
-    {
+    HyperedgeWeight operator()(const PartitionedHypergraph& phg,
+                               const HyperedgeID& he) const {
         const PartitionID connectivity = phg.connectivity(he);
         return connectivity > 1 ? connectivity * phg.edgeWeight(he) : 0;
     }
@@ -77,9 +73,8 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::soed>
 template <typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::steiner_tree>
 {
-    HyperedgeWeight operator()(const PartitionedHypergraph &phg,
-                               const HyperedgeID &he) const
-    {
+    HyperedgeWeight operator()(const PartitionedHypergraph& phg,
+                               const HyperedgeID& he) const {
         ASSERT(phg.hasTargetGraph());
         const TargetGraph *target_graph = phg.targetGraph();
         const HyperedgeWeight distance =
@@ -89,8 +84,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::steiner_tree>
 };
 
 template <Objective objective, typename PartitionedHypergraph>
-HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph &phg)
-{
+HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph& phg) {
     ObjectiveFunction<PartitionedHypergraph, objective> func;
     tbb::enumerable_thread_specific<HyperedgeWeight> obj(0);
     phg.doParallelForAllEdges(
@@ -99,38 +93,32 @@ HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph &phg)
 }
 
 template <Objective objective, typename PartitionedHypergraph>
-HyperedgeWeight compute_objective_sequentially(const PartitionedHypergraph &phg)
-{
+HyperedgeWeight compute_objective_sequentially(const PartitionedHypergraph& phg) {
     ObjectiveFunction<PartitionedHypergraph, objective> func;
     HyperedgeWeight obj = 0;
-    for(const HyperedgeID &he : phg.edges())
-    {
+    for(const HyperedgeID& he : phg.edges()) {
         obj += func(phg, he);
     }
     return obj / (PartitionedHypergraph::is_graph ? 2 : 1);
 }
 
 template <Objective objective, typename PartitionedHypergraph>
-HyperedgeWeight contribution(const PartitionedHypergraph &phg, const HyperedgeID he)
-{
+HyperedgeWeight contribution(const PartitionedHypergraph& phg, const HyperedgeID he) {
     ObjectiveFunction<PartitionedHypergraph, objective> func;
     return func(phg, he);
 }
 }
 
 template <typename PartitionedHypergraph>
-HyperedgeWeight quality(const PartitionedHypergraph &hg, const Context &context,
-                        const bool parallel)
-{
+HyperedgeWeight quality(const PartitionedHypergraph& hg, const Context& context,
+                        const bool parallel) {
     return quality(hg, context.partition.objective, parallel);
 }
 
 template <typename PartitionedHypergraph>
-HyperedgeWeight quality(const PartitionedHypergraph &hg, const Objective objective,
-                        const bool parallel)
-{
-    switch(objective)
-    {
+HyperedgeWeight quality(const PartitionedHypergraph& hg, const Objective objective,
+                        const bool parallel) {
+    switch(objective) {
     case Objective::cut:
         return parallel ? compute_objective_parallel<Objective::cut>(hg) :
                           compute_objective_sequentially<Objective::cut>(hg);
@@ -150,11 +138,9 @@ HyperedgeWeight quality(const PartitionedHypergraph &hg, const Objective objecti
 }
 
 template <typename PartitionedHypergraph>
-HyperedgeWeight contribution(const PartitionedHypergraph &hg, const HyperedgeID he,
-                             const Objective objective)
-{
-    switch(objective)
-    {
+HyperedgeWeight contribution(const PartitionedHypergraph& hg, const HyperedgeID he,
+                             const Objective objective) {
+    switch(objective) {
     case Objective::cut:
         return contribution<Objective::soed>(hg, he);
     case Objective::km1:
@@ -170,17 +156,13 @@ HyperedgeWeight contribution(const PartitionedHypergraph &hg, const HyperedgeID 
 }
 
 template <typename PartitionedHypergraph>
-bool isBalanced(const PartitionedHypergraph &phg, const Context &context)
-{
+bool isBalanced(const PartitionedHypergraph& phg, const Context& context) {
     size_t num_empty_parts = 0;
-    for(PartitionID i = 0; i < context.partition.k; ++i)
-    {
-        if(phg.partWeight(i) > context.partition.max_part_weights[i])
-        {
+    for(PartitionID i = 0; i < context.partition.k; ++i) {
+        if(phg.partWeight(i) > context.partition.max_part_weights[i]) {
             return false;
         }
-        if(phg.partWeight(i) == 0)
-        {
+        if(phg.partWeight(i) == 0) {
             num_empty_parts++;
         }
     }
@@ -189,8 +171,7 @@ bool isBalanced(const PartitionedHypergraph &phg, const Context &context)
 }
 
 template <typename PartitionedHypergraph>
-double imbalance(const PartitionedHypergraph &hypergraph, const Context &context)
-{
+double imbalance(const PartitionedHypergraph& hypergraph, const Context& context) {
     ASSERT(context.partition.perfect_balance_part_weights.size() ==
            (size_t)context.partition.k);
 
@@ -198,8 +179,7 @@ double imbalance(const PartitionedHypergraph &hypergraph, const Context &context
         (hypergraph.partWeight(0) /
          static_cast<double>(context.partition.perfect_balance_part_weights[0]));
 
-    for(PartitionID i = 1; i < context.partition.k; ++i)
-    {
+    for(PartitionID i = 1; i < context.partition.k; ++i) {
         const double balance_i =
             (hypergraph.partWeight(i) /
              static_cast<double>(context.partition.perfect_balance_part_weights[i]));
@@ -210,39 +190,35 @@ double imbalance(const PartitionedHypergraph &hypergraph, const Context &context
 }
 
 template <typename PartitionedHypergraph>
-double approximationFactorForProcessMapping(const PartitionedHypergraph &hypergraph,
-                                            const Context &context)
-{
-    if(!PartitionedHypergraph::is_graph)
-    {
+double approximationFactorForProcessMapping(const PartitionedHypergraph& hypergraph,
+                                            const Context& context) {
+    if(!PartitionedHypergraph::is_graph) {
         tbb::enumerable_thread_specific<HyperedgeWeight> approx_factor(0);
-        hypergraph.doParallelForAllEdges([&](const HyperedgeID &he) {
+        hypergraph.doParallelForAllEdges([&](const HyperedgeID& he) {
             const size_t connectivity = hypergraph.connectivity(he);
             approx_factor.local() +=
                 connectivity <= context.mapping.max_steiner_tree_size ? 1 : 2;
         });
         return static_cast<double>(approx_factor.combine(std::plus<>())) /
                hypergraph.initialNumEdges();
-    }
-    else
-    {
+    } else {
         return 1.0;
     }
 }
 
 namespace {
 #define OBJECTIVE_1(X)                                                                   \
-    HyperedgeWeight quality(const X &hg, const Context &context, const bool parallel)
+    HyperedgeWeight quality(const X& hg, const Context& context, const bool parallel)
 #define OBJECTIVE_2(X)                                                                   \
-    HyperedgeWeight quality(const X &hg, const Objective objective, const bool parallel)
+    HyperedgeWeight quality(const X& hg, const Objective objective, const bool parallel)
 #define CONTRIBUTION(X)                                                                  \
-    HyperedgeWeight contribution(const X &hg, const HyperedgeID he,                      \
+    HyperedgeWeight contribution(const X& hg, const HyperedgeID he,                      \
                                  const Objective objective)
-#define IS_BALANCED(X) bool isBalanced(const X &phg, const Context &context)
-#define IMBALANCE(X) double imbalance(const X &hypergraph, const Context &context)
+#define IS_BALANCED(X) bool isBalanced(const X& phg, const Context& context)
+#define IMBALANCE(X) double imbalance(const X& hypergraph, const Context& context)
 #define APPROX_FACTOR(X)                                                                 \
-    double approximationFactorForProcessMapping(const X &hypergraph,                     \
-                                                const Context &context)
+    double approximationFactorForProcessMapping(const X& hypergraph,                     \
+                                                const Context& context)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(OBJECTIVE_1)

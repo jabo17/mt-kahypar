@@ -38,8 +38,7 @@ class NoWeightPenalty final : public kahypar::meta::PolicyBase
 {
   public:
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static HypernodeWeight
-    penalty(const HypernodeWeight, const HypernodeWeight)
-    {
+    penalty(const HypernodeWeight, const HypernodeWeight) {
         return 1;
     }
 };
@@ -49,8 +48,7 @@ class MultiplicativePenalty final : public kahypar::meta::PolicyBase
 {
   public:
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static HypernodeWeight
-    penalty(const HypernodeWeight weight_u, const HypernodeWeight weight_v)
-    {
+    penalty(const HypernodeWeight weight_u, const HypernodeWeight weight_v) {
         return weight_u * weight_v;
     }
 };
@@ -59,8 +57,7 @@ class AdditivePenalty final : public kahypar::meta::PolicyBase
 {
   public:
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static HypernodeWeight
-    penalty(const HypernodeWeight weight_u, const HypernodeWeight weight_v)
-    {
+    penalty(const HypernodeWeight weight_u, const HypernodeWeight weight_v) {
         return weight_u + weight_v;
     }
 };

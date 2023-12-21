@@ -49,12 +49,11 @@ class DeterministicMultilevelCoarsener : public ICoarsener,
 
     struct DeterministicCoarseningConfig
     {
-        explicit DeterministicCoarseningConfig(const Context &context) :
+        explicit DeterministicCoarseningConfig(const Context& context) :
             prng(context.partition.seed),
             num_buckets(utils::ParallelPermutation<HypernodeID>::num_buckets),
             num_sub_rounds(context.coarsening.num_sub_rounds_deterministic),
-            num_buckets_per_sub_round(0)
-        {
+            num_buckets_per_sub_round(0) {
             num_buckets_per_sub_round =
                 parallel::chunking::idiv_ceil(num_buckets, num_sub_rounds);
         }
@@ -70,7 +69,7 @@ class DeterministicMultilevelCoarsener : public ICoarsener,
 
   public:
     DeterministicMultilevelCoarsener(mt_kahypar_hypergraph_t hypergraph,
-                                     const Context &context,
+                                     const Context& context,
                                      uncoarsening_data_t *uncoarseningData) :
         Base(utils::cast<Hypergraph>(hypergraph), context,
              uncoarsening::to_reference<TypeTraits>(uncoarseningData)),
@@ -84,9 +83,7 @@ class DeterministicMultilevelCoarsener : public ICoarsener,
             utils::cast<Hypergraph>(hypergraph).initialNumNodes()),
         default_rating_maps(utils::cast<Hypergraph>(hypergraph).initialNumNodes()),
         pass(0),
-        progress_bar(utils::cast<Hypergraph>(hypergraph).initialNumNodes(), 0, false)
-    {
-    }
+        progress_bar(utils::cast<Hypergraph>(hypergraph).initialNumNodes(), 0, false) {}
 
     ~DeterministicMultilevelCoarsener() {}
 
@@ -99,55 +96,47 @@ class DeterministicMultilevelCoarsener : public ICoarsener,
 
     static constexpr bool debug = false;
 
-    void initializeImpl() override
-    {
-        if(_context.partition.verbose_output && _context.partition.enable_progress_bar)
-        {
+    void initializeImpl() override {
+        if(_context.partition.verbose_output && _context.partition.enable_progress_bar) {
             progress_bar.enable();
         }
     }
 
     bool coarseningPassImpl() override;
 
-    bool shouldNotTerminateImpl() const override
-    {
+    bool shouldNotTerminateImpl() const override {
         return Base::currentNumNodes() > _context.coarsening.contraction_limit;
     }
 
-    void terminateImpl() override
-    {
+    void terminateImpl() override {
         progress_bar += (initial_num_nodes - progress_bar.count()); // fill to 100%
         progress_bar.disable();
         _uncoarseningData.finalizeCoarsening();
     }
 
-    HypernodeID currentLevelContractionLimit()
-    {
-        const auto &hg = Base::currentHypergraph();
+    HypernodeID currentLevelContractionLimit() {
+        const auto& hg = Base::currentHypergraph();
         return std::max(
             _context.coarsening.contraction_limit,
             static_cast<HypernodeID>((hg.initialNumNodes() - hg.numRemovedHypernodes()) /
                                      _context.coarsening.maximum_shrink_factor));
     }
 
-    void calculatePreferredTargetCluster(HypernodeID u, const vec<HypernodeID> &clusters);
+    void calculatePreferredTargetCluster(HypernodeID u, const vec<HypernodeID>& clusters);
 
-    size_t approveVerticesInTooHeavyClusters(vec<HypernodeID> &clusters);
+    size_t approveVerticesInTooHeavyClusters(vec<HypernodeID>& clusters);
 
-    HypernodeID currentNumberOfNodesImpl() const override
-    {
+    HypernodeID currentNumberOfNodesImpl() const override {
         return Base::currentNumNodes();
     }
 
-    mt_kahypar_hypergraph_t coarsestHypergraphImpl() override
-    {
+    mt_kahypar_hypergraph_t coarsestHypergraphImpl() override {
         return mt_kahypar_hypergraph_t{ reinterpret_cast<mt_kahypar_hypergraph_s *>(
                                             &Base::currentHypergraph()),
                                         Hypergraph::TYPE };
     }
 
-    mt_kahypar_partitioned_hypergraph_t coarsestPartitionedHypergraphImpl() override
-    {
+    mt_kahypar_partitioned_hypergraph_t coarsestPartitionedHypergraphImpl() override {
         return mt_kahypar_partitioned_hypergraph_t{
             reinterpret_cast<mt_kahypar_partitioned_hypergraph_s *>(
                 &Base::currentPartitionedHypergraph()),

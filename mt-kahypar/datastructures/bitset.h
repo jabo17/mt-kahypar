@@ -51,15 +51,14 @@ class Bitset
   public:
     explicit Bitset() : _size(0), _bitset() {}
 
-    explicit Bitset(const size_t size) : _size(size), _bitset()
-    {
+    explicit Bitset(const size_t size) : _size(size), _bitset() {
         _bitset.assign((size >> DIV_SHIFT) + ((size & MOD_MASK) != 0), 0);
     }
 
-    Bitset(const Bitset &) = delete;
-    Bitset &operator=(const Bitset &) = delete;
-    Bitset(Bitset &&) = default;
-    Bitset &operator=(Bitset &&) = default;
+    Bitset(const Bitset&) = delete;
+    Bitset& operator=(const Bitset&) = delete;
+    Bitset(Bitset&&) = default;
+    Bitset& operator=(Bitset&&) = default;
 
     size_t numBlocks() const { return _bitset.size(); }
 
@@ -67,37 +66,32 @@ class Bitset
 
     void reset() { memset(_bitset.data(), 0, sizeof(Block) * _bitset.size()); }
 
-    void resize(const size_t size)
-    {
+    void resize(const size_t size) {
         _size = size;
         _bitset.assign((size >> DIV_SHIFT) + ((size & MOD_MASK) != 0), 0);
     }
 
-    void copy(const size_t num_blocks, const Block *blocks)
-    {
+    void copy(const size_t num_blocks, const Block *blocks) {
         _size = num_blocks * BITS_PER_BLOCK;
         _bitset.resize(num_blocks);
         std::memcpy(_bitset.data(), blocks, sizeof(Block) * num_blocks);
     }
 
-    bool isSet(const size_t pos)
-    {
+    bool isSet(const size_t pos) {
         ASSERT(pos < _size);
         const size_t block_idx = pos >> DIV_SHIFT; // pos / BITS_PER_BLOCK;
         const size_t idx = pos & MOD_MASK;         // pos % BITS_PER_BLOCK;
         return (_bitset[block_idx] >> idx) & UL(1);
     }
 
-    void set(const size_t pos)
-    {
+    void set(const size_t pos) {
         ASSERT(pos < _size);
         const size_t block_idx = pos >> DIV_SHIFT; // pos / BITS_PER_BLOCK;
         const size_t idx = pos & MOD_MASK;         // pos % BITS_PER_BLOCK;
         _bitset[block_idx] |= (static_cast<Block>(1) << idx);
     }
 
-    void unset(const size_t pos)
-    {
+    void unset(const size_t pos) {
         ASSERT(pos < _size);
         const size_t block_idx = pos >> DIV_SHIFT; // pos / BITS_PER_BLOCK;
         const size_t idx = pos & MOD_MASK;         // pos % BITS_PER_BLOCK;

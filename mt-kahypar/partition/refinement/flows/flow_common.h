@@ -30,8 +30,7 @@
 
 namespace mt_kahypar {
 
-enum class MoveSequenceState : uint8_t
-{
+enum class MoveSequenceState : uint8_t {
     IN_PROGRESS = 0,
     SUCCESS = 1,
     VIOLATES_BALANCE_CONSTRAINT = 2,
@@ -74,8 +73,7 @@ struct Subhypergraph
     size_t numNodes() const { return nodes_of_block_0.size() + nodes_of_block_1.size(); }
 };
 
-inline std::ostream &operator<<(std::ostream &out, const Subhypergraph &sub_hg)
-{
+inline std::ostream& operator<<(std::ostream& out, const Subhypergraph& sub_hg) {
     out << "[Nodes=" << sub_hg.numNodes() << ", Edges=" << sub_hg.hes.size()
         << ", Pins=" << sub_hg.num_pins << ", Blocks=(" << sub_hg.block_0 << ","
         << sub_hg.block_1 << ")"

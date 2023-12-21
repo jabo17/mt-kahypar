@@ -56,7 +56,7 @@ class IncidentNetIterator
   public:
     using iterator_category = std::forward_iterator_tag;
     using value_type = HyperedgeID;
-    using reference = HyperedgeID &;
+    using reference = HyperedgeID&;
     using pointer = const HyperedgeID *;
     using difference_type = std::ptrdiff_t;
 
@@ -65,18 +65,17 @@ class IncidentNetIterator
 
     HyperedgeID operator*() const;
 
-    IncidentNetIterator &operator++();
+    IncidentNetIterator& operator++();
 
-    IncidentNetIterator operator++(int)
-    {
+    IncidentNetIterator operator++(int) {
         IncidentNetIterator copy = *this;
         operator++();
         return copy;
     }
 
-    bool operator!=(const IncidentNetIterator &rhs);
+    bool operator!=(const IncidentNetIterator& rhs);
 
-    bool operator==(const IncidentNetIterator &rhs);
+    bool operator==(const IncidentNetIterator& rhs);
 
   private:
     void next_iterator();
@@ -124,9 +123,7 @@ class IncidentNetArray
     {
         explicit Header(const HypernodeID u) :
             prev(u), next(u), it_prev(u), it_next(u), tail(u), size(0), degree(0),
-            current_version(0), is_head(true)
-        {
-        }
+            current_version(0), is_head(true) {}
 
         // ! Previous incident net list
         HypernodeID prev;
@@ -155,28 +152,23 @@ class IncidentNetArray
 
     IncidentNetArray() :
         _num_hypernodes(0), _size_in_bytes(0), _index_array(),
-        _incident_net_array(nullptr)
-    {
-    }
+        _incident_net_array(nullptr) {}
 
     IncidentNetArray(const HypernodeID num_hypernodes,
-                     const HyperedgeVector &edge_vector) :
+                     const HyperedgeVector& edge_vector) :
         _num_hypernodes(num_hypernodes),
-        _size_in_bytes(0), _index_array(), _incident_net_array(nullptr)
-    {
+        _size_in_bytes(0), _index_array(), _incident_net_array(nullptr) {
         construct(edge_vector);
     }
 
     // ! Degree of the vertex
-    HypernodeID nodeDegree(const HypernodeID u) const
-    {
+    HypernodeID nodeDegree(const HypernodeID u) const {
         ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
         return header(u)->degree;
     }
 
     // ! Returns a range to loop over the incident nets of hypernode u.
-    IteratorRange<IncidentNetIterator> incidentEdges(const HypernodeID u) const
-    {
+    IteratorRange<IncidentNetIterator> incidentEdges(const HypernodeID u) const {
         ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
         return IteratorRange<IncidentNetIterator>(
             IncidentNetIterator(u, this, UL(0), false),
@@ -185,8 +177,7 @@ class IncidentNetArray
 
     // ! Returns a range to loop over the incident nets of hypernode u.
     IteratorRange<IncidentNetIterator> incidentEdges(const HypernodeID u,
-                                                     const size_t pos) const
-    {
+                                                     const size_t pos) const {
         ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
         return IteratorRange<IncidentNetIterator>(
             IncidentNetIterator(u, this, pos, false),
@@ -198,17 +189,17 @@ class IncidentNetArray
     // ! all incident nets shared between u and v from the incident net list of v and
     // append ! the list of v to u.
     void contract(const HypernodeID u, const HypernodeID v,
-                  const kahypar::ds::FastResetFlagArray<> &shared_hes_of_u_and_v,
-                  const AcquireLockFunc &acquire_lock = NOOP_LOCK_FUNC,
-                  const ReleaseLockFunc &release_lock = NOOP_LOCK_FUNC);
+                  const kahypar::ds::FastResetFlagArray<>& shared_hes_of_u_and_v,
+                  const AcquireLockFunc& acquire_lock = NOOP_LOCK_FUNC,
+                  const ReleaseLockFunc& release_lock = NOOP_LOCK_FUNC);
 
     // ! Uncontract two previously contracted vertices u and v.
     // ! Uncontraction involves to decrement the version number of all incident lists
     // contained ! in v and restore all incident nets with a version number equal to the
     // new version. ! Note, uncontraction must be done in relative contraction order
     void uncontract(const HypernodeID u, const HypernodeID v,
-                    const AcquireLockFunc &acquire_lock = NOOP_LOCK_FUNC,
-                    const ReleaseLockFunc &release_lock = NOOP_LOCK_FUNC);
+                    const AcquireLockFunc& acquire_lock = NOOP_LOCK_FUNC,
+                    const ReleaseLockFunc& release_lock = NOOP_LOCK_FUNC);
 
     // ! Uncontract two previously contracted vertices u and v.
     // ! Uncontraction involves to decrement the version number of all incident lists
@@ -217,13 +208,13 @@ class IncidentNetArray
     // were previously both ! adjacent to he and case_two_func if only v was previously
     // adjacent to he. ! Note, uncontraction must be done in relative contraction order
     void uncontract(const HypernodeID u, const HypernodeID v,
-                    const CaseOneFunc &case_one_func, const CaseTwoFunc &case_two_func,
-                    const AcquireLockFunc &acquire_lock,
-                    const ReleaseLockFunc &release_lock);
+                    const CaseOneFunc& case_one_func, const CaseTwoFunc& case_two_func,
+                    const AcquireLockFunc& acquire_lock,
+                    const ReleaseLockFunc& release_lock);
 
     // ! Removes all incidents nets of u flagged in hes_to_remove.
     void removeIncidentNets(const HypernodeID u,
-                            const kahypar::ds::FastResetFlagArray<> &hes_to_remove);
+                            const kahypar::ds::FastResetFlagArray<>& hes_to_remove);
 
     // ! Restores all previously removed incident nets
     // ! Note, function must be called in reverse order of calls to
@@ -238,56 +229,49 @@ class IncidentNetArray
 
     void reset();
 
-    size_t size_in_bytes() const
-    {
+    size_t size_in_bytes() const {
         return _size_in_bytes + sizeof(size_t) * _index_array.size();
     }
 
   private:
     friend class IncidentNetIterator;
 
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE const Header *header(const HypernodeID u) const
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE const Header *header(const HypernodeID u) const {
         ASSERT(u <= _num_hypernodes, "Hypernode" << u << "does not exist");
         return reinterpret_cast<const Header *>(_incident_net_array.get() +
                                                 _index_array[u]);
     }
 
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Header *header(const HypernodeID u)
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Header *header(const HypernodeID u) {
         return const_cast<Header *>(
-            static_cast<const IncidentNetArray &>(*this).header(u));
+            static_cast<const IncidentNetArray&>(*this).header(u));
     }
 
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE const Entry *firstEntry(const HypernodeID u) const
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE const Entry *
+    firstEntry(const HypernodeID u) const {
         ASSERT(u <= _num_hypernodes, "Hypernode" << u << "does not exist");
         return reinterpret_cast<const Entry *>(_incident_net_array.get() +
                                                _index_array[u] + sizeof(Header));
     }
 
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Entry *firstEntry(const HypernodeID u)
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Entry *firstEntry(const HypernodeID u) {
         return const_cast<Entry *>(
-            static_cast<const IncidentNetArray &>(*this).firstEntry(u));
+            static_cast<const IncidentNetArray&>(*this).firstEntry(u));
     }
 
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE const Entry *lastEntry(const HypernodeID u) const
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE const Entry *lastEntry(const HypernodeID u) const {
         ASSERT(u <= _num_hypernodes, "Hypernode" << u << "does not exist");
         return reinterpret_cast<const Entry *>(_incident_net_array.get() +
                                                _index_array[u] + sizeof(Header) +
                                                header(u)->size * sizeof(Entry));
     }
 
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Entry *lastEntry(const HypernodeID u)
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Entry *lastEntry(const HypernodeID u) {
         return const_cast<Entry *>(
-            static_cast<const IncidentNetArray &>(*this).lastEntry(u));
+            static_cast<const IncidentNetArray&>(*this).lastEntry(u));
     }
 
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void swap(Entry *lhs, Entry *rhs)
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void swap(Entry *lhs, Entry *rhs) {
         Entry tmp_lhs = *lhs;
         *lhs = *rhs;
         *rhs = tmp_lhs;
@@ -298,8 +282,8 @@ class IncidentNetArray
     // ! removeIncidentNets(...) and all uncontraction that happens
     // ! between two consecutive calls to removeIncidentNets(...) must
     // ! be processed.
-    void restoreIncidentNets(const HypernodeID u, const CaseOneFunc &case_one_func,
-                             const CaseTwoFunc &case_two_func);
+    void restoreIncidentNets(const HypernodeID u, const CaseOneFunc& case_one_func,
+                             const CaseTwoFunc& case_two_func);
 
     void append(const HypernodeID u, const HypernodeID v);
 
@@ -307,7 +291,7 @@ class IncidentNetArray
 
     void removeEmptyIncidentNetList(const HypernodeID u);
 
-    void construct(const HyperedgeVector &edge_vector);
+    void construct(const HyperedgeVector& edge_vector);
 
     bool verifyIteratorPointers(const HypernodeID u) const;
 

@@ -50,10 +50,8 @@
 namespace mt_kahypar {
 
 template <typename Hypergraph>
-void setupContext(Hypergraph &hypergraph, Context &context, TargetGraph *target_graph)
-{
-    if(target_graph)
-    {
+void setupContext(Hypergraph& hypergraph, Context& context, TargetGraph *target_graph) {
+    if(target_graph) {
         context.partition.k = target_graph->numBlocks();
     }
 
@@ -66,12 +64,10 @@ void setupContext(Hypergraph &hypergraph, Context &context, TargetGraph *target_
     context.setupContractionLimit(hypergraph.totalWeight());
     context.setupThreadsPerFlowSearch();
 
-    if(context.partition.gain_policy == GainPolicy::steiner_tree)
-    {
+    if(context.partition.gain_policy == GainPolicy::steiner_tree) {
         const PartitionID k = target_graph ? target_graph->numBlocks() : 1;
         const PartitionID max_k = Hypergraph::is_graph ? 256 : 64;
-        if(k > max_k)
-        {
+        if(k > max_k) {
             const std::string type = Hypergraph::is_graph ? "graphs" : "hypergraphs";
             throw InvalidInputException("We currently only support mappings of " + type +
                                         " onto target graphs with at "
@@ -79,16 +75,15 @@ void setupContext(Hypergraph &hypergraph, Context &context, TargetGraph *target_
                                         STR(max_k) + "nodes!");
         }
 
-        if(context.mapping.largest_he_fraction > 0.0)
-        {
+        if(context.mapping.largest_he_fraction > 0.0) {
             // Determine a threshold of what we consider a large hyperedge in
             // the steiner tree gain cache
             vec<HypernodeID> he_sizes(hypergraph.initialNumEdges(), 0);
             hypergraph.doParallelForAllEdges(
-                [&](const HyperedgeID &he) { he_sizes[he] = hypergraph.edgeSize(he); });
+                [&](const HyperedgeID& he) { he_sizes[he] = hypergraph.edgeSize(he); });
             // Sort hyperedges in decreasing order of their sizes
             tbb::parallel_sort(he_sizes.begin(), he_sizes.end(),
-                               [&](const HypernodeID &lhs, const HypernodeID &rhs) {
+                               [&](const HypernodeID& lhs, const HypernodeID& rhs) {
                                    return lhs > rhs;
                                });
             const size_t percentile =
@@ -97,17 +92,16 @@ void setupContext(Hypergraph &hypergraph, Context &context, TargetGraph *target_
             const double covered_pins_percentage =
                 static_cast<double>(tbb::parallel_reduce(
                     tbb::blocked_range<size_t>(UL(0), percentile), 0,
-                    [&](const tbb::blocked_range<size_t> &range, int init) {
-                        for(size_t i = range.begin(); i < range.end(); ++i)
-                        {
+                    [&](const tbb::blocked_range<size_t>& range, int init) {
+                        for(size_t i = range.begin(); i < range.end(); ++i) {
                             init += he_sizes[i];
                         }
                         return init;
                     },
                     [&](const int lhs, const int rhs) { return lhs + rhs; })) /
                 hypergraph.initialNumPins();
-            if(covered_pins_percentage >= context.mapping.min_pin_coverage_of_largest_hes)
-            {
+            if(covered_pins_percentage >=
+               context.mapping.min_pin_coverage_of_largest_hes) {
                 // If the largest hyperedge covers a large portion of the hypergraph, we
                 // assume that the hyperedge sizes follow a power law distribution and
                 // ignore hyperedges larger than the following threshold when calculating
@@ -121,36 +115,27 @@ void setupContext(Hypergraph &hypergraph, Context &context, TargetGraph *target_
     // Setup enabled IP algorithms
     if(context.initial_partitioning.enabled_ip_algos.size() > 0 &&
        context.initial_partitioning.enabled_ip_algos.size() <
-           static_cast<size_t>(InitialPartitioningAlgorithm::UNDEFINED))
-    {
+           static_cast<size_t>(InitialPartitioningAlgorithm::UNDEFINED)) {
         throw InvalidParameterException(
             "Size of enabled IP algorithms vector is smaller than number of IP algorithms!");
-    }
-    else if(context.initial_partitioning.enabled_ip_algos.size() == 0)
-    {
+    } else if(context.initial_partitioning.enabled_ip_algos.size() == 0) {
         context.initial_partitioning.enabled_ip_algos.assign(
             static_cast<size_t>(InitialPartitioningAlgorithm::UNDEFINED), true);
-    }
-    else
-    {
+    } else {
         bool is_one_ip_algo_enabled = false;
-        for(size_t i = 0; i < context.initial_partitioning.enabled_ip_algos.size(); ++i)
-        {
+        for(size_t i = 0; i < context.initial_partitioning.enabled_ip_algos.size(); ++i) {
             is_one_ip_algo_enabled |= context.initial_partitioning.enabled_ip_algos[i];
         }
-        if(!is_one_ip_algo_enabled)
-        {
+        if(!is_one_ip_algo_enabled) {
             throw InvalidParameterException(
                 "At least one initial partitioning algorithm must be enabled!");
         }
     }
 
     // Check fixed vertex support compatibility
-    if(hypergraph.hasFixedVertices())
-    {
+    if(hypergraph.hasFixedVertices()) {
         if(context.partition.mode == Mode::deep_multilevel ||
-           context.initial_partitioning.mode == Mode::deep_multilevel)
-        {
+           context.initial_partitioning.mode == Mode::deep_multilevel) {
             throw NonSupportedOperationException(
                 "Deep multilevel partitioning scheme does not support fixed vertices!");
         }
@@ -158,28 +143,21 @@ void setupContext(Hypergraph &hypergraph, Context &context, TargetGraph *target_
 }
 
 template <typename Hypergraph>
-void configurePreprocessing(const Hypergraph &hypergraph, Context &context)
-{
+void configurePreprocessing(const Hypergraph& hypergraph, Context& context) {
     const double density =
         static_cast<double>(Hypergraph::is_graph ? hypergraph.initialNumEdges() / 2 :
                                                    hypergraph.initialNumEdges()) /
         static_cast<double>(hypergraph.initialNumNodes());
     if(context.preprocessing.community_detection.edge_weight_function ==
-       LouvainEdgeWeight::hybrid)
-    {
-        if(density < 0.75)
-        {
+       LouvainEdgeWeight::hybrid) {
+        if(density < 0.75) {
             context.preprocessing.community_detection.edge_weight_function =
                 LouvainEdgeWeight::degree;
-        }
-        else if(density < 2 && hypergraph.maxEdgeSize() >
-                                   context.partition.ignore_hyperedge_size_threshold)
-        {
+        } else if(density < 2 && hypergraph.maxEdgeSize() >
+                                     context.partition.ignore_hyperedge_size_threshold) {
             context.preprocessing.community_detection.edge_weight_function =
                 LouvainEdgeWeight::non_uniform;
-        }
-        else
-        {
+        } else {
             context.preprocessing.community_detection.edge_weight_function =
                 LouvainEdgeWeight::uniform;
         }
@@ -187,12 +165,11 @@ void configurePreprocessing(const Hypergraph &hypergraph, Context &context)
 }
 
 template <typename TypeTraits>
-void sanitize(typename TypeTraits::Hypergraph &hypergraph, Context &context,
-              DegreeZeroHypernodeRemover<TypeTraits> &degree_zero_hn_remover,
-              LargeHyperedgeRemover<TypeTraits> &large_he_remover)
-{
+void sanitize(typename TypeTraits::Hypergraph& hypergraph, Context& context,
+              DegreeZeroHypernodeRemover<TypeTraits>& degree_zero_hn_remover,
+              LargeHyperedgeRemover<TypeTraits>& large_he_remover) {
 
-    utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
     timer.start_timer("degree_zero_hypernode_removal", "Degree Zero Hypernode Removal");
     const HypernodeID num_removed_degree_zero_hypernodes =
         degree_zero_hn_remover.removeDegreeZeroHypernodes(hypergraph);
@@ -206,8 +183,7 @@ void sanitize(typename TypeTraits::Hypergraph &hypergraph, Context &context,
     const HyperedgeID num_removed_single_node_hes = hypergraph.numRemovedHyperedges();
     if(context.partition.verbose_output &&
        (num_removed_single_node_hes > 0 || num_removed_degree_zero_hypernodes > 0 ||
-        num_removed_large_hyperedges > 0))
-    {
+        num_removed_large_hyperedges > 0)) {
         LOG << "Performed single-node/large HE removal and degree-zero HN contractions:";
         LOG << "\033[1m\033[31m"
             << " # removed" << num_removed_single_node_hes
@@ -226,22 +202,17 @@ void sanitize(typename TypeTraits::Hypergraph &hypergraph, Context &context,
 }
 
 template <typename Hypergraph>
-bool isGraph(const Hypergraph &hypergraph)
-{
-    if(Hypergraph::is_graph)
-    {
+bool isGraph(const Hypergraph& hypergraph) {
+    if(Hypergraph::is_graph) {
         return true;
     }
     return tbb::parallel_reduce(
         tbb::blocked_range<HyperedgeID>(ID(0), hypergraph.initialNumEdges()), true,
-        [&](const tbb::blocked_range<HyperedgeID> &range, bool isGraph) {
-            if(isGraph)
-            {
+        [&](const tbb::blocked_range<HyperedgeID>& range, bool isGraph) {
+            if(isGraph) {
                 bool tmp_is_graph = isGraph;
-                for(HyperedgeID he = range.begin(); he < range.end(); ++he)
-                {
-                    if(hypergraph.edgeIsEnabled(he))
-                    {
+                for(HyperedgeID he = range.begin(); he < range.end(); ++he) {
+                    if(hypergraph.edgeIsEnabled(he)) {
                         tmp_is_graph &= (hypergraph.edgeSize(he) == 2);
                     }
                 }
@@ -253,27 +224,24 @@ bool isGraph(const Hypergraph &hypergraph)
 }
 
 template <typename Hypergraph>
-bool isMeshGraph(const Hypergraph &graph)
-{
+bool isMeshGraph(const Hypergraph& graph) {
     const HypernodeID num_nodes = graph.initialNumNodes();
     const double avg_hn_degree = utils::avgHypernodeDegree(graph);
     std::vector<HyperedgeID> hn_degrees;
     hn_degrees.resize(graph.initialNumNodes());
     graph.doParallelForAllNodes(
-        [&](const HypernodeID &hn) { hn_degrees[hn] = graph.nodeDegree(hn); });
+        [&](const HypernodeID& hn) { hn_degrees[hn] = graph.nodeDegree(hn); });
     const double stdev_hn_degree =
         utils::parallel_stdev(hn_degrees, avg_hn_degree, num_nodes);
-    if(stdev_hn_degree > avg_hn_degree / 2)
-    {
+    if(stdev_hn_degree > avg_hn_degree / 2) {
         return false;
     }
 
     // test whether 99.9th percentile hypernode degree is at most 4 times the average
     // degree
     tbb::enumerable_thread_specific<size_t> num_high_degree_nodes(0);
-    graph.doParallelForAllNodes([&](const HypernodeID &node) {
-        if(graph.nodeDegree(node) > 4 * avg_hn_degree)
-        {
+    graph.doParallelForAllNodes([&](const HypernodeID& node) {
+        if(graph.nodeDegree(node) > 4 * avg_hn_degree) {
             num_high_degree_nodes.local() += 1;
         }
     });
@@ -281,12 +249,10 @@ bool isMeshGraph(const Hypergraph &graph)
 }
 
 template <typename Hypergraph>
-void precomputeSteinerTrees(Hypergraph &hypergraph, TargetGraph *target_graph,
-                            Context &context)
-{
-    if(target_graph && !target_graph->isInitialized())
-    {
-        utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+void precomputeSteinerTrees(Hypergraph& hypergraph, TargetGraph *target_graph,
+                            Context& context) {
+    if(target_graph && !target_graph->isInitialized()) {
+        utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
         timer.start_timer("precompute_steiner_trees", "Precompute Steiner Trees");
         const size_t max_steiner_tree_size = std::min(
             std::min(context.mapping.max_steiner_tree_size, UL(context.partition.k)),
@@ -297,25 +263,22 @@ void precomputeSteinerTrees(Hypergraph &hypergraph, TargetGraph *target_graph,
 }
 
 template <typename Hypergraph>
-void preprocess(Hypergraph &hypergraph, Context &context, TargetGraph *target_graph)
-{
+void preprocess(Hypergraph& hypergraph, Context& context, TargetGraph *target_graph) {
     bool use_community_detection = context.preprocessing.use_community_detection;
     bool is_graph = false;
 
-    utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
-    if(context.preprocessing.use_community_detection)
-    {
+    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
+    if(context.preprocessing.use_community_detection) {
         timer.start_timer("detect_graph_structure", "Detect Graph Structure");
         is_graph = isGraph(hypergraph);
-        if(is_graph && context.preprocessing.disable_community_detection_for_mesh_graphs)
-        {
+        if(is_graph &&
+           context.preprocessing.disable_community_detection_for_mesh_graphs) {
             use_community_detection = !isMeshGraph(hypergraph);
         }
         timer.stop_timer("detect_graph_structure");
     }
 
-    if(use_community_detection)
-    {
+    if(use_community_detection) {
         io::printTopLevelPreprocessingBanner(context);
 
         timer.start_timer("community_detection", "Community Detection");
@@ -323,8 +286,7 @@ void preprocess(Hypergraph &hypergraph, Context &context, TargetGraph *target_gr
         Graph<Hypergraph> graph(
             hypergraph, context.preprocessing.community_detection.edge_weight_function,
             is_graph);
-        if(!context.preprocessing.community_detection.low_memory_contraction)
-        {
+        if(!context.preprocessing.community_detection.low_memory_contraction) {
             graph.allocateContractionBuffers();
         }
         timer.stop_timer("construct_graph");
@@ -336,8 +298,7 @@ void preprocess(Hypergraph &hypergraph, Context &context, TargetGraph *target_gr
         timer.stop_timer("perform_community_detection");
         timer.stop_timer("community_detection");
 
-        if(context.partition.verbose_output)
-        {
+        if(context.partition.verbose_output) {
             io::printCommunityInformation(hypergraph);
         }
     }
@@ -348,25 +309,20 @@ void preprocess(Hypergraph &hypergraph, Context &context, TargetGraph *target_gr
 }
 
 template <typename PartitionedHypergraph>
-void forceFixedVertexAssignment(PartitionedHypergraph &partitioned_hg,
-                                const Context &context)
-{
-    if(partitioned_hg.hasFixedVertices())
-    {
+void forceFixedVertexAssignment(PartitionedHypergraph& partitioned_hg,
+                                const Context& context) {
+    if(partitioned_hg.hasFixedVertices()) {
         // This is a sanity check verifying that all fixed vertices are assigned
         // to their corresponding blocks. If one fixed vertex is assigned to a different
         // block, we move it to its fixed vertex block. Note that a wrong fixed vertex
         // block assignment will fail in debug mode. Thus, this loop should not move any
         // node, but we keep it in case anything goes wrong during partitioning.
-        partitioned_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
-            if(partitioned_hg.isFixed(hn))
-            {
+        partitioned_hg.doParallelForAllNodes([&](const HypernodeID& hn) {
+            if(partitioned_hg.isFixed(hn)) {
                 const PartitionID from = partitioned_hg.partID(hn);
                 const PartitionID to = partitioned_hg.fixedVertexBlock(hn);
-                if(from != to)
-                {
-                    if(context.partition.verbose_output)
-                    {
+                if(from != to) {
+                    if(context.partition.verbose_output) {
                         LOG << RED << "Node" << hn << "is fixed to block" << to
                             << ", but it is assigned to block" << from << "!"
                             << "It is now moved to its fixed vertex block." << END;
@@ -380,9 +336,8 @@ void forceFixedVertexAssignment(PartitionedHypergraph &partitioned_hg,
 
 template <typename TypeTraits>
 typename Partitioner<TypeTraits>::PartitionedHypergraph
-Partitioner<TypeTraits>::partition(Hypergraph &hypergraph, Context &context,
-                                   TargetGraph *target_graph)
-{
+Partitioner<TypeTraits>::partition(Hypergraph& hypergraph, Context& context,
+                                   TargetGraph *target_graph) {
     configurePreprocessing(hypergraph, context);
     setupContext(hypergraph, context, target_graph);
 
@@ -393,8 +348,7 @@ Partitioner<TypeTraits>::partition(Hypergraph &hypergraph, Context &context,
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
     bool map_partition_to_target_graph_at_the_end = false;
     if(context.partition.objective == Objective::steiner_tree &&
-       context.mapping.use_two_phase_approach)
-    {
+       context.mapping.use_two_phase_approach) {
         map_partition_to_target_graph_at_the_end = true;
         context.partition.objective = Objective::km1;
         context.setupGainPolicy();
@@ -402,7 +356,7 @@ Partitioner<TypeTraits>::partition(Hypergraph &hypergraph, Context &context,
 #endif
 
     // ################## PREPROCESSING ##################
-    utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
     timer.start_timer("preprocessing", "Preprocessing");
     DegreeZeroHypernodeRemover<TypeTraits> degree_zero_hn_remover(context);
     LargeHyperedgeRemover<TypeTraits> large_he_remover(context);
@@ -412,38 +366,28 @@ Partitioner<TypeTraits>::partition(Hypergraph &hypergraph, Context &context,
 
     // ################## MULTILEVEL & VCYCLE ##################
     PartitionedHypergraph partitioned_hypergraph;
-    if(context.partition.mode == Mode::direct)
-    {
+    if(context.partition.mode == Mode::direct) {
         partitioned_hypergraph =
             Multilevel<TypeTraits>::partition(hypergraph, context, target_graph);
-    }
-    else if(context.partition.mode == Mode::recursive_bipartitioning)
-    {
+    } else if(context.partition.mode == Mode::recursive_bipartitioning) {
         partitioned_hypergraph = RecursiveBipartitioning<TypeTraits>::partition(
             hypergraph, context, target_graph);
-    }
-    else if(context.partition.mode == Mode::deep_multilevel)
-    {
+    } else if(context.partition.mode == Mode::deep_multilevel) {
         ASSERT(context.partition.objective != Objective::steiner_tree);
         partitioned_hypergraph =
             DeepMultilevel<TypeTraits>::partition(hypergraph, context);
-    }
-    else
-    {
+    } else {
         throw InvalidParameterException("Invalid partitioning mode!");
     }
 
     ASSERT(
         [&] {
             bool success = true;
-            if(partitioned_hypergraph.hasFixedVertices())
-            {
-                for(const HypernodeID &hn : partitioned_hypergraph.nodes())
-                {
+            if(partitioned_hypergraph.hasFixedVertices()) {
+                for(const HypernodeID& hn : partitioned_hypergraph.nodes()) {
                     if(partitioned_hypergraph.isFixed(hn) &&
                        partitioned_hypergraph.fixedVertexBlock(hn) !=
-                           partitioned_hypergraph.partID(hn))
-                    {
+                           partitioned_hypergraph.partID(hn)) {
                         LOG << "Node" << hn << "is fixed to block"
                             << partitioned_hypergraph.fixedVertexBlock(hn)
                             << ", but is assigned to block"
@@ -464,8 +408,7 @@ Partitioner<TypeTraits>::partition(Hypergraph &hypergraph, Context &context,
     timer.stop_timer("postprocessing");
 
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
-    if(map_partition_to_target_graph_at_the_end)
-    {
+    if(map_partition_to_target_graph_at_the_end) {
         ASSERT(target_graph);
         context.partition.objective = Objective::steiner_tree;
         timer.start_timer("one_to_one_mapping", "One-To-One Mapping");
@@ -475,8 +418,7 @@ Partitioner<TypeTraits>::partition(Hypergraph &hypergraph, Context &context,
     }
 #endif
 
-    if(context.partition.verbose_output)
-    {
+    if(context.partition.verbose_output) {
         io::printHypergraphInfo(partitioned_hypergraph.hypergraph(), context,
                                 "Uncoarsened Hypergraph",
                                 context.partition.show_memory_consumption);
@@ -487,14 +429,14 @@ Partitioner<TypeTraits>::partition(Hypergraph &hypergraph, Context &context,
 }
 
 template <typename TypeTraits>
-void Partitioner<TypeTraits>::partitionVCycle(PartitionedHypergraph &partitioned_hg,
-                                              Context &context, TargetGraph *target_graph)
-{
-    Hypergraph &hypergraph = partitioned_hg.hypergraph();
+void Partitioner<TypeTraits>::partitionVCycle(PartitionedHypergraph& partitioned_hg,
+                                              Context& context,
+                                              TargetGraph *target_graph) {
+    Hypergraph& hypergraph = partitioned_hg.hypergraph();
     configurePreprocessing(hypergraph, context);
     setupContext(hypergraph, context, target_graph);
 
-    utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
     timer.start_timer("preprocessing", "Preprocessing");
     precomputeSteinerTrees(hypergraph, target_graph, context);
     partitioned_hg.setTargetGraph(target_graph);
@@ -513,13 +455,10 @@ void Partitioner<TypeTraits>::partitionVCycle(PartitionedHypergraph &partitioned
     timer.stop_timer("preprocessing");
 
     // ################## MULTILEVEL & VCYCLE ##################
-    if(context.partition.mode == Mode::direct)
-    {
+    if(context.partition.mode == Mode::direct) {
         Multilevel<TypeTraits>::partitionVCycle(hypergraph, partitioned_hg, context,
                                                 target_graph);
-    }
-    else
-    {
+    } else {
         throw InvalidParameterException("Invalid V-cycle partitioning mode!");
     }
 
@@ -530,8 +469,7 @@ void Partitioner<TypeTraits>::partitionVCycle(PartitionedHypergraph &partitioned
     forceFixedVertexAssignment(partitioned_hg, context);
     timer.stop_timer("postprocessing");
 
-    if(context.partition.verbose_output)
-    {
+    if(context.partition.verbose_output) {
         io::printHypergraphInfo(partitioned_hg.hypergraph(), context,
                                 "Uncoarsened Hypergraph",
                                 context.partition.show_memory_consumption);
@@ -541,13 +479,10 @@ void Partitioner<TypeTraits>::partitionVCycle(PartitionedHypergraph &partitioned
     ASSERT(
         [&] {
             bool success = true;
-            if(partitioned_hg.hasFixedVertices())
-            {
-                for(const HypernodeID &hn : partitioned_hg.nodes())
-                {
+            if(partitioned_hg.hasFixedVertices()) {
+                for(const HypernodeID& hn : partitioned_hg.nodes()) {
                     if(partitioned_hg.isFixed(hn) &&
-                       partitioned_hg.fixedVertexBlock(hn) != partitioned_hg.partID(hn))
-                    {
+                       partitioned_hg.fixedVertexBlock(hn) != partitioned_hg.partID(hn)) {
                         LOG << "Node" << hn << "is fixed to block"
                             << partitioned_hg.fixedVertexBlock(hn)
                             << ", but is assigned to block" << partitioned_hg.partID(hn);

@@ -36,10 +36,8 @@ namespace mt_kahypar {
 
 struct BipartitioningPolicy
 {
-    static bool useCutNetSplitting(const GainPolicy policy)
-    {
-        switch(policy)
-        {
+    static bool useCutNetSplitting(const GainPolicy policy) {
+        switch(policy) {
         case GainPolicy::cut:
             return false;
         case GainPolicy::km1:
@@ -59,10 +57,8 @@ struct BipartitioningPolicy
         return false;
     }
 
-    static HyperedgeWeight nonCutEdgeMultiplier(const GainPolicy policy)
-    {
-        switch(policy)
-        {
+    static HyperedgeWeight nonCutEdgeMultiplier(const GainPolicy policy) {
+        switch(policy) {
         case GainPolicy::cut:
             return 1;
         case GainPolicy::km1:

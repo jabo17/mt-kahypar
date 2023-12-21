@@ -50,14 +50,12 @@ class SteinerTreeGainComputation
     static constexpr size_t BITS_PER_BLOCK = ds::StaticBitset::BITS_PER_BLOCK;
 
   public:
-    SteinerTreeGainComputation(const Context &context,
+    SteinerTreeGainComputation(const Context& context,
                                bool disable_randomization = false) :
         Base(context, disable_randomization),
         _local_adjacent_blocks([&] { return constructBitset(); }),
-        _all_blocks(context.partition.k)
-    {
-        for(PartitionID to = 0; to < context.partition.k; ++to)
-        {
+        _all_blocks(context.partition.k) {
+        for(PartitionID to = 0; to < context.partition.k; ++to) {
             _all_blocks.set(to);
         }
     }
@@ -68,24 +66,20 @@ class SteinerTreeGainComputation
     // ! The gain of that node to a block to can then be computed by
     // ! 'isolated_block_gain - tmp_scores[to]' (see gain(...))
     template <typename PartitionedHypergraph>
-    void precomputeGains(const PartitionedHypergraph &phg, const HypernodeID hn,
-                         RatingMap &tmp_scores, Gain &,
-                         const bool consider_non_adjacent_blocks)
-    {
+    void precomputeGains(const PartitionedHypergraph& phg, const HypernodeID hn,
+                         RatingMap& tmp_scores, Gain&,
+                         const bool consider_non_adjacent_blocks) {
         ASSERT(tmp_scores.size() == 0, "Rating map not empty");
 
         // Compute all adjacent blocks of node
-        ds::Bitset &adjacent_blocks =
+        ds::Bitset& adjacent_blocks =
             consider_non_adjacent_blocks ? _all_blocks : _local_adjacent_blocks.local();
         ds::StaticBitset adjacent_blocks_view(adjacent_blocks.numBlocks(),
                                               adjacent_blocks.data());
-        if(!consider_non_adjacent_blocks)
-        {
+        if(!consider_non_adjacent_blocks) {
             adjacent_blocks.reset();
-            for(const HyperedgeID &he : phg.incidentEdges(hn))
-            {
-                for(const PartitionID &block : phg.connectivitySet(he))
-                {
+            for(const HyperedgeID& he : phg.incidentEdges(hn)) {
+                for(const PartitionID& block : phg.connectivitySet(he)) {
                     adjacent_blocks.set(block);
                 }
             }
@@ -95,16 +89,14 @@ class SteinerTreeGainComputation
         ASSERT(phg.hasTargetGraph());
         const TargetGraph *target_graph = phg.targetGraph();
         PartitionID from = phg.partID(hn);
-        for(const HyperedgeID &he : phg.incidentEdges(hn))
-        {
+        for(const HyperedgeID& he : phg.incidentEdges(hn)) {
             HypernodeID pin_count_in_from_part = phg.pinCountInPart(he, from);
             HyperedgeWeight he_weight = phg.edgeWeight(he);
-            ds::Bitset &connectivity_set = phg.deepCopyOfConnectivitySet(he);
+            ds::Bitset& connectivity_set = phg.deepCopyOfConnectivitySet(he);
             const HyperedgeWeight distance_before =
                 target_graph->distance(connectivity_set);
 
-            if(pin_count_in_from_part == 1)
-            {
+            if(pin_count_in_from_part == 1) {
                 // Moving the node out of its current block removes
                 // its block from the connectivity set
                 connectivity_set.unset(from);
@@ -115,8 +107,7 @@ class SteinerTreeGainComputation
             // metric. The gain to non-adjacent blocks could be different because they
             // induce different distances in the target graph. We therefore have to
             // consider all adjacent blocks of the node to compute the correct gain.
-            for(const PartitionID to : adjacent_blocks_view)
-            {
+            for(const PartitionID to : adjacent_blocks_view) {
                 const HyperedgeWeight distance_after =
                     target_graph->distanceWithBlock(connectivity_set, to);
                 tmp_scores[to] += (distance_after - distance_before) * he_weight;
@@ -126,16 +117,13 @@ class SteinerTreeGainComputation
 
     HyperedgeWeight gain(const Gain to_score, const Gain) { return to_score; }
 
-    void changeNumberOfBlocksImpl(const PartitionID new_k)
-    {
+    void changeNumberOfBlocksImpl(const PartitionID new_k) {
         ASSERT(new_k == _context.partition.k);
-        for(auto &adjacent_blocks : _local_adjacent_blocks)
-        {
+        for(auto& adjacent_blocks : _local_adjacent_blocks) {
             adjacent_blocks.resize(new_k);
         }
         _all_blocks.resize(new_k);
-        for(PartitionID to = 0; to < new_k; ++to)
-        {
+        for(PartitionID to = 0; to < new_k; ++to) {
             _all_blocks.set(to);
         }
     }

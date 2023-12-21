@@ -47,20 +47,17 @@ class GainComputationBase
     using RatingMap = ds::SparseMap<PartitionID, Gain>;
     using TmpScores = tbb::enumerable_thread_specific<RatingMap>;
 
-    GainComputationBase(const Context &context, const bool disable_randomization) :
+    GainComputationBase(const Context& context, const bool disable_randomization) :
         _context(context), _disable_randomization(disable_randomization), _deltas(0),
-        _tmp_scores([&] { return constructLocalTmpScores(); })
-    {
-    }
+        _tmp_scores([&] { return constructLocalTmpScores(); }) {}
 
     template <typename PartitionedHypergraph>
-    Move computeMaxGainMove(const PartitionedHypergraph &phg, const HypernodeID hn,
+    Move computeMaxGainMove(const PartitionedHypergraph& phg, const HypernodeID hn,
                             const bool rebalance = false,
                             const bool consider_non_adjacent_blocks = false,
-                            const bool allow_imbalance = false)
-    {
+                            const bool allow_imbalance = false) {
         Derived *derived = static_cast<Derived *>(this);
-        RatingMap &tmp_scores = _tmp_scores.local();
+        RatingMap& tmp_scores = _tmp_scores.local();
         Gain isolated_block_gain = 0;
         derived->precomputeGains(phg, hn, tmp_scores, isolated_block_gain,
                                  consider_non_adjacent_blocks);
@@ -70,7 +67,7 @@ class GainComputationBase
                         rebalance ? std::numeric_limits<Gain>::max() : 0 };
         HypernodeWeight hn_weight = phg.nodeWeight(hn);
         int cpu_id = THREAD_ID;
-        utils::Randomize &rand = utils::Randomize::instance();
+        utils::Randomize& rand = utils::Randomize::instance();
         auto test_and_apply = [&](const PartitionID to, const Gain score,
                                   const bool no_tie_breaking = false) {
             bool new_best_gain = (score < best_move.gain) ||
@@ -78,47 +75,37 @@ class GainComputationBase
                                   (no_tie_breaking || rand.flipCoin(cpu_id)));
             if(new_best_gain &&
                (allow_imbalance || phg.partWeight(to) + hn_weight <=
-                                       _context.partition.max_part_weights[to]))
-            {
+                                       _context.partition.max_part_weights[to])) {
                 best_move.to = to;
                 best_move.gain = score;
                 return true;
-            }
-            else
-            {
+            } else {
                 return false;
             }
         };
 
-        for(const auto &entry : tmp_scores)
-        {
+        for(const auto& entry : tmp_scores) {
             const PartitionID to = entry.key;
-            if(from != to)
-            {
+            if(from != to) {
                 const Gain score = derived->gain(entry.value, isolated_block_gain);
                 test_and_apply(to, score);
             }
         }
 
-        if(consider_non_adjacent_blocks && best_move.to == from)
-        {
+        if(consider_non_adjacent_blocks && best_move.to == from) {
             // This is important for our rebalancer as the last fallback strategy
             vec<PartitionID> non_adjacent_block;
-            for(PartitionID to = 0; to < _context.partition.k; ++to)
-            {
-                if(from != to && !tmp_scores.contains(to))
-                {
+            for(PartitionID to = 0; to < _context.partition.k; ++to) {
+                if(from != to && !tmp_scores.contains(to)) {
                     // This block is not adjacent to the current node
                     if(test_and_apply(to, isolated_block_gain,
-                                      true /* no tie breaking */))
-                    {
+                                      true /* no tie breaking */)) {
                         non_adjacent_block.push_back(to);
                     }
                 }
             }
 
-            if(non_adjacent_block.size() > 0)
-            {
+            if(non_adjacent_block.size() > 0) {
                 // Choose one at random
                 const PartitionID to = non_adjacent_block[rand.getRandomInt(
                     0, static_cast<int>(non_adjacent_block.size() - 1), cpu_id)];
@@ -131,8 +118,7 @@ class GainComputationBase
         return best_move;
     }
 
-    inline void computeDeltaForHyperedge(const SynchronizedEdgeUpdate &sync_update)
-    {
+    inline void computeDeltaForHyperedge(const SynchronizedEdgeUpdate& sync_update) {
         _deltas.local() += AttributedGains::gain(sync_update);
     }
 
@@ -143,31 +129,24 @@ class GainComputationBase
 
     // ! Returns the overall delta of all moves performed by
     // ! all threads relative to the last call of reset()
-    Gain delta() const
-    {
+    Gain delta() const {
         Gain overall_delta = 0;
-        for(const Gain &delta : _deltas)
-        {
+        for(const Gain& delta : _deltas) {
             overall_delta += delta;
         }
         return overall_delta;
     }
 
-    void reset()
-    {
-        for(Gain &delta : _deltas)
-        {
+    void reset() {
+        for(Gain& delta : _deltas) {
             delta = 0;
         }
     }
 
-    void changeNumberOfBlocks(const PartitionID new_k)
-    {
+    void changeNumberOfBlocks(const PartitionID new_k) {
         ASSERT(new_k == _context.partition.k);
-        for(auto &tmp_score : _tmp_scores)
-        {
-            if(static_cast<size_t>(new_k) > tmp_score.size())
-            {
+        for(auto& tmp_score : _tmp_scores) {
+            if(static_cast<size_t>(new_k) > tmp_score.size()) {
                 tmp_score = RatingMap(new_k);
             }
         }
@@ -178,7 +157,7 @@ class GainComputationBase
     RatingMap constructLocalTmpScores() const { return RatingMap(_context.partition.k); }
 
   protected:
-    const Context &_context;
+    const Context& _context;
     const bool _disable_randomization;
     DeltaGain _deltas;
     TmpScores _tmp_scores;

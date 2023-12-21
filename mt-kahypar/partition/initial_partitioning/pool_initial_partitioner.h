@@ -38,7 +38,7 @@ class Pool
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
   public:
-    static void bipartition(PartitionedHypergraph &hypergraph, const Context &context,
+    static void bipartition(PartitionedHypergraph& hypergraph, const Context& context,
                             const bool run_parallel = true);
 };
 

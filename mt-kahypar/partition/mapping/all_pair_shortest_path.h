@@ -35,7 +35,7 @@ class AllPairShortestPath
 {
 
   public:
-    static void compute(const ds::StaticGraph &graph, vec<HyperedgeWeight> &distances);
+    static void compute(const ds::StaticGraph& graph, vec<HyperedgeWeight>& distances);
 
   private:
     AllPairShortestPath() {}

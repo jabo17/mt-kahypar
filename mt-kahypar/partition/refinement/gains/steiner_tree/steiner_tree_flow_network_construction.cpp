@@ -35,10 +35,8 @@ namespace mt_kahypar {
 namespace {
 HyperedgeWeight capacity_for_cut_edge(const SteinerTreeFlowValuePolicy policy,
                                       const HyperedgeWeight gain_0,
-                                      const HyperedgeWeight gain_1)
-{
-    switch(policy)
-    {
+                                      const HyperedgeWeight gain_1) {
+    switch(policy) {
     case SteinerTreeFlowValuePolicy::lower_bound:
         return std::min(gain_0, gain_1);
     case SteinerTreeFlowValuePolicy::upper_bound:
@@ -53,54 +51,42 @@ HyperedgeWeight capacity_for_cut_edge(const SteinerTreeFlowValuePolicy policy,
 
 template <typename PartitionedHypergraph>
 HyperedgeWeight SteinerTreeFlowNetworkConstruction::capacity(
-    const PartitionedHypergraph &phg, const Context &context, const HyperedgeID he,
-    const PartitionID block_0, const PartitionID block_1)
-{
+    const PartitionedHypergraph& phg, const Context& context, const HyperedgeID he,
+    const PartitionID block_0, const PartitionID block_1) {
     ASSERT(phg.hasTargetGraph());
-    const TargetGraph &target_graph = *phg.targetGraph();
+    const TargetGraph& target_graph = *phg.targetGraph();
     const HyperedgeWeight edge_weight = phg.edgeWeight(he);
     const HypernodeID pin_count_block_0 = phg.pinCountInPart(he, block_0);
     const HypernodeID pin_count_block_1 = phg.pinCountInPart(he, block_1);
-    ds::Bitset &connectivity_set = phg.deepCopyOfConnectivitySet(he);
+    ds::Bitset& connectivity_set = phg.deepCopyOfConnectivitySet(he);
     const HyperedgeWeight current_distance = target_graph.distance(connectivity_set);
-    if(pin_count_block_0 > 0 && pin_count_block_1 == 0)
-    {
+    if(pin_count_block_0 > 0 && pin_count_block_1 == 0) {
         // Hyperedge is non-cut
         // => we use gain for making the hyperedge cut as capacity to get a lower bound
         // for the actual improvement
         HyperedgeWeight distance_with_block_1 = 0;
-        if(pin_count_block_0 == 1)
-        {
+        if(pin_count_block_0 == 1) {
             distance_with_block_1 = target_graph.distanceAfterExchangingBlocks(
                 connectivity_set, block_0, block_1);
-        }
-        else
-        {
+        } else {
             distance_with_block_1 =
                 target_graph.distanceWithBlock(connectivity_set, block_1);
         }
         return std::abs(current_distance - distance_with_block_1) * edge_weight;
-    }
-    else if(pin_count_block_0 == 0 && pin_count_block_1 > 0)
-    {
+    } else if(pin_count_block_0 == 0 && pin_count_block_1 > 0) {
         // Hyperedge is non-cut
         // => we use gain for making the hyperedge cut as capacity to get a lower bound
         // for the actual improvement
         HyperedgeWeight distance_with_block_0 = 0;
-        if(pin_count_block_1 == 1)
-        {
+        if(pin_count_block_1 == 1) {
             distance_with_block_0 = target_graph.distanceAfterExchangingBlocks(
                 connectivity_set, block_1, block_0);
-        }
-        else
-        {
+        } else {
             distance_with_block_0 =
                 target_graph.distanceWithBlock(connectivity_set, block_0);
         }
         return std::abs(current_distance - distance_with_block_0) * edge_weight;
-    }
-    else
-    {
+    } else {
         // Hyperedge is cut
         // => does we either use min(gain_0, gain_1) to compute a lower bound for the
         // actual improvement or max(gain_0,gain_1) to compute an uppter bound for the
@@ -120,22 +106,19 @@ HyperedgeWeight SteinerTreeFlowNetworkConstruction::capacity(
 
 template <typename PartitionedHypergraph>
 bool SteinerTreeFlowNetworkConstruction::connectToSource(
-    const PartitionedHypergraph &partitioned_hg, const HyperedgeID he,
-    const PartitionID block_0, const PartitionID block_1)
-{
+    const PartitionedHypergraph& partitioned_hg, const HyperedgeID he,
+    const PartitionID block_0, const PartitionID block_1) {
     ASSERT(partitioned_hg.hasTargetGraph());
     const HypernodeID pin_count_block_0 = partitioned_hg.pinCountInPart(he, block_0);
     const HypernodeID pin_count_block_1 = partitioned_hg.pinCountInPart(he, block_1);
-    const TargetGraph &target_graph = *partitioned_hg.targetGraph();
-    if(pin_count_block_0 > 0 && pin_count_block_1 == 0)
-    {
-        ds::Bitset &connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
+    const TargetGraph& target_graph = *partitioned_hg.targetGraph();
+    if(pin_count_block_0 > 0 && pin_count_block_1 == 0) {
+        ds::Bitset& connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
         const HyperedgeWeight current_distance = target_graph.distance(connectivity_set);
         const HyperedgeWeight distance_after_exchange =
             target_graph.distanceAfterExchangingBlocks(connectivity_set, block_0,
                                                        block_1);
-        if(current_distance < distance_after_exchange)
-        {
+        if(current_distance < distance_after_exchange) {
             // If all nodes from block_0 would move to block_1, we would worsen the
             // steiner tree metric, even though the connectivity of the hyperedge does not
             // change. To model this percurlarity in the flow network, we add the
@@ -143,15 +126,13 @@ bool SteinerTreeFlowNetworkConstruction::connectToSource(
             return true;
         }
     }
-    if(pin_count_block_0 == 0 && pin_count_block_1 == 1)
-    {
-        ds::Bitset &connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
+    if(pin_count_block_0 == 0 && pin_count_block_1 == 1) {
+        ds::Bitset& connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
         const HyperedgeWeight current_distance = target_graph.distance(connectivity_set);
         const HyperedgeWeight distance_after_exchange =
             target_graph.distanceAfterExchangingBlocks(connectivity_set, block_1,
                                                        block_0);
-        if(current_distance > distance_after_exchange)
-        {
+        if(current_distance > distance_after_exchange) {
             return true;
         }
     }
@@ -160,23 +141,20 @@ bool SteinerTreeFlowNetworkConstruction::connectToSource(
 
 template <typename PartitionedHypergraph>
 bool SteinerTreeFlowNetworkConstruction::connectToSink(
-    const PartitionedHypergraph &partitioned_hg, const HyperedgeID he,
-    const PartitionID block_0, const PartitionID block_1)
-{
+    const PartitionedHypergraph& partitioned_hg, const HyperedgeID he,
+    const PartitionID block_0, const PartitionID block_1) {
     ASSERT(partitioned_hg.hasTargetGraph());
     const HypernodeID pin_count_block_0 = partitioned_hg.pinCountInPart(he, block_0);
     const HypernodeID pin_count_block_1 = partitioned_hg.pinCountInPart(he, block_1);
-    const TargetGraph &target_graph = *partitioned_hg.targetGraph();
+    const TargetGraph& target_graph = *partitioned_hg.targetGraph();
     if(partitioned_hg.pinCountInPart(he, block_0) == 0 &&
-       partitioned_hg.pinCountInPart(he, block_1) > 0)
-    {
-        ds::Bitset &connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
+       partitioned_hg.pinCountInPart(he, block_1) > 0) {
+        ds::Bitset& connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
         const HyperedgeWeight current_distance = target_graph.distance(connectivity_set);
         const HyperedgeWeight distance_after_exchange =
             target_graph.distanceAfterExchangingBlocks(connectivity_set, block_1,
                                                        block_0);
-        if(current_distance < distance_after_exchange)
-        {
+        if(current_distance < distance_after_exchange) {
             // If all nodes from block_1 would move to block_0, we would worsen the
             // steiner tree metric, even though the connectivity of the hyperedge does not
             // change. To model this percurlarity in the flow network, we add the
@@ -184,15 +162,13 @@ bool SteinerTreeFlowNetworkConstruction::connectToSink(
             return true;
         }
     }
-    if(pin_count_block_0 == 1 && pin_count_block_1 == 0)
-    {
-        ds::Bitset &connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
+    if(pin_count_block_0 == 1 && pin_count_block_1 == 0) {
+        ds::Bitset& connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
         const HyperedgeWeight current_distance = target_graph.distance(connectivity_set);
         const HyperedgeWeight distance_after_exchange =
             target_graph.distanceAfterExchangingBlocks(connectivity_set, block_0,
                                                        block_1);
-        if(current_distance > distance_after_exchange)
-        {
+        if(current_distance > distance_after_exchange) {
             return true;
         }
     }
@@ -201,34 +177,29 @@ bool SteinerTreeFlowNetworkConstruction::connectToSink(
 
 template <typename PartitionedHypergraph>
 bool SteinerTreeFlowNetworkConstruction::isCut(
-    const PartitionedHypergraph &partitioned_hg, const HyperedgeID he,
-    const PartitionID block_0, const PartitionID block_1)
-{
+    const PartitionedHypergraph& partitioned_hg, const HyperedgeID he,
+    const PartitionID block_0, const PartitionID block_1) {
     ASSERT(partitioned_hg.hasTargetGraph());
     const HypernodeID pin_count_block_0 = partitioned_hg.pinCountInPart(he, block_0);
     const HypernodeID pin_count_block_1 = partitioned_hg.pinCountInPart(he, block_1);
-    const TargetGraph &target_graph = *partitioned_hg.targetGraph();
-    if(pin_count_block_0 == 0 && pin_count_block_1 == 1)
-    {
-        ds::Bitset &connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
+    const TargetGraph& target_graph = *partitioned_hg.targetGraph();
+    if(pin_count_block_0 == 0 && pin_count_block_1 == 1) {
+        ds::Bitset& connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
         const HyperedgeWeight current_distance = target_graph.distance(connectivity_set);
         const HyperedgeWeight distance_after_exchange =
             target_graph.distanceAfterExchangingBlocks(connectivity_set, block_1,
                                                        block_0);
-        if(current_distance > distance_after_exchange)
-        {
+        if(current_distance > distance_after_exchange) {
             return true;
         }
     }
-    if(pin_count_block_0 == 1 && pin_count_block_1 == 0)
-    {
-        ds::Bitset &connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
+    if(pin_count_block_0 == 1 && pin_count_block_1 == 0) {
+        ds::Bitset& connectivity_set = partitioned_hg.deepCopyOfConnectivitySet(he);
         const HyperedgeWeight current_distance = target_graph.distance(connectivity_set);
         const HyperedgeWeight distance_after_exchange =
             target_graph.distanceAfterExchangingBlocks(connectivity_set, block_0,
                                                        block_1);
-        if(current_distance > distance_after_exchange)
-        {
+        if(current_distance > distance_after_exchange) {
             return true;
         }
     }
@@ -238,16 +209,16 @@ bool SteinerTreeFlowNetworkConstruction::isCut(
 namespace {
 #define STEINER_TREE_CAPACITY(X)                                                         \
     HyperedgeWeight SteinerTreeFlowNetworkConstruction::capacity(                        \
-        const X &, const Context &, const HyperedgeID, const PartitionID,                \
+        const X&, const Context&, const HyperedgeID, const PartitionID,                  \
         const PartitionID)
 #define STEINER_TREE_CONNECT_TO_SOURCE(X)                                                \
     bool SteinerTreeFlowNetworkConstruction::connectToSource(                            \
-        const X &, const HyperedgeID, const PartitionID, const PartitionID)
+        const X&, const HyperedgeID, const PartitionID, const PartitionID)
 #define STEINER_TREE_CONNECT_TO_SINK(X)                                                  \
     bool SteinerTreeFlowNetworkConstruction::connectToSink(                              \
-        const X &, const HyperedgeID, const PartitionID, const PartitionID)
+        const X&, const HyperedgeID, const PartitionID, const PartitionID)
 #define STEINER_TREE_IS_CUT(X)                                                           \
-    bool SteinerTreeFlowNetworkConstruction::isCut(const X &, const HyperedgeID,         \
+    bool SteinerTreeFlowNetworkConstruction::isCut(const X&, const HyperedgeID,          \
                                                    const PartitionID, const PartitionID)
 }
 

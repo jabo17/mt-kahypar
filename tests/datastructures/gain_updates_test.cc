@@ -51,8 +51,7 @@ class AGainUpdate : public Test
     AGainUpdate() :
         hg(io::readInputFile<Hypergraph>("../tests/instances/twocenters.hgr",
                                          FileFormat::hMetis, true)),
-        phg(), gain_cache()
-    {
+        phg(), gain_cache() {
         phg = PartitionedHypergraph(2, hg);
     }
 
@@ -63,19 +62,16 @@ class AGainUpdate : public Test
 
 TYPED_TEST_CASE(AGainUpdate, tests::HypergraphTestTypeTraits);
 
-TYPED_TEST(AGainUpdate, Example1)
-{
+TYPED_TEST(AGainUpdate, Example1) {
     this->phg.setNodePart(0, 0);
     this->phg.setNodePart(1, 0);
-    for(HypernodeID u = 4; u < 12; ++u)
-    {
+    for(HypernodeID u = 4; u < 12; ++u) {
         this->phg.setNodePart(u, 0);
     }
 
     this->phg.setNodePart(2, 1);
     this->phg.setNodePart(3, 1);
-    for(HypernodeID u = 12; u < 20; ++u)
-    {
+    for(HypernodeID u = 12; u < 20; ++u) {
         this->phg.setNodePart(u, 1);
     }
 

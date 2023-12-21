@@ -32,15 +32,13 @@
 namespace mt_kahypar {
 
 namespace {
-MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t index(const ds::StaticBitset &set,
-                                                const PartitionID k)
-{
+MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t index(const ds::StaticBitset& set,
+                                                const PartitionID k) {
     ASSERT(set.popcount() > 0);
     size_t index = 0;
     PartitionID multiplier = 1;
     PartitionID last_block = kInvalidPartition;
-    for(const PartitionID block : set)
-    {
+    for(const PartitionID block : set) {
         index += multiplier * block;
         multiplier *= k;
         last_block = block;
@@ -49,8 +47,7 @@ MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t index(const ds::StaticBitset &set,
 }
 
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t index(const HypernodeID u, const HypernodeID v,
-                                                const HypernodeID n)
-{
+                                                const HypernodeID n) {
     ASSERT(u < n && v < n);
     return u + v * n;
 }
@@ -94,9 +91,8 @@ MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t index(const HypernodeID u, const Hyper
  * O( n^3 + \sum_{k = 2 to m - 1} binomial(n, k) * n * ( 2^k * k + n * k ) )
  * where m is the maximum size of the precomputed terminal set
  */
-void SteinerTree::compute(const ds::StaticGraph &graph, const size_t max_set_size,
-                          vec<HyperedgeWeight> &distances)
-{
+void SteinerTree::compute(const ds::StaticGraph& graph, const size_t max_set_size,
+                          vec<HyperedgeWeight>& distances) {
     const PartitionID n = graph.initialNumNodes();
     // Floyds All-Pair Shortest Path Algorithm -> O(n^3)
     AllPairShortestPath::compute(graph, distances);
@@ -116,21 +112,18 @@ void SteinerTree::compute(const ds::StaticGraph &graph, const size_t max_set_siz
      *       for each v in V do
      *         S[ D u { v } ] = min( S[ D u { v } ], S[ {u, v} ] + min_dist )
      */
-    for(size_t m = 2; m < max_set_size; ++m)
-    { // k - 2 steps -> k := max_set_size
+    for(size_t m = 2; m < max_set_size; ++m) { // k - 2 steps -> k := max_set_size
         SetEnumerator subsets_of_size_m(n, m);
         // We compute for each subset D c V of size m the optimal steiner tree here
-        for(const ds::StaticBitset &d_tmp : subsets_of_size_m)
-        { // O(binom(n,k)) = O(n! / (k!*(n - k)!)) steps
+        for(const ds::StaticBitset& d_tmp :
+            subsets_of_size_m) { // O(binom(n,k)) = O(n! / (k!*(n - k)!)) steps
             ds::Bitset d_set = d_tmp.copy();
             ds::StaticBitset d(d_set.numBlocks(), d_set.data());
             ASSERT(static_cast<size_t>(d.popcount()) == m);
-            for(const HypernodeID &u : graph.nodes())
-            { // O(n) steps
+            for(const HypernodeID& u : graph.nodes()) { // O(n) steps
                 HyperedgeWeight min_dist = std::numeric_limits<HyperedgeWeight>::max();
                 SubsetEnumerator proper_subsets_of_d(n, d);
-                for(const ds::StaticBitset &e_tmp : proper_subsets_of_d)
-                { // O(2^k) steps
+                for(const ds::StaticBitset& e_tmp : proper_subsets_of_d) { // O(2^k) steps
                     // Here, we iterate over all subsets E c D and compute the optimal
                     // steiner tree for D with the assumption that u is the junction node
                     // of the steiner tree.
@@ -143,8 +136,7 @@ void SteinerTree::compute(const ds::StaticGraph &graph, const size_t max_set_siz
                     min_dist = std::min(min_dist,
                                         distances[index(e, n)] + distances[index(f, n)]);
                 }
-                for(const HypernodeID &v : graph.nodes())
-                { // O(n) steps
+                for(const HypernodeID& v : graph.nodes()) { // O(n) steps
                     // Compute optimal steiner tree for D u { v } with the assumption that
                     // u is the junction node of the optimal steiner tree. Since the outer
                     // loop iterates over all u \in V, this will compute the optimal
@@ -154,8 +146,7 @@ void SteinerTree::compute(const ds::StaticGraph &graph, const size_t max_set_siz
                     const size_t idx_d = index(d, n);
                     distances[idx_d] =
                         std::min(distances[idx_d], distances[index(u, v, n)] + min_dist);
-                    if(!was_set)
-                    {
+                    if(!was_set) {
                         d_set.unset(v);
                     }
                 }

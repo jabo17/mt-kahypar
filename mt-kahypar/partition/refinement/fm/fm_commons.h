@@ -48,32 +48,25 @@ struct GlobalMoveTracker
     MoveID firstMoveID = 1;
 
     explicit GlobalMoveTracker(size_t numNodes = 0) :
-        moveOrder(numNodes), moveOfNode(numNodes, 0), runningMoveID(1)
-    {
-    }
+        moveOrder(numNodes), moveOfNode(numNodes, 0), runningMoveID(1) {}
 
     // Returns true if stored move IDs should be reset
-    bool reset()
-    {
+    bool reset() {
         if(runningMoveID.load() >=
-           std::numeric_limits<MoveID>::max() - moveOrder.size() - 20)
-        {
+           std::numeric_limits<MoveID>::max() - moveOrder.size() - 20) {
             tbb::parallel_for(
                 UL(0), moveOfNode.size(), [&](size_t i) { moveOfNode[i] = 0; },
                 tbb::static_partitioner());
             firstMoveID = 1;
             runningMoveID.store(1);
             return true;
-        }
-        else
-        {
+        } else {
             firstMoveID = ++runningMoveID;
             return false;
         }
     }
 
-    MoveID insertMove(const Move &m)
-    {
+    MoveID insertMove(const Move& m) {
         const MoveID move_id = runningMoveID.fetch_add(1, std::memory_order_relaxed);
         assert(move_id - firstMoveID < moveOrder.size());
         moveOrder[move_id - firstMoveID] = m;
@@ -81,25 +74,22 @@ struct GlobalMoveTracker
         return move_id;
     }
 
-    Move &getMove(MoveID move_id)
-    {
+    Move& getMove(MoveID move_id) {
         assert(move_id - firstMoveID < moveOrder.size());
         return moveOrder[move_id - firstMoveID];
     }
 
-    bool wasNodeMovedInThisRound(HypernodeID u) const
-    {
+    bool wasNodeMovedInThisRound(HypernodeID u) const {
         const MoveID m_id = moveOfNode[u];
-        if(m_id >= firstMoveID && m_id < runningMoveID.load(std::memory_order_relaxed))
-        { // active move ID
+        if(m_id >= firstMoveID &&
+           m_id < runningMoveID.load(std::memory_order_relaxed)) { // active move ID
             ASSERT(moveOrder[m_id - firstMoveID].node == u);
             return moveOrder[m_id - firstMoveID].isValid(); // not reverted already
         }
         return false;
     }
 
-    MoveID numPerformedMoves() const
-    {
+    MoveID numPerformedMoves() const {
         return runningMoveID.load(std::memory_order_relaxed) - firstMoveID;
     }
 
@@ -115,51 +105,41 @@ struct NodeTracker
     CAtomic<SearchID> highestActiveSearchID{ 2 };
 
     explicit NodeTracker(size_t numNodes = 0) :
-        searchOfNode(numNodes, CAtomic<SearchID>(0))
-    {
-    }
+        searchOfNode(numNodes, CAtomic<SearchID>(0)) {}
 
     // only the search that owns u is allowed to call this
-    void deactivateNode(HypernodeID u, SearchID search_id)
-    {
+    void deactivateNode(HypernodeID u, SearchID search_id) {
         assert(searchOfNode[u].load() == search_id);
         unused(search_id);
         searchOfNode[u].store(deactivatedNodeMarker, std::memory_order_release);
     }
 
-    bool isLocked(HypernodeID u)
-    {
+    bool isLocked(HypernodeID u) {
         return searchOfNode[u].load(std::memory_order_relaxed) == deactivatedNodeMarker;
     }
 
-    void releaseNode(HypernodeID u)
-    {
+    void releaseNode(HypernodeID u) {
         searchOfNode[u].store(releasedMarker, std::memory_order_relaxed);
     }
 
-    bool isSearchInactive(SearchID search_id) const
-    {
+    bool isSearchInactive(SearchID search_id) const {
         return search_id < deactivatedNodeMarker;
     }
 
-    bool canNodeStartNewSearch(HypernodeID u) const
-    {
+    bool canNodeStartNewSearch(HypernodeID u) const {
         return isSearchInactive(searchOfNode[u].load(std::memory_order_relaxed));
     }
 
-    bool tryAcquireNode(HypernodeID u, SearchID new_search)
-    {
+    bool tryAcquireNode(HypernodeID u, SearchID new_search) {
         SearchID current_search = searchOfNode[u].load(std::memory_order_relaxed);
         return isSearchInactive(current_search) &&
                searchOfNode[u].compare_exchange_strong(current_search, new_search,
                                                        std::memory_order_acq_rel);
     }
 
-    void requestNewSearches(SearchID max_num_searches)
-    {
+    void requestNewSearches(SearchID max_num_searches) {
         if(highestActiveSearchID.load(std::memory_order_relaxed) >=
-           std::numeric_limits<SearchID>::max() - max_num_searches - 20)
-        {
+           std::numeric_limits<SearchID>::max() - max_num_searches - 20) {
             tbb::parallel_for(UL(0), searchOfNode.size(), [&](const size_t i) {
                 searchOfNode[i].store(0, std::memory_order_relaxed);
             });
@@ -185,9 +165,9 @@ class UnconstrainedFMData
     struct InitializationHelper
     {
         static void
-        initialize(UnconstrainedFMData &data, const Context &context,
-                   const typename GraphAndGainTypes::PartitionedHypergraph &phg,
-                   const typename GraphAndGainTypes::GainCache &gain_cache);
+        initialize(UnconstrainedFMData& data, const Context& context,
+                   const typename GraphAndGainTypes::PartitionedHypergraph& phg,
+                   const typename GraphAndGainTypes::GainCache& gain_cache);
     };
 #pragma GCC diagnostic pop
 
@@ -198,15 +178,12 @@ class UnconstrainedFMData
   public:
     explicit UnconstrainedFMData(HypernodeID num_nodes) :
         initialized(false), current_k(0), bucket_weights(), virtual_weight_delta(),
-        local_bucket_weights(), rebalancing_nodes(num_nodes)
-    {
-    }
+        local_bucket_weights(), rebalancing_nodes(num_nodes) {}
 
     template <typename GraphAndGainTypes>
-    void initialize(const Context &context,
-                    const typename GraphAndGainTypes::PartitionedHypergraph &phg,
-                    const typename GraphAndGainTypes::GainCache &gain_cache)
-    {
+    void initialize(const Context& context,
+                    const typename GraphAndGainTypes::PartitionedHypergraph& phg,
+                    const typename GraphAndGainTypes::GainCache& gain_cache) {
         changeNumberOfBlocks(context.partition.k);
         reset();
 
@@ -218,23 +195,19 @@ class UnconstrainedFMData
                                           HypernodeWeight initial_imbalance,
                                           HypernodeWeight moved_weight) const;
 
-    AtomicWeight &virtualWeightDelta(PartitionID block)
-    {
+    AtomicWeight& virtualWeightDelta(PartitionID block) {
         ASSERT(block >= 0 && static_cast<size_t>(block) < virtual_weight_delta.size());
         return virtual_weight_delta[block];
     }
 
-    bool isRebalancingNode(HypernodeID hn) const
-    {
+    bool isRebalancingNode(HypernodeID hn) const {
         return initialized && rebalancing_nodes[hn];
     }
 
     void reset();
 
-    void changeNumberOfBlocks(PartitionID new_k)
-    {
-        if(new_k != current_k)
-        {
+    void changeNumberOfBlocks(PartitionID new_k) {
+        if(new_k != current_k) {
             current_k = new_k;
             local_bucket_weights = tbb::enumerable_thread_specific<vec<HypernodeWeight> >(
                 new_k * NUM_BUCKETS);
@@ -247,46 +220,31 @@ class UnconstrainedFMData
     friend class InitializationHelper;
 
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t indexForBucket(PartitionID block,
-                                                             BucketID bucketId) const
-    {
+                                                             BucketID bucketId) const {
         ASSERT(bucketId < NUM_BUCKETS &&
                block * NUM_BUCKETS + bucketId < bucket_weights.size());
         return block * NUM_BUCKETS + bucketId;
     }
 
     // upper bound of gain values in bucket
-    static double gainPerWeightForBucket(BucketID bucketId)
-    {
-        if(bucketId > 1)
-        {
+    static double gainPerWeightForBucket(BucketID bucketId) {
+        if(bucketId > 1) {
             return std::pow(BUCKET_FACTOR, bucketId - 2);
-        }
-        else if(bucketId == 1)
-        {
+        } else if(bucketId == 1) {
             return 0.5;
-        }
-        else
-        {
+        } else {
             return 0;
         }
     }
 
-    static BucketID bucketForGainPerWeight(double gainPerWeight)
-    {
-        if(gainPerWeight >= 1)
-        {
+    static BucketID bucketForGainPerWeight(double gainPerWeight) {
+        if(gainPerWeight >= 1) {
             return 2 + std::ceil(std::log(gainPerWeight) / std::log(BUCKET_FACTOR));
-        }
-        else if(gainPerWeight > 0.5)
-        {
+        } else if(gainPerWeight > 0.5) {
             return 2;
-        }
-        else if(gainPerWeight > 0)
-        {
+        } else if(gainPerWeight > 0) {
             return 1;
-        }
-        else
-        {
+        } else {
             return 0;
         }
     }
@@ -340,8 +298,7 @@ struct FMSharedData
         vertexPQHandles(),                          // numPQHandles, invalid_position),
         moveTracker(),                              // numNodes),
         nodeTracker(),                              // numNodes),
-        targetPart(), unconstrained(numNodes)
-    {
+        targetPart(), unconstrained(numNodes) {
         finishedTasks.store(0, std::memory_order_relaxed);
 
         tbb::parallel_invoke(
@@ -354,14 +311,11 @@ struct FMSharedData
     }
 
     FMSharedData(size_t numNodes) :
-        FMSharedData(numNodes, TBBInitializer::instance().total_number_of_threads())
-    {
-    }
+        FMSharedData(numNodes, TBBInitializer::instance().total_number_of_threads()) {}
 
     FMSharedData() : FMSharedData(0, 0) {}
 
-    void memoryConsumption(utils::MemoryTreeNode *parent) const
-    {
+    void memoryConsumption(utils::MemoryTreeNode *parent) const {
         ASSERT(parent);
 
         utils::MemoryTreeNode *shared_fm_data_node = parent->addChild("Shared FM Data");

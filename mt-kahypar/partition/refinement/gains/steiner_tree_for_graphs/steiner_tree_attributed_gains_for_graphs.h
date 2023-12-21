@@ -38,11 +38,10 @@ namespace mt_kahypar {
  */
 struct GraphSteinerTreeAttributedGains
 {
-    static HyperedgeWeight gain(const SynchronizedEdgeUpdate &sync_update)
-    {
+    static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update) {
         ASSERT(sync_update.block_of_other_node != kInvalidPartition);
         ASSERT(sync_update.target_graph);
-        const TargetGraph &target_graph = *sync_update.target_graph;
+        const TargetGraph& target_graph = *sync_update.target_graph;
         const HyperedgeWeight distance_before =
             target_graph.distance(sync_update.from, sync_update.block_of_other_node);
         const HyperedgeWeight distance_after =

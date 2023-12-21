@@ -68,8 +68,7 @@ class AFlatInitialPartitionerTest : public Test
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
     AFlatInitialPartitionerTest() :
-        hypergraph(), partitioned_hypergraph(), context(), ip_data(nullptr)
-    {
+        hypergraph(), partitioned_hypergraph(), context(), ip_data(nullptr) {
         context.partition.k = Config::K;
         context.partition.epsilon = 0.2;
         context.partition.objective = Objective::km1;
@@ -88,15 +87,13 @@ class AFlatInitialPartitionerTest : public Test
         utils::Utilities::instance().getTimer(context.utility_id).disable();
     }
 
-    void execute()
-    {
+    void execute() {
         ip_data = std::make_unique<InitialPartitioningDataContainer<TypeTraits> >(
             partitioned_hypergraph, context);
         tbb::task_group tg;
         const int seed = 420;
         ip_data_container_t *ip_data_ptr = ip::to_pointer(*ip_data);
-        for(size_t i = 0; i < Config::RUNS; ++i)
-        {
+        for(size_t i = 0; i < Config::RUNS; ++i) {
             tg.run([&, i] {
                 InitialPartitioner ip(Config::ALGORITHM, ip_data_ptr, context, seed + i,
                                       i);
@@ -108,19 +105,16 @@ class AFlatInitialPartitionerTest : public Test
     }
 
     void addFixedVertices(const double percentage,
-                          const PartitionID default_block = kInvalidPartition)
-    {
+                          const PartitionID default_block = kInvalidPartition) {
         ds::FixedVertexSupport<Hypergraph> fixed_vertices(hypergraph.initialNumNodes(),
                                                           context.partition.k);
         fixed_vertices.setHypergraph(&hypergraph);
 
         const int threshold = percentage * 1000;
-        utils::Randomize &rand = utils::Randomize::instance();
-        for(const HypernodeID &hn : hypergraph.nodes())
-        {
+        utils::Randomize& rand = utils::Randomize::instance();
+        for(const HypernodeID& hn : hypergraph.nodes()) {
             int rnd = rand.getRandomInt(0, 1000, THREAD_ID);
-            if(rnd <= threshold)
-            {
+            if(rnd <= threshold) {
                 const PartitionID block =
                     default_block == kInvalidPartition ?
                         rand.getRandomInt(0, context.partition.k - 1, THREAD_ID) :
@@ -377,46 +371,38 @@ typedef ::testing::Types<
 
 TYPED_TEST_CASE(AFlatInitialPartitionerTest, TestConfigs);
 
-TYPED_TEST(AFlatInitialPartitionerTest, HasValidImbalance)
-{
+TYPED_TEST(AFlatInitialPartitionerTest, HasValidImbalance) {
     this->execute();
 
     ASSERT_LE(metrics::imbalance(this->partitioned_hypergraph, this->context),
               this->context.partition.epsilon);
 }
 
-TYPED_TEST(AFlatInitialPartitionerTest, AssginsEachHypernode)
-{
+TYPED_TEST(AFlatInitialPartitionerTest, AssginsEachHypernode) {
     this->execute();
 
-    for(const HypernodeID &hn : this->hypergraph.nodes())
-    {
+    for(const HypernodeID& hn : this->hypergraph.nodes()) {
         ASSERT_NE(this->partitioned_hypergraph.partID(hn), -1);
     }
 }
 
-TYPED_TEST(AFlatInitialPartitionerTest, HasNoSignificantLowPartitionWeights)
-{
+TYPED_TEST(AFlatInitialPartitionerTest, HasNoSignificantLowPartitionWeights) {
     this->execute();
 
     // Each block should have a weight greater or equal than 20% of the average
     // block weight.
-    for(PartitionID block = 0; block < this->context.partition.k; ++block)
-    {
+    for(PartitionID block = 0; block < this->context.partition.k; ++block) {
         ASSERT_GE(this->partitioned_hypergraph.partWeight(block),
                   this->context.partition.perfect_balance_part_weights[block] / 5);
     }
 }
 
-TYPED_TEST(AFlatInitialPartitionerTest, CanHandleFixedVertices)
-{
+TYPED_TEST(AFlatInitialPartitionerTest, CanHandleFixedVertices) {
     this->addFixedVertices(0.25 /* 25% of the nodes are fixed */);
     this->execute();
 
-    for(const HypernodeID &hn : this->hypergraph.nodes())
-    {
-        if(this->hypergraph.isFixed(hn))
-        {
+    for(const HypernodeID& hn : this->hypergraph.nodes()) {
+        if(this->hypergraph.isFixed(hn)) {
             ASSERT_EQ(this->hypergraph.fixedVertexBlock(hn),
                       this->partitioned_hypergraph.partID(hn));
         }
@@ -426,15 +412,12 @@ TYPED_TEST(AFlatInitialPartitionerTest, CanHandleFixedVertices)
               this->context.partition.epsilon);
 }
 
-TYPED_TEST(AFlatInitialPartitionerTest, CanHandleFixedVerticesInOnlyOneBlock)
-{
+TYPED_TEST(AFlatInitialPartitionerTest, CanHandleFixedVerticesInOnlyOneBlock) {
     this->addFixedVertices(0.05 /* 5% of the nodes are fixed to block 0 */, 0);
     this->execute();
 
-    for(const HypernodeID &hn : this->hypergraph.nodes())
-    {
-        if(this->hypergraph.isFixed(hn))
-        {
+    for(const HypernodeID& hn : this->hypergraph.nodes()) {
+        if(this->hypergraph.isFixed(hn)) {
             ASSERT_EQ(this->hypergraph.fixedVertexBlock(hn),
                       this->partitioned_hypergraph.partID(hn));
         }

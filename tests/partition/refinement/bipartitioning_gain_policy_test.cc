@@ -53,8 +53,7 @@ class ABipartitioningPolicy : public Test
 {
 
   public:
-    ABipartitioningPolicy() : hypergraph(), partitioned_hg(), context()
-    {
+    ABipartitioningPolicy() : hypergraph(), partitioned_hg(), context() {
         hypergraph = io::readInputFile<Hypergraph>(
             "../tests/instances/contracted_ibm01.hgr", FileFormat::hMetis, true);
         partitioned_hg = PartitionedHypergraph(4, hypergraph, parallel_tag_t{});
@@ -75,8 +74,7 @@ class ABipartitioningPolicy : public Test
         context.setupPartWeights(hypergraph.totalWeight());
     }
 
-    void partition(PartitionedHypergraph &phg)
-    {
+    void partition(PartitionedHypergraph& phg) {
         Context ip_context(context);
         ip_context.refinement.label_propagation.algorithm =
             LabelPropagationAlgorithm::do_nothing;
@@ -103,16 +101,14 @@ typedef ::testing::Types<ObjectiveF<Objective::cut>,
 TYPED_TEST_CASE(ABipartitioningPolicy, TestConfigs);
 
 TYPED_TEST(ABipartitioningPolicy,
-           ModelsObjectiveFunctionCorrectlyWhenPerformingRecursiveBipartitioning)
-{
+           ModelsObjectiveFunctionCorrectlyWhenPerformingRecursiveBipartitioning) {
     const HyperedgeWeight non_cut_edge_multiplier =
         BipartitioningPolicy::nonCutEdgeMultiplier(this->context.partition.gain_policy);
-    auto adapt_edge_weights = [&](PartitionedHypergraph &phg,
-                                  const vec<uint8_t> &already_cut,
+    auto adapt_edge_weights = [&](PartitionedHypergraph& phg,
+                                  const vec<uint8_t>& already_cut,
                                   const double multiplier) {
-        phg.doParallelForAllEdges([&](const HyperedgeID &he) {
-            if(!already_cut[he])
-            {
+        phg.doParallelForAllEdges([&](const HyperedgeID& he) {
+            if(!already_cut[he]) {
                 phg.setEdgeWeight(he, multiplier * phg.edgeWeight(he));
             }
         });
@@ -126,9 +122,8 @@ TYPED_TEST(ABipartitioningPolicy,
     adapt_edge_weights(this->partitioned_hg, already_cut, 1.0 / non_cut_edge_multiplier);
 
     // Extract Cut Hyperedges
-    this->partitioned_hg.doParallelForAllEdges([&](const HyperedgeID &he) {
-        if(this->partitioned_hg.connectivity(he) > 1)
-        {
+    this->partitioned_hg.doParallelForAllEdges([&](const HyperedgeID& he) {
+        if(this->partitioned_hg.connectivity(he) > 1) {
             already_cut[he] = 1;
         }
     });
@@ -169,8 +164,7 @@ TYPED_TEST(ABipartitioningPolicy,
             to = phg_0.partID(mapped_hn) == 0 ? 0 : 1;
         else if(from == 1)
             to = phg_1.partID(mapped_hn) == 0 ? 2 : 3;
-        if(from != to)
-        {
+        if(from != to) {
             this->partitioned_hg.changeNodePart(hn, from, to);
         }
     });
@@ -182,16 +176,14 @@ TYPED_TEST(ABipartitioningPolicy,
 }
 
 TYPED_TEST(ABipartitioningPolicy,
-           ModelsObjectiveFunctionCorrectlyWhenPerformingDeepMultilevelPartitioning)
-{
+           ModelsObjectiveFunctionCorrectlyWhenPerformingDeepMultilevelPartitioning) {
     const HyperedgeWeight non_cut_edge_multiplier =
         BipartitioningPolicy::nonCutEdgeMultiplier(this->context.partition.gain_policy);
-    auto adapt_edge_weights = [&](PartitionedHypergraph &phg,
-                                  const vec<uint8_t> &already_cut,
+    auto adapt_edge_weights = [&](PartitionedHypergraph& phg,
+                                  const vec<uint8_t>& already_cut,
                                   const double multiplier) {
-        phg.doParallelForAllEdges([&](const HyperedgeID &he) {
-            if(!already_cut[he])
-            {
+        phg.doParallelForAllEdges([&](const HyperedgeID& he) {
+            if(!already_cut[he]) {
                 phg.setEdgeWeight(he, multiplier * phg.edgeWeight(he));
             }
         });
@@ -205,9 +197,8 @@ TYPED_TEST(ABipartitioningPolicy,
     adapt_edge_weights(this->partitioned_hg, already_cut, 1.0 / non_cut_edge_multiplier);
 
     // Extract Cut Hyperedges
-    this->partitioned_hg.doParallelForAllEdges([&](const HyperedgeID &he) {
-        if(this->partitioned_hg.connectivity(he) > 1)
-        {
+    this->partitioned_hg.doParallelForAllEdges([&](const HyperedgeID& he) {
+        if(this->partitioned_hg.connectivity(he) > 1) {
             already_cut[he] = 1;
         }
     });
@@ -217,7 +208,7 @@ TYPED_TEST(ABipartitioningPolicy,
         2, &already_cut,
         BipartitioningPolicy::useCutNetSplitting(this->context.partition.gain_policy),
         true);
-    const vec<HypernodeID> &hn_mapping = extracted.second;
+    const vec<HypernodeID>& hn_mapping = extracted.second;
 
     // Bipartition block 0
     Hypergraph hg_0 = std::move(extracted.first[0].hg);
@@ -246,8 +237,7 @@ TYPED_TEST(ABipartitioningPolicy,
             to = phg_0.partID(mapped_hn) == 0 ? 0 : 1;
         else if(from == 1)
             to = phg_1.partID(mapped_hn) == 0 ? 2 : 3;
-        if(from != to)
-        {
+        if(from != to) {
             this->partitioned_hg.changeNodePart(hn, from, to);
         }
     });

@@ -50,7 +50,7 @@ class StaticGraphFactory
   public:
     static StaticGraph
     construct(const HypernodeID num_nodes, const HyperedgeID num_edges,
-              const HyperedgeVector &edge_vector,
+              const HyperedgeVector& edge_vector,
               const HyperedgeWeight *edge_weight = nullptr,
               const HypernodeWeight *node_weight = nullptr,
               const bool stable_construction_of_incident_edges = false);
@@ -60,14 +60,13 @@ class StaticGraphFactory
     // each edge is unique
     static StaticGraph
     construct_from_graph_edges(const HypernodeID num_nodes, const HyperedgeID num_edges,
-                               const EdgeVector &edge_vector,
+                               const EdgeVector& edge_vector,
                                const HyperedgeWeight *edge_weight = nullptr,
                                const HypernodeWeight *node_weight = nullptr,
                                const bool stable_construction_of_incident_edges = false);
 
     static std::pair<StaticGraph, parallel::scalable_vector<HypernodeID> >
-    compactify(const StaticGraph &)
-    {
+    compactify(const StaticGraph&) {
         throw NonSupportedOperationException(
             "Compactify not implemented for static graph.");
     }
@@ -75,7 +74,7 @@ class StaticGraphFactory
   private:
     StaticGraphFactory() {}
 
-    static void sort_incident_edges(StaticGraph &graph);
+    static void sort_incident_edges(StaticGraph& graph);
 };
 
 } // namespace ds

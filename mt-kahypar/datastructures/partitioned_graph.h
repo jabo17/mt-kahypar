@@ -64,10 +64,10 @@ class PartitionedGraph
                   "Only unpartitioned hypergraphs are allowed");
 
     using Self = PartitionedGraph<Hypergraph>;
-    using NotificationFunc = std::function<void(SynchronizedEdgeUpdate &)>;
-    using DeltaFunction = std::function<void(const SynchronizedEdgeUpdate &)>;
-#define NOOP_NOTIFY_FUNC [](const SynchronizedEdgeUpdate &) {}
-#define NOOP_FUNC [](const SynchronizedEdgeUpdate &) {}
+    using NotificationFunc = std::function<void(SynchronizedEdgeUpdate&)>;
+    using DeltaFunction = std::function<void(const SynchronizedEdgeUpdate&)>;
+#define NOOP_NOTIFY_FUNC [](const SynchronizedEdgeUpdate&) {}
+#define NOOP_FUNC [](const SynchronizedEdgeUpdate&) {}
 
     // Factory
     using HypergraphFactory = typename Hypergraph::Factory;
@@ -80,7 +80,7 @@ class PartitionedGraph
       public:
         using iterator_category = std::forward_iterator_tag;
         using value_type = PartitionID;
-        using reference = PartitionID &;
+        using reference = PartitionID&;
         using pointer = const PartitionID *;
         using difference_type = std::ptrdiff_t;
 
@@ -88,18 +88,13 @@ class PartitionedGraph
          * Constructs a connectivity iterator based on a pin iterator
          */
         ConnectivityIterator(PartitionID first, PartitionID second, unsigned int count) :
-            _first(first), _second(second), _iteration_count(count)
-        {
-            if(_first == _second)
-            {
+            _first(first), _second(second), _iteration_count(count) {
+            if(_first == _second) {
                 ++_iteration_count;
             }
-            if(_first == kInvalidPartition)
-            {
+            if(_first == kInvalidPartition) {
                 ++_iteration_count;
-            }
-            else if(_second == kInvalidPartition)
-            {
+            } else if(_second == kInvalidPartition) {
                 ++_iteration_count;
                 _second = _first;
             }
@@ -107,36 +102,31 @@ class PartitionedGraph
         }
 
         // ! Returns the current partiton id.
-        PartitionID operator*() const
-        {
+        PartitionID operator*() const {
             ASSERT(_iteration_count < 2);
             return _iteration_count == 0 ? _first : _second;
         }
 
         // ! Prefix increment. The iterator advances to the next valid element.
-        ConnectivityIterator &operator++()
-        {
+        ConnectivityIterator& operator++() {
             ASSERT(_iteration_count < 2);
             ++_iteration_count;
             return *this;
         }
 
         // ! Postfix increment. The iterator advances to the next valid element.
-        ConnectivityIterator operator++(int)
-        {
+        ConnectivityIterator operator++(int) {
             ConnectivityIterator copy = *this;
             operator++();
             return copy;
         }
 
-        bool operator!=(const ConnectivityIterator &rhs)
-        {
+        bool operator!=(const ConnectivityIterator& rhs) {
             return _first != rhs._first || _second != rhs._second ||
                    _iteration_count != rhs._iteration_count;
         }
 
-        bool operator==(const ConnectivityIterator &rhs)
-        {
+        bool operator==(const ConnectivityIterator& rhs) {
             return _first == rhs._first && _second == rhs._second &&
                    _iteration_count == rhs._iteration_count;
         }
@@ -180,7 +170,7 @@ class PartitionedGraph
 
     PartitionedGraph() = default;
 
-    explicit PartitionedGraph(const PartitionID k, Hypergraph &hypergraph) :
+    explicit PartitionedGraph(const PartitionID k, Hypergraph& hypergraph) :
         _input_num_nodes(hypergraph.initialNumNodes()),
         _input_num_edges(hypergraph.initialNumEdges()),
         _input_unique_ids(hypergraph.maxUniqueID()), _k(k), _hg(&hypergraph),
@@ -189,21 +179,19 @@ class PartitionedGraph
         _edge_sync_version(0),
         _edge_sync("Refinement", "edge_sync", hypergraph.maxUniqueID(), false, false),
         _edge_locks("Refinement", "edge_locks", hypergraph.maxUniqueID(), false, false),
-        _edge_markers(Hypergraph::is_static_hypergraph ? 0 : hypergraph.maxUniqueID())
-    {
+        _edge_markers(Hypergraph::is_static_hypergraph ? 0 : hypergraph.maxUniqueID()) {
         _part_ids.assign(hypergraph.initialNumNodes(), kInvalidPartition, false);
         _edge_sync.assign(hypergraph.maxUniqueID(), EdgeMove(), false);
         _edge_locks.assign(hypergraph.maxUniqueID(), SpinLock(), false);
     }
 
-    explicit PartitionedGraph(const PartitionID k, Hypergraph &hypergraph,
+    explicit PartitionedGraph(const PartitionID k, Hypergraph& hypergraph,
                               parallel_tag_t) :
         _input_num_nodes(hypergraph.initialNumNodes()),
         _input_num_edges(hypergraph.initialNumEdges()),
         _input_unique_ids(hypergraph.maxUniqueID()), _k(k), _hg(&hypergraph),
         _target_graph(nullptr), _part_weights(k, CAtomic<HypernodeWeight>(0)),
-        _part_ids(), _edge_sync_version(0), _edge_sync(), _edge_locks(), _edge_markers()
-    {
+        _part_ids(), _edge_sync_version(0), _edge_sync(), _edge_locks(), _edge_markers() {
         tbb::parallel_invoke(
             [&] {
                 _part_ids.resize("Refinement", "part_ids", hypergraph.initialNumNodes());
@@ -220,27 +208,25 @@ class PartitionedGraph
                 _edge_locks.assign(hypergraph.maxUniqueID(), SpinLock());
             },
             [&] {
-                if(!Hypergraph::is_static_hypergraph)
-                {
+                if(!Hypergraph::is_static_hypergraph) {
                     _edge_markers.setSize(hypergraph.maxUniqueID());
                 }
             });
     }
 
-    PartitionedGraph(const PartitionedGraph &) = delete;
-    PartitionedGraph &operator=(const PartitionedGraph &) = delete;
+    PartitionedGraph(const PartitionedGraph&) = delete;
+    PartitionedGraph& operator=(const PartitionedGraph&) = delete;
 
-    PartitionedGraph(PartitionedGraph &&other) = default;
-    PartitionedGraph &operator=(PartitionedGraph &&other) = default;
+    PartitionedGraph(PartitionedGraph&& other) = default;
+    PartitionedGraph& operator=(PartitionedGraph&& other) = default;
 
     ~PartitionedGraph() { freeInternalData(); }
 
-    void resetData()
-    {
+    void resetData() {
         tbb::parallel_invoke(
             [&] {}, [&] { _part_ids.assign(_part_ids.size(), kInvalidPartition); },
             [&] {
-                for(auto &x : _part_weights)
+                for(auto& x : _part_weights)
                     x.store(0, std::memory_order_relaxed);
             },
             [&] { _edge_sync.assign(_hg->maxUniqueID(), EdgeMove()); });
@@ -248,13 +234,12 @@ class PartitionedGraph
 
     // ####################### General Hypergraph Stats ######################
 
-    Hypergraph &hypergraph()
-    {
+    Hypergraph& hypergraph() {
         ASSERT(_hg);
         return *_hg;
     }
 
-    void setHypergraph(Hypergraph &hypergraph) { _hg = &hypergraph; }
+    void setHypergraph(Hypergraph& hypergraph) { _hg = &hypergraph; }
 
     // ! Initial number of hypernodes
     HypernodeID initialNumNodes() const { return _hg->initialNumNodes(); }
@@ -278,8 +263,7 @@ class PartitionedGraph
     HypernodeID initialNumPins() const { return _hg->initialNumPins(); }
 
     // ! Initial sum of the degree of all vertices
-    HypernodeID initialTotalVertexDegree() const
-    {
+    HypernodeID initialTotalVertexDegree() const {
         return _hg->initialTotalVertexDegree();
     }
 
@@ -302,16 +286,14 @@ class PartitionedGraph
     // ! Iterates in parallel over all active nodes and calls function f
     // ! for each vertex
     template <typename F>
-    void doParallelForAllNodes(const F &f) const
-    {
+    void doParallelForAllNodes(const F& f) const {
         _hg->doParallelForAllNodes(f);
     }
 
     // ! Iterates in parallel over all active edges and calls function f
     // ! for each net
     template <typename F>
-    void doParallelForAllEdges(const F &f) const
-    {
+    void doParallelForAllEdges(const F& f) const {
         _hg->doParallelForAllEdges(f);
     }
 
@@ -322,27 +304,23 @@ class PartitionedGraph
     IteratorRange<HyperedgeIterator> edges() const { return _hg->edges(); }
 
     // ! Returns a range to loop over the incident nets of hypernode u.
-    IteratorRange<IncidentNetsIterator> incidentEdges(const HypernodeID u) const
-    {
+    IteratorRange<IncidentNetsIterator> incidentEdges(const HypernodeID u) const {
         return _hg->incidentEdges(u);
     }
 
     // ! Returns a range to loop over the incident nets of hypernode u.
     IteratorRange<IncidentNetsIterator> incidentEdges(const HypernodeID u,
-                                                      const size_t pos) const
-    {
+                                                      const size_t pos) const {
         return _hg->incident_nets_of(u, pos);
     }
 
     // ! Returns a range to loop over the pins of hyperedge e.
-    IteratorRange<IncidenceIterator> pins(const HyperedgeID e) const
-    {
+    IteratorRange<IncidenceIterator> pins(const HyperedgeID e) const {
         return _hg->pins(e);
     }
 
     // ! Returns a range to loop over the set of block ids contained in hyperedge e.
-    IteratorRange<ConnectivityIterator> connectivitySet(const HyperedgeID e) const
-    {
+    IteratorRange<ConnectivityIterator> connectivitySet(const HyperedgeID e) const {
         ASSERT(_hg->edgeIsEnabled(e), "Hyperedge" << e << "is disabled");
         ASSERT(e < _hg->initialNumEdges(), "Hyperedge" << e << "does not exist");
         PartitionID first = partID(edgeSource(e));
@@ -358,11 +336,9 @@ class PartitionedGraph
     HypernodeWeight nodeWeight(const HypernodeID u) const { return _hg->nodeWeight(u); }
 
     // ! Sets the weight of a vertex
-    void setNodeWeight(const HypernodeID u, const HypernodeWeight weight)
-    {
+    void setNodeWeight(const HypernodeID u, const HypernodeWeight weight) {
         const PartitionID block = partID(u);
-        if(block != kInvalidPartition)
-        {
+        if(block != kInvalidPartition) {
             ASSERT(block < _k);
             const HypernodeWeight delta = weight - _hg->nodeWeight(u);
             _part_weights[block] += delta;
@@ -377,8 +353,7 @@ class PartitionedGraph
     bool nodeIsEnabled(const HypernodeID u) const { return _hg->nodeIsEnabled(u); }
 
     // ! Restores a degree zero hypernode
-    void restoreDegreeZeroHypernode(const HypernodeID u, const PartitionID to)
-    {
+    void restoreDegreeZeroHypernode(const HypernodeID u, const PartitionID to) {
         _hg->restoreDegreeZeroHypernode(u);
         setNodePart(u, to);
     }
@@ -401,8 +376,7 @@ class PartitionedGraph
     HyperedgeID uniqueEdgeID(const HyperedgeID e) const { return _hg->uniqueEdgeID(e); }
 
     // ! Sets the weight of a hyperedge
-    void setEdgeWeight(const HyperedgeID e, const HyperedgeWeight weight)
-    {
+    void setEdgeWeight(const HyperedgeID e, const HyperedgeWeight weight) {
         _hg->setEdgeWeight(e, weight);
     }
 
@@ -415,11 +389,10 @@ class PartitionedGraph
     // ####################### Uncontraction #######################
 
     template <typename GainCache>
-    void uncontract(const Batch &batch, GainCache &gain_cache)
-    {
+    void uncontract(const Batch& batch, GainCache& gain_cache) {
         // Set block ids of contraction partners
         tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
-            const Memento &memento = batch[i];
+            const Memento& memento = batch[i];
             ASSERT(nodeIsEnabled(memento.u));
             ASSERT(!nodeIsEnabled(memento.v));
             const PartitionID part_id = partID(memento.u);
@@ -441,10 +414,9 @@ class PartitionedGraph
                 gain_cache.uncontractUpdateAfterReplacement(*this, u, v, e);
             });
 
-        if constexpr(GainCache::initializes_gain_cache_entry_after_batch_uncontractions)
-        {
+        if constexpr(GainCache::initializes_gain_cache_entry_after_batch_uncontractions) {
             tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
-                const Memento &memento = batch[i];
+                const Memento& memento = batch[i];
                 gain_cache.initializeGainCacheEntryForNode(*this, memento.v);
             });
         }
@@ -454,13 +426,12 @@ class PartitionedGraph
 
     // ####################### Restore Hyperedges #######################
 
-    void restoreLargeEdge(const HyperedgeID &he) { _hg->restoreLargeEdge(he); }
+    void restoreLargeEdge(const HyperedgeID& he) { _hg->restoreLargeEdge(he); }
 
     template <typename GainCache>
     void restoreSinglePinAndParallelNets(
-        const vec<typename Hypergraph::ParallelHyperedge> &hes_to_restore,
-        GainCache &gain_cache)
-    {
+        const vec<typename Hypergraph::ParallelHyperedge>& hes_to_restore,
+        GainCache& gain_cache) {
         _edge_markers.reset();
         _hg->restoreSinglePinAndParallelNets(hes_to_restore);
 
@@ -468,16 +439,13 @@ class PartitionedGraph
             const HyperedgeID he = hes_to_restore[i].old_id;
             ASSERT(edgeIsEnabled(he));
             const bool is_single_pin_he = edgeSize(he) == 1;
-            if(is_single_pin_he)
-            {
+            if(is_single_pin_he) {
                 // Restore single-pin net
                 HypernodeID single_vertex_of_he = edgeSource(he);
                 const PartitionID block_of_single_pin = partID(single_vertex_of_he);
                 gain_cache.restoreSinglePinHyperedge(single_vertex_of_he,
                                                      block_of_single_pin, edgeWeight(he));
-            }
-            else if(nodeIsEnabled(edgeSource(he)))
-            {
+            } else if(nodeIsEnabled(edgeSource(he))) {
                 // Restore parallel net
                 gain_cache.restoreIdenticalHyperedge(*this, he);
             }
@@ -487,40 +455,33 @@ class PartitionedGraph
     // ####################### Partition Information #######################
 
     // ! Block that vertex u belongs to
-    PartitionID partID(const HypernodeID u) const
-    {
+    PartitionID partID(const HypernodeID u) const {
         ASSERT(u < initialNumNodes(), "Hypernode" << u << "does not exist");
         return _part_ids[u];
     }
 
-    void extractPartIDs(Array<PartitionID> &part_ids)
-    {
+    void extractPartIDs(Array<PartitionID>& part_ids) {
         // If we pass the input hypergraph to initial partitioning, then initial
         // partitioning will pass an part ID vector of size |V'|, where V' are the number
         // of nodes of smallest hypergraph, while the _part_ids vector of the input
         // hypergraph is initialized with the original number of nodes. This can cause
         // segmentation fault when we simply swap them during main uncoarsening.
-        if(_part_ids.size() == part_ids.size())
-        {
+        if(_part_ids.size() == part_ids.size()) {
             std::swap(_part_ids, part_ids);
-        }
-        else
-        {
+        } else {
             ASSERT(part_ids.size() <= _part_ids.size());
             tbb::parallel_for(UL(0), part_ids.size(),
                               [&](const size_t i) { part_ids[i] = _part_ids[i]; });
         }
     }
 
-    void setOnlyNodePart(const HypernodeID u, PartitionID p)
-    {
+    void setOnlyNodePart(const HypernodeID u, PartitionID p) {
         ASSERT(p != kInvalidPartition && p < _k);
         ASSERT(_part_ids[u] == kInvalidPartition);
         _part_ids[u] = p;
     }
 
-    void setNodePart(const HypernodeID u, PartitionID p)
-    {
+    void setNodePart(const HypernodeID u, PartitionID p) {
         ASSERT(_part_ids[u] == kInvalidPartition);
         setOnlyNodePart(u, p);
         _part_weights[p].fetch_add(nodeWeight(u), std::memory_order_relaxed);
@@ -530,72 +491,60 @@ class PartitionedGraph
     // ! Returns true, if move of vertex u to corresponding block succeeds.
     template <typename SuccessFunc>
     bool changeNodePart(const HypernodeID u, PartitionID from, PartitionID to,
-                        HypernodeWeight max_weight_to, SuccessFunc &&report_success,
-                        const DeltaFunction &delta_func)
-    {
+                        HypernodeWeight max_weight_to, SuccessFunc&& report_success,
+                        const DeltaFunction& delta_func) {
         return changeNodePartImpl<false>(u, from, to, max_weight_to, report_success,
                                          delta_func, NOOP_NOTIFY_FUNC);
     }
 
     bool changeNodePart(const HypernodeID u, PartitionID from, PartitionID to,
-                        const DeltaFunction &delta_func = NOOP_FUNC,
-                        const bool force_moving_fixed_vertices = false)
-    {
+                        const DeltaFunction& delta_func = NOOP_FUNC,
+                        const bool force_moving_fixed_vertices = false) {
         return changeNodePartImpl<false>(
             u, from, to, std::numeric_limits<HypernodeWeight>::max(), [] {}, delta_func,
             NOOP_NOTIFY_FUNC, force_moving_fixed_vertices);
     }
 
     template <typename GainCache, typename SuccessFunc>
-    bool changeNodePart(GainCache &gain_cache, const HypernodeID u, PartitionID from,
+    bool changeNodePart(GainCache& gain_cache, const HypernodeID u, PartitionID from,
                         PartitionID to, HypernodeWeight max_weight_to,
-                        SuccessFunc &&report_success, const DeltaFunction &delta_func)
-    {
-        auto my_delta_func = [&](const SynchronizedEdgeUpdate &sync_update) {
+                        SuccessFunc&& report_success, const DeltaFunction& delta_func) {
+        auto my_delta_func = [&](const SynchronizedEdgeUpdate& sync_update) {
             delta_func(sync_update);
             gain_cache.deltaGainUpdate(*this, sync_update);
         };
-        if constexpr(!GainCache::requires_notification_before_update)
-        {
+        if constexpr(!GainCache::requires_notification_before_update) {
             return changeNodePartImpl<false>(u, from, to, max_weight_to, report_success,
                                              my_delta_func, NOOP_NOTIFY_FUNC);
-        }
-        else
-        {
+        } else {
             return changeNodePartImpl<true>(
                 u, from, to, max_weight_to, report_success, my_delta_func,
-                [&](SynchronizedEdgeUpdate &sync_update) {
+                [&](SynchronizedEdgeUpdate& sync_update) {
                     gain_cache.notifyBeforeDeltaGainUpdate(*this, sync_update);
                 });
         }
     }
 
     template <typename GainCache>
-    bool changeNodePart(GainCache &gain_cache, const HypernodeID u, PartitionID from,
-                        PartitionID to)
-    {
+    bool changeNodePart(GainCache& gain_cache, const HypernodeID u, PartitionID from,
+                        PartitionID to) {
         return changeNodePart(
             gain_cache, u, from, to, std::numeric_limits<HypernodeWeight>::max(), [] {},
             NoOpDeltaFunc());
     }
 
     // ! Weight of a block
-    HypernodeWeight partWeight(const PartitionID p) const
-    {
+    HypernodeWeight partWeight(const PartitionID p) const {
         ASSERT(p != kInvalidPartition && p < _k);
         return _part_weights[p].load(std::memory_order_relaxed);
     }
 
     // ! Returns whether hypernode u is adjacent to a least one cut hyperedge.
-    bool isBorderNode(const HypernodeID u) const
-    {
+    bool isBorderNode(const HypernodeID u) const {
         const PartitionID part_id = partID(u);
-        if(nodeDegree(u) <= HIGH_DEGREE_THRESHOLD)
-        {
-            for(const HyperedgeID &he : incidentEdges(u))
-            {
-                if(partID(edgeTarget(he)) != part_id)
-                {
+        if(nodeDegree(u) <= HIGH_DEGREE_THRESHOLD) {
+            for(const HyperedgeID& he : incidentEdges(u)) {
+                if(partID(edgeTarget(he)) != part_id) {
                     return true;
                 }
             }
@@ -603,14 +552,11 @@ class PartitionedGraph
         return false;
     }
 
-    HypernodeID numIncidentCutHyperedges(const HypernodeID u) const
-    {
+    HypernodeID numIncidentCutHyperedges(const HypernodeID u) const {
         const PartitionID part_id = partID(u);
         HypernodeID num_incident_cut_hyperedges = 0;
-        for(const HyperedgeID &he : incidentEdges(u))
-        {
-            if(partID(edgeTarget(he)) != part_id)
-            {
+        for(const HyperedgeID& he : incidentEdges(u)) {
+            if(partID(edgeTarget(he)) != part_id) {
                 ++num_incident_cut_hyperedges;
             }
         }
@@ -618,56 +564,48 @@ class PartitionedGraph
     }
 
     // ! Number of blocks which pins of hyperedge e belongs to
-    PartitionID connectivity(const HyperedgeID e) const
-    {
+    PartitionID connectivity(const HyperedgeID e) const {
         ASSERT(e < _hg->initialNumEdges(), "Hyperedge" << e << "does not exist");
         ASSERT(edgeIsEnabled(e), "Hyperedge" << e << "is disabled");
         const PartitionID source_id = partID(edgeSource(e));
         const PartitionID target_id = partID(edgeTarget(e));
         PartitionID sum = 0;
-        if(source_id != kInvalidPartition)
-        {
+        if(source_id != kInvalidPartition) {
             ++sum;
         }
-        if(target_id != kInvalidPartition && target_id != source_id)
-        {
+        if(target_id != kInvalidPartition && target_id != source_id) {
             ++sum;
         }
         return sum;
     }
 
     // ! Returns the number pins of hyperedge e that are part of block id
-    HypernodeID pinCountInPart(const HyperedgeID e, const PartitionID p) const
-    {
+    HypernodeID pinCountInPart(const HyperedgeID e, const PartitionID p) const {
         ASSERT(e < _hg->initialNumEdges(), "Hyperedge" << e << "does not exist");
         ASSERT(edgeIsEnabled(e), "Hyperedge" << e << "is disabled");
         ASSERT(p != kInvalidPartition && p < _k);
         HypernodeID count = 0;
-        if(p == partID(edgeSource(e)))
-        {
+        if(p == partID(edgeSource(e))) {
             count++;
         }
-        if(!isSinglePin(e) && p == partID(edgeTarget(e)))
-        {
+        if(!isSinglePin(e) && p == partID(edgeTarget(e))) {
             count++;
         }
         return count;
     }
 
     // ! Creates a shallow copy of the connectivity set of hyperedge he
-    StaticBitset &shallowCopyOfConnectivitySet(const HyperedgeID he) const
-    {
+    StaticBitset& shallowCopyOfConnectivitySet(const HyperedgeID he) const {
         // Shallow copy not possible for graph data structure
-        Bitset &deep_copy = deepCopyOfConnectivitySet(he);
-        StaticBitset &shallow_copy = _shallow_copy_bitset.local();
+        Bitset& deep_copy = deepCopyOfConnectivitySet(he);
+        StaticBitset& shallow_copy = _shallow_copy_bitset.local();
         shallow_copy.set(deep_copy.numBlocks(), deep_copy.data());
         return shallow_copy;
     }
 
     // ! Creates a deep copy of the connectivity set of hyperedge he
-    Bitset &deepCopyOfConnectivitySet(const HyperedgeID he) const
-    {
-        Bitset &deep_copy = _deep_copy_bitset.local();
+    Bitset& deepCopyOfConnectivitySet(const HyperedgeID he) const {
+        Bitset& deep_copy = _deep_copy_bitset.local();
         deep_copy.resize(_k);
         const PartitionID source_block = partID(edgeSource(he));
         const PartitionID target_block = partID(edgeTarget(he));
@@ -684,49 +622,39 @@ class PartitionedGraph
     void initializePartition() { initializeBlockWeights(); }
 
     // ! Reset partition (not thread-safe)
-    void resetPartition()
-    {
+    void resetPartition() {
         _part_ids.assign(_part_ids.size(), kInvalidPartition, false);
         _edge_sync.assign(_hg->maxUniqueID(), EdgeMove(), false);
-        for(auto &weight : _part_weights)
-        {
+        for(auto& weight : _part_weights) {
             weight.store(0, std::memory_order_relaxed);
         }
     }
 
     // ! Only for testing
-    void recomputePartWeights()
-    {
-        for(PartitionID p = 0; p < _k; ++p)
-        {
+    void recomputePartWeights() {
+        for(PartitionID p = 0; p < _k; ++p) {
             _part_weights[p].store(0);
         }
 
-        for(HypernodeID u : nodes())
-        {
+        for(HypernodeID u : nodes()) {
             _part_weights[partID(u)] += nodeWeight(u);
         }
     }
 
-    void recomputeMoveFromPenalty(const HypernodeID)
-    {
+    void recomputeMoveFromPenalty(const HypernodeID) {
         // Nothing to do here
     }
 
     // ! Only for testing
-    bool checkTrackedPartitionInformation()
-    {
+    bool checkTrackedPartitionInformation() {
         bool success = true;
 
-        for(HyperedgeID e : edges())
-        {
+        for(HyperedgeID e : edges()) {
             PartitionID expected_connectivity = 0;
-            for(PartitionID i = 0; i < k(); ++i)
-            {
+            for(PartitionID i = 0; i < k(); ++i) {
                 expected_connectivity += (pinCountInPart(e, i) > 0);
             }
-            if(expected_connectivity != connectivity(e))
-            {
+            if(expected_connectivity != connectivity(e)) {
                 LOG << "Connectivity of hyperedge" << e << "=>"
                     << "Expected:" << V(expected_connectivity) << ","
                     << "Actual:" << V(connectivity(e));
@@ -739,19 +667,15 @@ class PartitionedGraph
 
     // ! Only for testing
     template <typename GainCache>
-    bool checkTrackedPartitionInformation(GainCache &gain_cache)
-    {
+    bool checkTrackedPartitionInformation(GainCache& gain_cache) {
         bool success = true;
 
-        for(HyperedgeID e : edges())
-        {
+        for(HyperedgeID e : edges()) {
             PartitionID expected_connectivity = 0;
-            for(PartitionID i = 0; i < k(); ++i)
-            {
+            for(PartitionID i = 0; i < k(); ++i) {
                 expected_connectivity += (pinCountInPart(e, i) > 0);
             }
-            if(expected_connectivity != connectivity(e))
-            {
+            if(expected_connectivity != connectivity(e)) {
                 LOG << "Connectivity of hyperedge" << e << "=>"
                     << "Expected:" << V(expected_connectivity) << ","
                     << "Actual:" << V(connectivity(e));
@@ -759,33 +683,26 @@ class PartitionedGraph
             }
         }
 
-        if(gain_cache.isInitialized())
-        {
-            for(HypernodeID u : nodes())
-            {
+        if(gain_cache.isInitialized()) {
+            for(HypernodeID u : nodes()) {
                 const PartitionID block_of_u = partID(u);
                 if(gain_cache.penaltyTerm(u, block_of_u) !=
-                   gain_cache.recomputePenaltyTerm(*this, u))
-                {
+                   gain_cache.recomputePenaltyTerm(*this, u)) {
                     LOG << "Penalty term of hypernode" << u << "=>"
                         << "Expected:" << V(gain_cache.recomputePenaltyTerm(*this, u))
                         << ", "
                         << "Actual:" << V(gain_cache.penaltyTerm(u, block_of_u));
-                    for(const HyperedgeID &e : incidentEdges(u))
-                    {
+                    for(const HyperedgeID& e : incidentEdges(u)) {
                         LOG << V(u) << V(partID(u)) << V(e) << V(edgeSize(e))
                             << V(edgeWeight(e)) << V(pinCountInPart(e, partID(u)));
                     }
                     success = false;
                 }
 
-                for(const PartitionID &i : gain_cache.adjacentBlocks(u))
-                {
-                    if(partID(u) != i)
-                    {
+                for(const PartitionID& i : gain_cache.adjacentBlocks(u)) {
+                    if(partID(u) != i) {
                         if(gain_cache.benefitTerm(u, i) !=
-                           gain_cache.recomputeBenefitTerm(*this, u, i))
-                        {
+                           gain_cache.recomputeBenefitTerm(*this, u, i)) {
                             LOG << "Benefit term of hypernode" << u << "in block" << i
                                 << "=>"
                                 << "Expected:"
@@ -796,8 +713,7 @@ class PartitionedGraph
                     }
                 }
             }
-            if(!gain_cache.verifyTrackedAdjacentBlocksOfNodes(*this))
-            {
+            if(!gain_cache.verifyTrackedAdjacentBlocksOfNodes(*this)) {
                 success = false;
             }
         }
@@ -810,15 +726,13 @@ class PartitionedGraph
 
     bool isFixed(const HypernodeID hn) const { return _hg->isFixed(hn); }
 
-    PartitionID fixedVertexBlock(const HypernodeID hn) const
-    {
+    PartitionID fixedVertexBlock(const HypernodeID hn) const {
         return _hg->fixedVertexBlock(hn);
     }
 
     // ####################### Memory Consumption #######################
 
-    void memoryConsumption(utils::MemoryTreeNode *parent) const
-    {
+    void memoryConsumption(utils::MemoryTreeNode *parent) const {
         ASSERT(parent);
         parent->addChild("Part Weights", sizeof(CAtomic<HypernodeWeight>) * _k);
         parent->addChild("Part IDs", sizeof(PartitionID) * _hg->initialNumNodes());
@@ -839,36 +753,31 @@ class PartitionedGraph
     // ! only the pins of the corresponding block. Otherwise, they are discarded.
     ExtractedBlock extract(const PartitionID block, const vec<uint8_t> *already_cut,
                            bool /*cut_net_splitting*/,
-                           bool stable_construction_of_incident_edges)
-    {
+                           bool stable_construction_of_incident_edges) {
         ASSERT(block != kInvalidPartition && block < _k);
         ASSERT(!already_cut || already_cut->size() == _hg->initialNumEdges());
 
         // Compactify vertex ids
         ExtractedBlock extracted_block;
-        vec<HypernodeID> &node_mapping = extracted_block.hn_mapping;
+        vec<HypernodeID>& node_mapping = extracted_block.hn_mapping;
         node_mapping.assign(_hg->initialNumNodes(), kInvalidHypernode);
         vec<HyperedgeID> he_mapping(_hg->initialNumEdges(), kInvalidHyperedge);
         HypernodeID num_nodes = 0;
         HypernodeID num_edges = 0;
         tbb::parallel_invoke(
             [&] {
-                for(const HypernodeID &node : nodes())
-                {
-                    if(partID(node) == block)
-                    {
+                for(const HypernodeID& node : nodes()) {
+                    if(partID(node) == block) {
                         node_mapping[node] = num_nodes++;
                     }
                 }
             },
             [&] {
-                for(const HyperedgeID &edge : edges())
-                {
+                for(const HyperedgeID& edge : edges()) {
                     const HypernodeID source = edgeSource(edge);
                     const HypernodeID target = edgeTarget(edge);
                     if(partID(source) == block && partID(target) == block &&
-                       source < target)
-                    {
+                       source < target) {
                         he_mapping[edge] = num_edges++;
                     }
                 }
@@ -887,12 +796,10 @@ class PartitionedGraph
                     const HypernodeID source = edgeSource(edge);
                     const HypernodeID target = edgeTarget(edge);
                     if(partID(source) == block && partID(target) == block &&
-                       source < target)
-                    {
+                       source < target) {
                         ASSERT(he_mapping[edge] < num_edges);
                         edge_weight[he_mapping[edge]] = edgeWeight(edge);
-                        for(const HypernodeID &pin : pins(edge))
-                        {
+                        for(const HypernodeID& pin : pins(edge)) {
                             unused(pin);
                             edge_vector[he_mapping[edge]] = { node_mapping[source],
                                                               node_mapping[target] };
@@ -903,15 +810,13 @@ class PartitionedGraph
             [&] {
                 node_weight.resize(num_nodes);
                 doParallelForAllNodes([&](const HypernodeID node) {
-                    if(partID(node) == block)
-                    {
+                    if(partID(node) == block) {
                         node_weight[node_mapping[node]] = nodeWeight(node);
                     }
                 });
             },
             [&] {
-                if(already_cut)
-                {
+                if(already_cut) {
                     // Extracted graph only contains non-cut edges
                     extracted_block.already_cut.assign(num_edges, 0);
                 }
@@ -923,9 +828,8 @@ class PartitionedGraph
             stable_construction_of_incident_edges);
 
         // Set community ids
-        doParallelForAllNodes([&](const HypernodeID &node) {
-            if(partID(node) == block)
-            {
+        doParallelForAllNodes([&](const HypernodeID& node) {
+            if(partID(node) == block) {
                 const HypernodeID extracted_node = node_mapping[node];
                 extracted_block.hg.setCommunityID(extracted_node, _hg->communityID(node));
             }
@@ -940,8 +844,7 @@ class PartitionedGraph
     std::pair<vec<ExtractedBlock>, vec<HypernodeID> >
     extractAllBlocks(const PartitionID k, const vec<uint8_t> *already_cut,
                      const bool /*cut_net_splitting*/,
-                     const bool stable_construction_of_incident_edges)
-    {
+                     const bool stable_construction_of_incident_edges) {
         ASSERT(k <= _k);
 
         // Compactify node and edge ids
@@ -951,57 +854,48 @@ class PartitionedGraph
             k, parallel::AtomicWrapper<HypernodeID>(0));
         vec<parallel::AtomicWrapper<HyperedgeID> > edges_cnt(
             k, parallel::AtomicWrapper<HyperedgeID>(0));
-        if(stable_construction_of_incident_edges)
-        {
+        if(stable_construction_of_incident_edges) {
             // Stable construction for deterministic behavior requires
             // to determine node and edge IDs sequentially
             tbb::parallel_invoke(
                 [&] {
-                    for(const HypernodeID &hn : nodes())
-                    {
+                    for(const HypernodeID& hn : nodes()) {
                         const PartitionID block = partID(hn);
-                        if(block < k)
-                        {
+                        if(block < k) {
                             hn_mapping[hn] = nodes_cnt[block]++;
                         }
                     }
                 },
                 [&] {
-                    for(const HyperedgeID &he : edges())
-                    {
+                    for(const HyperedgeID& he : edges()) {
                         const HypernodeID source = edgeSource(he);
                         const HypernodeID target = edgeTarget(he);
                         const PartitionID sourceBlock = partID(source);
                         const PartitionID targetBlock = partID(target);
                         if(source < target && sourceBlock == targetBlock &&
-                           sourceBlock < k)
-                        {
+                           sourceBlock < k) {
                             he_mapping[he] = edges_cnt[sourceBlock]++;
                         }
                     }
                 });
-        }
-        else
-        {
+        } else {
             tbb::parallel_invoke(
                 [&] {
-                    doParallelForAllNodes([&](const HypernodeID &hn) {
+                    doParallelForAllNodes([&](const HypernodeID& hn) {
                         const PartitionID block = partID(hn);
-                        if(block < k)
-                        {
+                        if(block < k) {
                             hn_mapping[hn] = nodes_cnt[block]++;
                         }
                     });
                 },
                 [&] {
-                    doParallelForAllEdges([&](const HyperedgeID &he) {
+                    doParallelForAllEdges([&](const HyperedgeID& he) {
                         const HypernodeID source = edgeSource(he);
                         const HypernodeID target = edgeTarget(he);
                         const PartitionID sourceBlock = partID(source);
                         const PartitionID targetBlock = partID(target);
                         if(source < target && sourceBlock == targetBlock &&
-                           sourceBlock < k)
-                        {
+                           sourceBlock < k) {
                             he_mapping[he] = edges_cnt[sourceBlock]++;
                         }
                     });
@@ -1021,8 +915,7 @@ class PartitionedGraph
                                  [&] { edge_weight[p].resize(num_edges); },
                                  [&] { node_weight[p].resize(num_nodes); },
                                  [&] {
-                                     if(already_cut)
-                                     {
+                                     if(already_cut) {
                                          // Extracted graph only contains non-cut edges
                                          extracted_blocks[p].already_cut.assign(num_edges,
                                                                                 0);
@@ -1033,14 +926,13 @@ class PartitionedGraph
         // Write blocks to auxilliary graph data structure
         tbb::parallel_invoke(
             [&] {
-                doParallelForAllEdges([&](const HyperedgeID &he) {
+                doParallelForAllEdges([&](const HyperedgeID& he) {
                     const HyperedgeID mapped_he = he_mapping[he];
                     const HypernodeID source = edgeSource(he);
                     const HypernodeID target = edgeTarget(he);
                     const PartitionID sourceBlock = partID(source);
                     const PartitionID targetBlock = partID(target);
-                    if(source < target && sourceBlock == targetBlock && sourceBlock < k)
-                    {
+                    if(source < target && sourceBlock == targetBlock && sourceBlock < k) {
                         ASSERT(UL(mapped_he) < edge_weight[sourceBlock].size());
                         edge_weight[sourceBlock][mapped_he] = edgeWeight(he);
                         edge_vector[sourceBlock][mapped_he] = {
@@ -1050,11 +942,10 @@ class PartitionedGraph
                 });
             },
             [&] {
-                doParallelForAllNodes([&](const HypernodeID &hn) {
+                doParallelForAllNodes([&](const HypernodeID& hn) {
                     const PartitionID block = partID(hn);
                     const HypernodeID mapped_hn = hn_mapping[hn];
-                    if(block < k)
-                    {
+                    if(block < k) {
                         ASSERT(UL(mapped_hn) < node_weight[block].size());
                         node_weight[block][mapped_hn] = nodeWeight(hn);
                     }
@@ -1071,10 +962,9 @@ class PartitionedGraph
         });
 
         // Set community ids
-        doParallelForAllNodes([&](const HypernodeID &hn) {
+        doParallelForAllNodes([&](const HypernodeID& hn) {
             const PartitionID block = partID(hn);
-            if(block < k)
-            {
+            if(block < k) {
                 extracted_blocks[block].hg.setCommunityID(hn_mapping[hn],
                                                           _hg->communityID(hn));
             }
@@ -1086,10 +976,8 @@ class PartitionedGraph
         return std::make_pair(std::move(extracted_blocks), std::move(hn_mapping));
     }
 
-    void freeInternalData()
-    {
-        if(_k > 0)
-        {
+    void freeInternalData() {
+        if(_k > 0) {
             parallel::parallel_free(_part_ids, _edge_sync, _edge_locks);
         }
         _k = 0;
@@ -1098,11 +986,10 @@ class PartitionedGraph
   private:
     template <bool notify, typename SuccessFunc>
     bool changeNodePartImpl(const HypernodeID u, PartitionID from, PartitionID to,
-                            HypernodeWeight max_weight_to, SuccessFunc &&report_success,
-                            const DeltaFunction &delta_func,
-                            const NotificationFunc &notify_func,
-                            const bool force_moving_fixed_vertices = false)
-    {
+                            HypernodeWeight max_weight_to, SuccessFunc&& report_success,
+                            const DeltaFunction& delta_func,
+                            const NotificationFunc& notify_func,
+                            const bool force_moving_fixed_vertices = false) {
         unused(force_moving_fixed_vertices);
         ASSERT(partID(u) == from);
         ASSERT(from != to);
@@ -1110,8 +997,7 @@ class PartitionedGraph
         const HypernodeWeight weight = nodeWeight(u);
         const HypernodeWeight to_weight_after =
             _part_weights[to].add_fetch(weight, std::memory_order_relaxed);
-        if(to_weight_after <= max_weight_to)
-        {
+        if(to_weight_after <= max_weight_to) {
             _part_weights[from].fetch_sub(weight, std::memory_order_relaxed);
             report_success();
             DBG << "<<< Start changing node part: " << V(u) << " - " << V(from) << " - "
@@ -1121,10 +1007,8 @@ class PartitionedGraph
             sync_update.to = to;
             sync_update.target_graph = _target_graph;
             sync_update.edge_locks = &_edge_locks;
-            for(const HyperedgeID edge : incidentEdges(u))
-            {
-                if(!isSinglePin(edge))
-                {
+            for(const HyperedgeID edge : incidentEdges(u)) {
+                if(!isSinglePin(edge)) {
                     sync_update.he = edge;
                     sync_update.edge_weight = edgeWeight(edge);
                     sync_update.edge_size = edgeSize(edge);
@@ -1139,31 +1023,25 @@ class PartitionedGraph
             _part_ids[u] = to;
             DBG << "Done changing node part: " << V(u) << " >>>";
             return true;
-        }
-        else
-        {
+        } else {
             _part_weights[to].fetch_sub(weight, std::memory_order_relaxed);
             return false;
         }
     }
 
-    void initializeBlockWeights()
-    {
+    void initializeBlockWeights() {
         tbb::parallel_for(
             tbb::blocked_range<HypernodeID>(HypernodeID(0), initialNumNodes()),
-            [&](tbb::blocked_range<HypernodeID> &r) {
+            [&](tbb::blocked_range<HypernodeID>& r) {
                 // this is not enumerable_thread_specific because of the static
                 // partitioner
                 parallel::scalable_vector<HypernodeWeight> part_weight_deltas(_k, 0);
-                for(HypernodeID node = r.begin(); node < r.end(); ++node)
-                {
-                    if(nodeIsEnabled(node))
-                    {
+                for(HypernodeID node = r.begin(); node < r.end(); ++node) {
+                    if(nodeIsEnabled(node)) {
                         part_weight_deltas[partID(node)] += nodeWeight(node);
                     }
                 }
-                for(PartitionID p = 0; p < _k; ++p)
-                {
+                for(PartitionID p = 0; p < _k; ++p) {
                     _part_weights[p].fetch_add(part_weight_deltas[p],
                                                std::memory_order_relaxed);
                 }
@@ -1178,16 +1056,14 @@ class PartitionedGraph
     // node u is moved to the block 'to'.
     template <bool notify>
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE PartitionID synchronizeMoveOnEdge(
-        SynchronizedEdgeUpdate &sync_update, const HyperedgeID edge, const HypernodeID u,
-        const PartitionID to, const NotificationFunc &notify_func)
-    {
+        SynchronizedEdgeUpdate& sync_update, const HyperedgeID edge, const HypernodeID u,
+        const PartitionID to, const NotificationFunc& notify_func) {
         const HyperedgeID unique_id = uniqueEdgeID(edge);
         const HypernodeID v = edgeTarget(edge);
         PartitionID block_of_v = partID(v);
-        EdgeMove &edge_move = _edge_sync[unique_id];
+        EdgeMove& edge_move = _edge_sync[unique_id];
         _edge_locks[unique_id].lock();
-        if(edge_move.u == v && edge_move.version == _edge_sync_version)
-        {
+        if(edge_move.u == v && edge_move.version == _edge_sync_version) {
             ASSERT(edge_move.to < _k && edge_move.to != kInvalidPartition);
             block_of_v = edge_move.to;
         }
@@ -1195,8 +1071,7 @@ class PartitionedGraph
         edge_move.to = to;
         edge_move.version = _edge_sync_version;
         sync_update.block_of_other_node = block_of_v;
-        if constexpr(notify)
-        {
+        if constexpr(notify) {
             notify_func(sync_update);
         }
         _edge_locks[unique_id].unlock();

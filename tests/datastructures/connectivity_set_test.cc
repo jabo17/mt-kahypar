@@ -40,23 +40,20 @@ namespace ds {
 using PartitionID = int32_t;
 
 template <class F, class K>
-void executeConcurrent(F f1, K f2)
-{
+void executeConcurrent(F f1, K f2) {
     std::atomic<int> cnt(0);
     tbb::task_group group;
 
     group.run([&] {
         cnt++;
-        while(cnt < 2)
-        {
+        while(cnt < 2) {
         }
         f1();
     });
 
     group.run([&] {
         cnt++;
-        while(cnt < 2)
-        {
+        while(cnt < 2) {
         }
         f2();
     });
@@ -65,88 +62,72 @@ void executeConcurrent(F f1, K f2)
 }
 
 template <typename ConnectivitySet>
-void add(ConnectivitySet &conn_set, const std::set<PartitionID> &ids)
-{
-    for(const PartitionID &id : ids)
-    {
+void add(ConnectivitySet& conn_set, const std::set<PartitionID>& ids) {
+    for(const PartitionID& id : ids) {
         conn_set.add(0, id);
     }
 }
 
 template <typename ConnectivitySet>
-void remove(ConnectivitySet &conn_set, const std::set<PartitionID> &ids)
-{
-    for(const PartitionID &id : ids)
-    {
+void remove(ConnectivitySet& conn_set, const std::set<PartitionID>& ids) {
+    for(const PartitionID& id : ids) {
         conn_set.remove(0, id);
     }
 }
 
 template <typename ConnectivitySet>
-void verify(const ConnectivitySet &conn_set, const PartitionID k,
-            const std::set<PartitionID> &contained)
-{
+void verify(const ConnectivitySet& conn_set, const PartitionID k,
+            const std::set<PartitionID>& contained) {
     // Verify bitset in connectivity set
     ASSERT_EQ(contained.size(), conn_set.connectivity(0));
-    for(PartitionID i = 0; i < k; ++i)
-    {
-        if(contained.find(i) != contained.end())
-        {
+    for(PartitionID i = 0; i < k; ++i) {
+        if(contained.find(i) != contained.end()) {
             ASSERT_TRUE(conn_set.contains(0, i)) << V(i);
-        }
-        else
-        {
+        } else {
             ASSERT_FALSE(conn_set.contains(0, i)) << V(i);
         }
     }
 
     // Verify iterator
     size_t connectivity = 0;
-    for(const PartitionID id : conn_set.connectivitySet(0))
-    {
+    for(const PartitionID id : conn_set.connectivitySet(0)) {
         ASSERT_TRUE(contained.find(id) != contained.end()) << V(id);
         ++connectivity;
     }
     ASSERT_EQ(contained.size(), connectivity);
 }
 
-TEST(AConnectivitySet, IsCorrectInitialized)
-{
+TEST(AConnectivitySet, IsCorrectInitialized) {
     ConnectivitySets conn_set(1, 32);
     verify(conn_set, 32, {});
 }
 
-TEST(AConnectivitySet, AddOnePartition1)
-{
+TEST(AConnectivitySet, AddOnePartition1) {
     ConnectivitySets conn_set(1, 32);
     conn_set.add(0, 2);
     verify(conn_set, 32, { 2 });
 }
 
-TEST(AConnectivitySet, AddOnePartition2)
-{
+TEST(AConnectivitySet, AddOnePartition2) {
     ConnectivitySets conn_set(1, 32);
     conn_set.add(0, 14);
     verify(conn_set, 32, { 14 });
 }
 
-TEST(AConnectivitySet, AddOnePartition3)
-{
+TEST(AConnectivitySet, AddOnePartition3) {
     ConnectivitySets conn_set(1, 32);
     conn_set.add(0, 23);
     verify(conn_set, 32, { 23 });
 }
 
-TEST(AConnectivitySet, AddOnePartition4)
-{
+TEST(AConnectivitySet, AddOnePartition4) {
     ConnectivitySets conn_set(1, 32);
     ;
     conn_set.add(0, 30);
     verify(conn_set, 32, { 30 });
 }
 
-TEST(AConnectivitySet, AddTwoPartitions1)
-{
+TEST(AConnectivitySet, AddTwoPartitions1) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 5, 31 };
@@ -154,8 +135,7 @@ TEST(AConnectivitySet, AddTwoPartitions1)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddTwoPartitions2)
-{
+TEST(AConnectivitySet, AddTwoPartitions2) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 14, 24 };
@@ -163,8 +143,7 @@ TEST(AConnectivitySet, AddTwoPartitions2)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddTwoPartitions3)
-{
+TEST(AConnectivitySet, AddTwoPartitions3) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 7, 16 };
@@ -172,8 +151,7 @@ TEST(AConnectivitySet, AddTwoPartitions3)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddSeveralPartitions1)
-{
+TEST(AConnectivitySet, AddSeveralPartitions1) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 0, 1, 5, 14, 24, 27, 31 };
@@ -181,8 +159,7 @@ TEST(AConnectivitySet, AddSeveralPartitions1)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddSeveralPartitions2)
-{
+TEST(AConnectivitySet, AddSeveralPartitions2) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 5, 6, 7, 11, 13, 15, 24, 28, 30 };
@@ -190,8 +167,7 @@ TEST(AConnectivitySet, AddSeveralPartitions2)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddSeveralPartitions3)
-{
+TEST(AConnectivitySet, AddSeveralPartitions3) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 };
@@ -199,113 +175,98 @@ TEST(AConnectivitySet, AddSeveralPartitions3)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddTwoPartitionsAndRemoveOne1)
-{
+TEST(AConnectivitySet, AddTwoPartitionsAndRemoveOne1) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 5, 31 };
     std::set<PartitionID> removed = { 31 };
     add(conn_set, added);
     remove(conn_set, removed);
-    for(const PartitionID id : removed)
-    {
+    for(const PartitionID id : removed) {
         added.erase(id);
     }
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddTwoPartitionsAndRemoveOne2)
-{
+TEST(AConnectivitySet, AddTwoPartitionsAndRemoveOne2) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 16, 17 };
     std::set<PartitionID> removed = { 16 };
     add(conn_set, added);
     remove(conn_set, removed);
-    for(const PartitionID id : removed)
-    {
+    for(const PartitionID id : removed) {
         added.erase(id);
     }
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddTwoPartitionsAndRemoveOne3)
-{
+TEST(AConnectivitySet, AddTwoPartitionsAndRemoveOne3) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 7, 21 };
     std::set<PartitionID> removed = { 7 };
     add(conn_set, added);
     remove(conn_set, removed);
-    for(const PartitionID id : removed)
-    {
+    for(const PartitionID id : removed) {
         added.erase(id);
     }
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddTwoPartitionsAndRemoveOne4)
-{
+TEST(AConnectivitySet, AddTwoPartitionsAndRemoveOne4) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 25, 27 };
     std::set<PartitionID> removed = { 27 };
     add(conn_set, added);
     remove(conn_set, removed);
-    for(const PartitionID id : removed)
-    {
+    for(const PartitionID id : removed) {
         added.erase(id);
     }
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddSeveralPartitionsAndRemoveSeveral1)
-{
+TEST(AConnectivitySet, AddSeveralPartitionsAndRemoveSeveral1) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 1, 13, 15, 23, 24, 30 };
     std::set<PartitionID> removed = { 13, 15, 23 };
     add(conn_set, added);
     remove(conn_set, removed);
-    for(const PartitionID id : removed)
-    {
+    for(const PartitionID id : removed) {
         added.erase(id);
     }
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddSeveralPartitionsAndRemoveSeveral2)
-{
+TEST(AConnectivitySet, AddSeveralPartitionsAndRemoveSeveral2) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 2, 5, 6, 14, 15, 21, 23, 29 };
     std::set<PartitionID> removed = { 5, 14, 21, 29 };
     add(conn_set, added);
     remove(conn_set, removed);
-    for(const PartitionID id : removed)
-    {
+    for(const PartitionID id : removed) {
         added.erase(id);
     }
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddSeveralPartitionsAndRemoveSeveral3)
-{
+TEST(AConnectivitySet, AddSeveralPartitionsAndRemoveSeveral3) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 0, 1, 2, 3, 4, 5, 6, 7, 24, 25, 26, 27, 28, 29 };
     std::set<PartitionID> removed = { 5, 6, 7, 24, 25, 26, 27 };
     add(conn_set, added);
     remove(conn_set, removed);
-    for(const PartitionID id : removed)
-    {
+    for(const PartitionID id : removed) {
         added.erase(id);
     }
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddConcurrentTwoPartitions1)
-{
+TEST(AConnectivitySet, AddConcurrentTwoPartitions1) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 7, 16 };
@@ -313,8 +274,7 @@ TEST(AConnectivitySet, AddConcurrentTwoPartitions1)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddConcurrentTwoPartitions2)
-{
+TEST(AConnectivitySet, AddConcurrentTwoPartitions2) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 4, 5 };
@@ -322,8 +282,7 @@ TEST(AConnectivitySet, AddConcurrentTwoPartitions2)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddConcurrentTwoPartitions3)
-{
+TEST(AConnectivitySet, AddConcurrentTwoPartitions3) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 12, 14 };
@@ -331,8 +290,7 @@ TEST(AConnectivitySet, AddConcurrentTwoPartitions3)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddConcurrentTwoPartitions4)
-{
+TEST(AConnectivitySet, AddConcurrentTwoPartitions4) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 30, 31 };
@@ -340,8 +298,7 @@ TEST(AConnectivitySet, AddConcurrentTwoPartitions4)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddConcurrentSeveralPartitions1)
-{
+TEST(AConnectivitySet, AddConcurrentSeveralPartitions1) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 1, 13, 15, 23, 24, 30 };
@@ -355,8 +312,7 @@ TEST(AConnectivitySet, AddConcurrentSeveralPartitions1)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddConcurrentSeveralPartitions2)
-{
+TEST(AConnectivitySet, AddConcurrentSeveralPartitions2) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 0, 4, 15, 23, 24, 25, 28, 30, 31 };
@@ -370,8 +326,7 @@ TEST(AConnectivitySet, AddConcurrentSeveralPartitions2)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddConcurrentSeveralPartitions3)
-{
+TEST(AConnectivitySet, AddConcurrentSeveralPartitions3) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 6, 7, 8, 9, 10, 14, 15, 16, 17, 23, 24, 25, 26 };
@@ -385,8 +340,7 @@ TEST(AConnectivitySet, AddConcurrentSeveralPartitions3)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently1)
-{
+TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently1) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 3 };
@@ -395,8 +349,7 @@ TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently1)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently2)
-{
+TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently2) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 24 };
@@ -405,8 +358,7 @@ TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently2)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently3)
-{
+TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently3) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 15 };
@@ -415,8 +367,7 @@ TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently3)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently4)
-{
+TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently4) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 13 };
@@ -425,8 +376,7 @@ TEST(AConnectivitySet, AddAndRemoveOnePartitionConcurrently4)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddAndRemoveSeveralPartitionsConcurrently1)
-{
+TEST(AConnectivitySet, AddAndRemoveSeveralPartitionsConcurrently1) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 1, 4, 5, 15, 16, 21, 30 };
@@ -452,8 +402,7 @@ TEST(AConnectivitySet, AddAndRemoveSeveralPartitionsConcurrently1)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddAndRemoveSeveralPartitionsConcurrently2)
-{
+TEST(AConnectivitySet, AddAndRemoveSeveralPartitionsConcurrently2) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 4, 5, 8, 10, 18, 21, 22, 27, 31 };
@@ -483,8 +432,7 @@ TEST(AConnectivitySet, AddAndRemoveSeveralPartitionsConcurrently2)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddAndRemoveSeveralPartitionsConcurrently3)
-{
+TEST(AConnectivitySet, AddAndRemoveSeveralPartitionsConcurrently3) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 13, 14, 15, 17, 18, 22, 23, 24, 25, 26, 27 };
@@ -519,16 +467,14 @@ TEST(AConnectivitySet, AddAndRemoveSeveralPartitionsConcurrently3)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently1)
-{
+TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently1) {
     ConnectivitySets conn_set(1, 32);
     ;
     executeConcurrent([&] { conn_set.add(0, 15); }, [&] { conn_set.remove(0, 15); });
     verify(conn_set, 32, {});
 }
 
-TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently2)
-{
+TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently2) {
     ConnectivitySets conn_set(1, 32);
     ;
     conn_set.add(0, 15);
@@ -536,16 +482,14 @@ TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently2)
     verify(conn_set, 32, { 15 });
 }
 
-TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently3)
-{
+TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently3) {
     ConnectivitySets conn_set(1, 32);
     ;
     executeConcurrent([&] { conn_set.add(0, 6); }, [&] { conn_set.remove(0, 6); });
     verify(conn_set, 32, {});
 }
 
-TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently4)
-{
+TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently4) {
     ConnectivitySets conn_set(1, 32);
     ;
     conn_set.add(0, 6);
@@ -553,16 +497,14 @@ TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently4)
     verify(conn_set, 32, { 6 });
 }
 
-TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently5)
-{
+TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently5) {
     ConnectivitySets conn_set(1, 32);
     ;
     executeConcurrent([&] { conn_set.add(0, 22); }, [&] { conn_set.remove(0, 22); });
     verify(conn_set, 32, {});
 }
 
-TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently6)
-{
+TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently6) {
     ConnectivitySets conn_set(1, 32);
     ;
     conn_set.add(0, 22);
@@ -570,8 +512,7 @@ TEST(AConnectivitySet, AddAndRemoveSamePartitionConcurrently6)
     verify(conn_set, 32, { 22 });
 }
 
-TEST(AConnectivitySet, AddAndRemoveSeveralSamePartitionsConcurrently)
-{
+TEST(AConnectivitySet, AddAndRemoveSeveralSamePartitionsConcurrently) {
     ConnectivitySets conn_set(1, 32);
     ;
     std::set<PartitionID> added = { 13, 14, 15, 16, 18, 22, 23 };
@@ -598,8 +539,7 @@ TEST(AConnectivitySet, AddAndRemoveSeveralSamePartitionsConcurrently)
     verify(conn_set, 32, added);
 }
 
-TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyAddElements)
-{
+TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyAddElements) {
     ConnectivitySets conn_set(1, 32);
     add(conn_set, { 1, 2, 6, 10, 15, 22, 24, 31 });
 
@@ -636,34 +576,29 @@ TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyAddElements)
         [&] {
             std::vector<PartitionID> expected = { 1, 2, 6, 10, 12, 15, 22, 24, 30, 31 };
             size_t i = 0;
-            for(const PartitionID &id : conn_set.connectivitySet(0))
-            {
-                if(i == 1)
-                {
+            for(const PartitionID& id : conn_set.connectivitySet(0)) {
+                if(i == 1) {
                     ++cnt;
                     while(cnt < 2)
                         ;
                     // Wait until thread 1 adds 0
                 }
 
-                if(i == 2)
-                {
+                if(i == 2) {
                     ++cnt;
                     while(cnt < 4)
                         ;
                     // Wait until thread 1 adds 12
                 }
 
-                if(i == 5)
-                {
+                if(i == 5) {
                     ++cnt;
                     while(cnt < 6)
                         ;
                     // Wait until thread 1 adds 14
                 }
 
-                if(i == 7)
-                {
+                if(i == 7) {
                     ++cnt;
                     while(cnt < 8)
                         ;
@@ -678,14 +613,12 @@ TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyAddElements)
 
     std::vector<PartitionID> expected = { 0, 1, 2, 6, 10, 12, 14, 15, 22, 24, 30, 31 };
     size_t i = 0;
-    for(const PartitionID &id : conn_set.connectivitySet(0))
-    {
+    for(const PartitionID& id : conn_set.connectivitySet(0)) {
         ASSERT_EQ(expected[i++], id);
     }
 }
 
-TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyRemoveElements)
-{
+TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyRemoveElements) {
     ConnectivitySets conn_set(1, 32);
     add(conn_set, { 1, 2, 6, 10, 15, 22, 24, 31 });
 
@@ -714,26 +647,22 @@ TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyRemoveElements)
         [&] {
             std::vector<PartitionID> expected = { 1, 2, 6, 10, 22, 24 };
             size_t i = 0;
-            for(const PartitionID &id : conn_set.connectivitySet(0))
-            {
-                if(i == 1)
-                {
+            for(const PartitionID& id : conn_set.connectivitySet(0)) {
+                if(i == 1) {
                     ++cnt;
                     while(cnt < 2)
                         ;
                     // Wait at part 2 until thread 1 removes part 1
                 }
 
-                if(i == 2)
-                {
+                if(i == 2) {
                     ++cnt;
                     while(cnt < 4)
                         ;
                     // Wait at part 6 until thread 1 removes part 15
                 }
 
-                if(i == 4)
-                {
+                if(i == 4) {
                     ++cnt;
                     while(cnt < 6)
                         ;
@@ -748,14 +677,12 @@ TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyRemoveElements)
 
     std::vector<PartitionID> expected = { 2, 6, 10, 22, 24 };
     size_t i = 0;
-    for(const PartitionID &id : conn_set.connectivitySet(0))
-    {
+    for(const PartitionID& id : conn_set.connectivitySet(0)) {
         ASSERT_EQ(expected[i++], id);
     }
 }
 
-TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyAddAndRemoveElements)
-{
+TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyAddAndRemoveElements) {
     ConnectivitySets conn_set(1, 32);
     add(conn_set, { 1, 2, 6, 10, 15, 22, 24, 28, 31 });
 
@@ -795,34 +722,29 @@ TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyAddAndRemoveElem
         [&] {
             std::vector<PartitionID> expected = { 1, 2, 6, 10, 12, 22, 28, 29, 30 };
             size_t i = 0;
-            for(const PartitionID &id : conn_set.connectivitySet(0))
-            {
-                if(i == 1)
-                {
+            for(const PartitionID& id : conn_set.connectivitySet(0)) {
+                if(i == 1) {
                     ++cnt;
                     while(cnt < 2)
                         ;
                     // Wait at part 2 until thread 1 adds 0
                 }
 
-                if(i == 2)
-                {
+                if(i == 2) {
                     ++cnt;
                     while(cnt < 4)
                         ;
                     // Wait at part 6 until thread 1 removes 15 and adds 16
                 }
 
-                if(i == 5)
-                {
+                if(i == 5) {
                     ++cnt;
                     while(cnt < 6)
                         ;
                     // Wait at part 22 until thread 1 adds 14 and removes 24
                 }
 
-                if(i == 6)
-                {
+                if(i == 6) {
                     ++cnt;
                     while(cnt < 8)
                         ;
@@ -836,14 +758,12 @@ TEST(AConnectivitySet, IteratesThroughPartitionsAndSimultanouslyAddAndRemoveElem
 
     std::vector<PartitionID> expected = { 0, 1, 2, 6, 10, 12, 14, 22, 28, 29, 30 };
     size_t i = 0;
-    for(const PartitionID &id : conn_set.connectivitySet(0))
-    {
+    for(const PartitionID& id : conn_set.connectivitySet(0)) {
         ASSERT_EQ(expected[i++], id);
     }
 }
 
-TEST(ADeltaConnectivitySet, IsEqualToConnectivitySetWhenInitialized)
-{
+TEST(ADeltaConnectivitySet, IsEqualToConnectivitySetWhenInitialized) {
     ConnectivitySets con_set(1, 32);
     DeltaConnectivitySet<ConnectivitySets> delta_con_set(32);
     delta_con_set.setConnectivitySet(&con_set);
@@ -854,8 +774,7 @@ TEST(ADeltaConnectivitySet, IsEqualToConnectivitySetWhenInitialized)
     verify(delta_con_set, 32, added);
 }
 
-TEST(ADeltaConnectivitySet, AddsSomeBlocksToConnectivitySet)
-{
+TEST(ADeltaConnectivitySet, AddsSomeBlocksToConnectivitySet) {
     ConnectivitySets con_set(1, 32);
     DeltaConnectivitySet<ConnectivitySets> delta_con_set(32);
     delta_con_set.setConnectivitySet(&con_set);
@@ -866,8 +785,7 @@ TEST(ADeltaConnectivitySet, AddsSomeBlocksToConnectivitySet)
     verify(delta_con_set, 32, { 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 29, 30, 31 });
 }
 
-TEST(ADeltaConnectivitySet, RemovesSomeBlocksFromConnectivitySet)
-{
+TEST(ADeltaConnectivitySet, RemovesSomeBlocksFromConnectivitySet) {
     ConnectivitySets con_set(1, 32);
     DeltaConnectivitySet<ConnectivitySets> delta_con_set(32);
     delta_con_set.setConnectivitySet(&con_set);
@@ -878,8 +796,7 @@ TEST(ADeltaConnectivitySet, RemovesSomeBlocksFromConnectivitySet)
     verify(delta_con_set, 32, { 9, 10, 14, 15, 16, 17, 18 });
 }
 
-TEST(ADeltaConnectivitySet, AddAndRemovesSomeBlocksFromConnectivitySet)
-{
+TEST(ADeltaConnectivitySet, AddAndRemovesSomeBlocksFromConnectivitySet) {
     ConnectivitySets con_set(1, 32);
     DeltaConnectivitySet<ConnectivitySets> delta_con_set(32);
     delta_con_set.setConnectivitySet(&con_set);

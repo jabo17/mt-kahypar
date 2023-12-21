@@ -38,8 +38,7 @@
 using namespace mt_kahypar;
 namespace po = boost::program_options;
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     std::string graph_filename;
     std::string hgr_filename;
 
@@ -71,25 +70,20 @@ int main(int argc, char *argv[])
 
     // Write header
     out_stream << num_edges << " " << num_nodes << " ";
-    if(hyperedges_weight.empty() && hypernodes_weight.empty())
-    {
+    if(hyperedges_weight.empty() && hypernodes_weight.empty()) {
         out_stream << "0" /* Unweighted */ << std::endl;
-    }
-    else
-    {
+    } else {
         out_stream << (hypernodes_weight.empty() ? "0" : "1");
         out_stream << (hyperedges_weight.empty() ? "0" : "1") << std::endl;
     }
 
     // Write hyperedges
-    for(size_t i = 0; i < hyperedges.size(); ++i)
-    {
-        const auto &pins = hyperedges[i];
+    for(size_t i = 0; i < hyperedges.size(); ++i) {
+        const auto& pins = hyperedges[i];
         ALWAYS_ASSERT(pins.size() == 2);
         HypernodeID u = pins[0] + 1;
         HypernodeID v = pins[1] + 1;
-        if(hyperedges_weight.size() > 0)
-        {
+        if(hyperedges_weight.size() > 0) {
             out_stream << " " << hyperedges_weight[i];
         }
         out_stream << u << " " << v;
@@ -97,8 +91,7 @@ int main(int argc, char *argv[])
     }
 
     // Write node weights
-    for(HypernodeWeight weight : hypernodes_weight)
-    {
+    for(HypernodeWeight weight : hypernodes_weight) {
         out_stream << weight << std::endl;
     }
 

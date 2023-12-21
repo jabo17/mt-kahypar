@@ -40,12 +40,10 @@ namespace mt_kahypar {
 
 namespace {
 template <typename Hypergraph>
-size_t size_of_edge_sync()
-{
+size_t size_of_edge_sync() {
     const bool is_graph =
         Hypergraph::TYPE == STATIC_GRAPH || Hypergraph::TYPE == DYNAMIC_GRAPH;
-    if(is_graph)
-    {
+    if(is_graph) {
         return StaticPartitionedGraph::SIZE_OF_EDGE_LOCK;
     }
     return 0;
@@ -53,35 +51,25 @@ size_t size_of_edge_sync()
 }
 
 void register_memory_pool(const mt_kahypar_hypergraph_t hypergraph,
-                          const Context &context)
-{
-    if(hypergraph.type == STATIC_GRAPH)
-    {
+                          const Context& context) {
+    if(hypergraph.type == STATIC_GRAPH) {
         register_memory_pool(utils::cast_const<ds::StaticGraph>(hypergraph), context);
-    }
-    else if(hypergraph.type == DYNAMIC_GRAPH)
-    {
+    } else if(hypergraph.type == DYNAMIC_GRAPH) {
         register_memory_pool(utils::cast_const<ds::DynamicGraph>(hypergraph), context);
-    }
-    else if(hypergraph.type == STATIC_HYPERGRAPH)
-    {
+    } else if(hypergraph.type == STATIC_HYPERGRAPH) {
         register_memory_pool(utils::cast_const<ds::StaticHypergraph>(hypergraph),
                              context);
-    }
-    else if(hypergraph.type == DYNAMIC_HYPERGRAPH)
-    {
+    } else if(hypergraph.type == DYNAMIC_HYPERGRAPH) {
         register_memory_pool(utils::cast_const<ds::DynamicHypergraph>(hypergraph),
                              context);
     }
 }
 
 template <typename Hypergraph>
-void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
-{
+void register_memory_pool(const Hypergraph& hypergraph, const Context& context) {
 
     if(context.partition.mode == Mode::direct ||
-       context.partition.mode == Mode::deep_multilevel)
-    {
+       context.partition.mode == Mode::deep_multilevel) {
 
         // ########## Preprocessing Memory ##########
 
@@ -89,10 +77,9 @@ void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
         const HyperedgeID num_hyperedges = hypergraph.initialNumEdges();
         const HypernodeID num_pins = hypergraph.initialNumPins();
 
-        auto &pool = parallel::MemoryPool::instance();
+        auto& pool = parallel::MemoryPool::instance();
 
-        if(context.preprocessing.use_community_detection)
-        {
+        if(context.preprocessing.use_community_detection) {
             const bool is_graph = hypergraph.maxEdgeSize() == 2;
             const size_t num_star_expansion_nodes =
                 num_hypernodes + (is_graph ? 0 : num_hyperedges);
@@ -107,8 +94,7 @@ void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
             pool.register_memory_chunk("Preprocessing", "node_volumes",
                                        num_star_expansion_nodes, sizeof(ArcWeight));
 
-            if(!context.preprocessing.community_detection.low_memory_contraction)
-            {
+            if(!context.preprocessing.community_detection.low_memory_contraction) {
                 pool.register_memory_chunk(
                     "Preprocessing", "tmp_indices", num_star_expansion_nodes + 1,
                     sizeof(parallel::IntegralAtomicWrapper<size_t>));
@@ -128,10 +114,8 @@ void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
         // ########## Coarsening Memory ##########
 
         pool.register_memory_group("Coarsening", 2);
-        if(!context.isNLevelPartitioning())
-        {
-            if(Hypergraph::is_graph)
-            {
+        if(!context.isNLevelPartitioning()) {
+            if(Hypergraph::is_graph) {
                 pool.register_memory_chunk("Coarsening", "mapping", num_hypernodes,
                                            sizeof(HypernodeID));
                 pool.register_memory_chunk("Coarsening", "tmp_nodes", num_hypernodes,
@@ -148,9 +132,7 @@ void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
                                            Hypergraph::SIZE_OF_HYPEREDGE);
                 pool.register_memory_chunk("Coarsening", "edge_id_mapping",
                                            num_hyperedges / 2, sizeof(HyperedgeID));
-            }
-            else
-            {
+            } else {
                 pool.register_memory_chunk("Coarsening", "mapping", num_hypernodes,
                                            sizeof(size_t));
                 pool.register_memory_chunk("Coarsening", "tmp_hypernodes", num_hypernodes,
@@ -180,33 +162,26 @@ void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
         pool.register_memory_chunk("Refinement", "part_ids", num_hypernodes,
                                    sizeof(PartitionID));
 
-        if(Hypergraph::is_graph)
-        {
+        if(Hypergraph::is_graph) {
             pool.register_memory_chunk("Refinement", "edge_sync", num_hyperedges,
                                        size_of_edge_sync<Hypergraph>());
             pool.register_memory_chunk("Refinement", "edge_locks", num_hyperedges,
                                        sizeof(SpinLock));
-            if(context.refinement.fm.algorithm != FMAlgorithm::do_nothing)
-            {
+            if(context.refinement.fm.algorithm != FMAlgorithm::do_nothing) {
                 pool.register_memory_chunk("Refinement", "incident_weight_in_part",
                                            static_cast<size_t>(num_hypernodes) *
                                                (context.partition.k + 1),
                                            sizeof(CAtomic<HyperedgeWeight>));
             }
-        }
-        else
-        {
+        } else {
             const HypernodeID max_he_size = hypergraph.maxEdgeSize();
-            if(context.partition.preset_type == PresetType::large_k)
-            {
+            if(context.partition.preset_type == PresetType::large_k) {
                 pool.register_memory_chunk(
                     "Refinement", "pin_count_in_part",
                     ds::SparsePinCounts::num_elements(num_hyperedges, context.partition.k,
                                                       max_he_size),
                     sizeof(ds::SparsePinCounts::Value));
-            }
-            else
-            {
+            } else {
                 pool.register_memory_chunk(
                     "Refinement", "pin_count_in_part",
                     ds::PinCountInPart::num_elements(num_hyperedges, context.partition.k,
@@ -217,11 +192,9 @@ void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
                                                num_hyperedges, context.partition.k),
                                            sizeof(ds::ConnectivitySets::UnsafeBlock));
             }
-            if(context.refinement.fm.algorithm != FMAlgorithm::do_nothing)
-            {
+            if(context.refinement.fm.algorithm != FMAlgorithm::do_nothing) {
                 if(context.partition.objective == Objective::steiner_tree &&
-                   !context.mapping.use_two_phase_approach)
-                {
+                   !context.mapping.use_two_phase_approach) {
                     pool.register_memory_chunk("Refinement", "gain_cache",
                                                static_cast<size_t>(num_hypernodes) *
                                                    (context.partition.k),
@@ -230,9 +203,7 @@ void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
                         "Refinement", "num_incident_edges_of_block",
                         static_cast<size_t>(num_hypernodes) * context.partition.k,
                         sizeof(CAtomic<HyperedgeID>));
-                }
-                else
-                {
+                } else {
                     pool.register_memory_chunk("Refinement", "gain_cache",
                                                static_cast<size_t>(num_hypernodes) *
                                                    (context.partition.k + 1),
@@ -244,7 +215,7 @@ void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
         }
 
         // Allocate Memory
-        utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+        utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
         timer.start_timer("memory_pool_allocation", "Memory Pool Allocation");
         pool.allocate_memory_chunks();
         timer.stop_timer("memory_pool_allocation");
@@ -253,7 +224,7 @@ void register_memory_pool(const Hypergraph &hypergraph, const Context &context)
 
 namespace {
 #define REGISTER_MEMORY_POOL(X)                                                          \
-    void register_memory_pool(const X &hypergraph, const Context &context)
+    void register_memory_pool(const X& hypergraph, const Context& context)
 }
 
 INSTANTIATE_FUNC_WITH_HYPERGRAPHS(REGISTER_MEMORY_POOL)

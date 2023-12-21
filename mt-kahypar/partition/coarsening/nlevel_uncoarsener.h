@@ -60,18 +60,16 @@ class NLevelUncoarsener : public IUncoarsener<TypeTraits>,
 
     struct NLevelStats
     {
-        explicit NLevelStats(const Context &context) :
+        explicit NLevelStats(const Context& context) :
             utility_id(context.utility_id), num_batches(0), total_batch_sizes(0),
-            current_number_of_nodes(0), min_num_border_vertices(0)
-        {
+            current_number_of_nodes(0), min_num_border_vertices(0) {
             min_num_border_vertices =
                 std::max(context.refinement.max_batch_size,
                          context.shared_memory.num_threads *
                              context.refinement.min_border_vertices_per_thread);
         }
 
-        ~NLevelStats()
-        {
+        ~NLevelStats() {
             double avg_batch_size = static_cast<double>(total_batch_sizes) / num_batches;
             utils::Utilities::instance()
                 .getStats(utility_id)
@@ -90,8 +88,8 @@ class NLevelUncoarsener : public IUncoarsener<TypeTraits>,
     };
 
   public:
-    NLevelUncoarsener(Hypergraph &hypergraph, const Context &context,
-                      UncoarseningData<TypeTraits> &uncoarseningData,
+    NLevelUncoarsener(Hypergraph& hypergraph, const Context& context,
+                      UncoarseningData<TypeTraits>& uncoarseningData,
                       const TargetGraph *target_graph) :
         Base(hypergraph, context, uncoarseningData),
         _target_graph(target_graph), _hierarchy(), _tmp_refinement_nodes(),
@@ -99,14 +97,12 @@ class NLevelUncoarsener : public IUncoarsener<TypeTraits>,
         _current_metrics(), _progress(hypergraph.initialNumNodes(), 0, false),
         _is_timer_disabled(false),
         _force_measure_timings(context.partition.measure_detailed_uncontraction_timings &&
-                               context.type == ContextType::main)
-    {
-    }
+                               context.type == ContextType::main) {}
 
-    NLevelUncoarsener(const NLevelUncoarsener &) = delete;
-    NLevelUncoarsener(NLevelUncoarsener &&) = delete;
-    NLevelUncoarsener &operator=(const NLevelUncoarsener &) = delete;
-    NLevelUncoarsener &operator=(NLevelUncoarsener &&) = delete;
+    NLevelUncoarsener(const NLevelUncoarsener&) = delete;
+    NLevelUncoarsener(NLevelUncoarsener&&) = delete;
+    NLevelUncoarsener& operator=(const NLevelUncoarsener&) = delete;
+    NLevelUncoarsener& operator=(NLevelUncoarsener&&) = delete;
 
   private:
     void initializeImpl() override;
@@ -125,15 +121,15 @@ class NLevelUncoarsener : public IUncoarsener<TypeTraits>,
 
     void updateMetricsImpl() override;
 
-    PartitionedHypergraph &currentPartitionedHypergraphImpl() override;
+    PartitionedHypergraph& currentPartitionedHypergraphImpl() override;
 
     HypernodeID currentNumberOfNodesImpl() const override;
 
-    PartitionedHypergraph &&movePartitionedHypergraphImpl() override;
+    PartitionedHypergraph&& movePartitionedHypergraphImpl() override;
 
-    void localizedRefine(PartitionedHypergraph &partitioned_hypergraph);
+    void localizedRefine(PartitionedHypergraph& partitioned_hypergraph);
 
-    void globalRefine(PartitionedHypergraph &partitioned_hypergraph,
+    void globalRefine(PartitionedHypergraph& partitioned_hypergraph,
                       const double time_limit);
 
     using Base::_context;

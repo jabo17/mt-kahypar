@@ -40,8 +40,7 @@ namespace ds {
 namespace QuadHeap {
 using EMaxHeap = ExclusiveHandleHeap<MaxHeap<int, int> >;
 
-TEST(APriorityQueue, ReturnsMax)
-{
+TEST(APriorityQueue, ReturnsMax) {
     EMaxHeap h(400);
     h.insert(3, 4);
     h.insert(2, 5);
@@ -54,8 +53,7 @@ TEST(APriorityQueue, ReturnsMax)
     ASSERT_TRUE(h.topKey() == 4);
 }
 
-TEST(APriorityQueue, IncreaseKeyWorks)
-{
+TEST(APriorityQueue, IncreaseKeyWorks) {
     EMaxHeap h(400);
     h.insert(3, 4);
     h.insert(2, 5);
@@ -67,8 +65,7 @@ TEST(APriorityQueue, IncreaseKeyWorks)
     ASSERT_TRUE(h.keyOf(1) == 500);
 }
 
-TEST(APriorityQueue, DecreaseKeyWorks)
-{
+TEST(APriorityQueue, DecreaseKeyWorks) {
     EMaxHeap h(400);
     h.insert(3, 42);
     h.insert(2, 54);
@@ -80,8 +77,7 @@ TEST(APriorityQueue, DecreaseKeyWorks)
     ASSERT_TRUE(h.keyOf(1) == 2);
 }
 
-TEST(APriorityQueue, AdjustKeyWorks)
-{
+TEST(APriorityQueue, AdjustKeyWorks) {
     EMaxHeap h(400);
     h.insert(3, 42);
     h.insert(2, 54);
@@ -95,8 +91,7 @@ TEST(APriorityQueue, AdjustKeyWorks)
     ASSERT_TRUE(h.keyOf(1) == 500000);
 }
 
-TEST(APriorityQueue, RemoveDoesRemove)
-{
+TEST(APriorityQueue, RemoveDoesRemove) {
     EMaxHeap h(400);
     h.insert(3, 42);
     h.insert(2, 54);
@@ -107,8 +102,7 @@ TEST(APriorityQueue, RemoveDoesRemove)
     ASSERT_FALSE(h.contains(2));
 }
 
-TEST(APriorityQueue, RemoveLeavesRestIntact)
-{
+TEST(APriorityQueue, RemoveLeavesRestIntact) {
     EMaxHeap h(400);
     h.insert(5, 10);
     h.insert(2, 11);
@@ -125,36 +119,31 @@ TEST(APriorityQueue, RemoveLeavesRestIntact)
     std::vector<int> expected_id_order = { 6, 7, 1, 5, 4, 0 };
     ASSERT_EQ(expected_id_order.size(), h.size());
     size_t i = 0;
-    while(!h.empty())
-    {
+    while(!h.empty()) {
         ASSERT_EQ(h.top(), expected_id_order[i++]);
         h.deleteTop();
     }
     ASSERT_TRUE(h.empty());
 }
 
-TEST(APriorityQueue, HeapSort)
-{
+TEST(APriorityQueue, HeapSort) {
     size_t n = 50000;
     EMaxHeap h(n);
     std::vector<std::pair<int, int> > kv_pairs;
     std::mt19937 rng(420);
     std::uniform_int_distribution dist(0, 1000000);
-    for(size_t i = 0; i < n; ++i)
-    {
+    for(size_t i = 0; i < n; ++i) {
         kv_pairs.emplace_back(dist(rng), i);
     }
     std::shuffle(kv_pairs.begin(), kv_pairs.end(), rng);
 
-    for(auto &x : kv_pairs)
-    {
+    for(auto& x : kv_pairs) {
         h.insert(x.second, x.first);
     }
 
     std::sort(kv_pairs.begin(), kv_pairs.end(), std::greater<std::pair<int, int> >());
     size_t i = 0;
-    while(!h.empty())
-    {
+    while(!h.empty()) {
         ASSERT_EQ(h.topKey(), kv_pairs[i].first);
         i++;
         h.deleteTop();
@@ -166,8 +155,7 @@ TEST(APriorityQueue, HeapSort)
 namespace BinaryHeap {
 using EMaxHeap = ExclusiveHandleHeap<Heap<int, int, std::less<int>, 2> >;
 
-TEST(APriorityQueue, ReturnsMax)
-{
+TEST(APriorityQueue, ReturnsMax) {
     EMaxHeap h(400);
     h.insert(3, 4);
     h.insert(2, 5);
@@ -179,8 +167,7 @@ TEST(APriorityQueue, ReturnsMax)
     ASSERT_EQ(h.topKey(), 4);
 }
 
-TEST(APriorityQueue, IncreaseKeyWorks)
-{
+TEST(APriorityQueue, IncreaseKeyWorks) {
     EMaxHeap h(400);
     h.insert(3, 4);
     h.insert(2, 5);
@@ -191,8 +178,7 @@ TEST(APriorityQueue, IncreaseKeyWorks)
     ASSERT_TRUE(h.keyOf(1) == 500);
 }
 
-TEST(APriorityQueue, DecreaseKeyWorks)
-{
+TEST(APriorityQueue, DecreaseKeyWorks) {
     EMaxHeap h(400);
     h.insert(3, 42);
     h.insert(2, 54);
@@ -203,8 +189,7 @@ TEST(APriorityQueue, DecreaseKeyWorks)
     ASSERT_EQ(h.keyOf(1), 2);
 }
 
-TEST(APriorityQueue, AdjustKeyWorks)
-{
+TEST(APriorityQueue, AdjustKeyWorks) {
     EMaxHeap h(400);
     h.insert(3, 42);
     h.insert(2, 54);
@@ -218,8 +203,7 @@ TEST(APriorityQueue, AdjustKeyWorks)
     ASSERT_TRUE(h.keyOf(1) == 500000);
 }
 
-TEST(APriorityQueue, RemoveDoesRemove)
-{
+TEST(APriorityQueue, RemoveDoesRemove) {
     EMaxHeap h(400);
     h.insert(3, 42);
     h.insert(2, 54);
@@ -230,8 +214,7 @@ TEST(APriorityQueue, RemoveDoesRemove)
     ASSERT_FALSE(h.contains(2));
 }
 
-TEST(APriorityQueue, RemoveLeavesRestIntact)
-{
+TEST(APriorityQueue, RemoveLeavesRestIntact) {
     EMaxHeap h(400);
     h.insert(5, 10);
     h.insert(2, 11);
@@ -248,36 +231,31 @@ TEST(APriorityQueue, RemoveLeavesRestIntact)
     std::vector<int> expected_id_order = { 6, 7, 1, 5, 4, 0 };
     ASSERT_EQ(expected_id_order.size(), h.size());
     size_t i = 0;
-    while(!h.empty())
-    {
+    while(!h.empty()) {
         ASSERT_EQ(h.top(), expected_id_order[i++]);
         h.deleteTop();
     }
     ASSERT_TRUE(h.empty());
 }
 
-TEST(APriorityQueue, HeapSort)
-{
+TEST(APriorityQueue, HeapSort) {
     size_t n = 50000;
     EMaxHeap h(n);
     std::vector<std::pair<int, int> > kv_pairs;
     std::mt19937 rng(420);
     std::uniform_int_distribution dist(0, 1000000);
-    for(size_t i = 0; i < n; ++i)
-    {
+    for(size_t i = 0; i < n; ++i) {
         kv_pairs.emplace_back(dist(rng), i);
     }
     std::shuffle(kv_pairs.begin(), kv_pairs.end(), rng);
 
-    for(auto &x : kv_pairs)
-    {
+    for(auto& x : kv_pairs) {
         h.insert(x.second, x.first);
     }
 
     std::sort(kv_pairs.begin(), kv_pairs.end(), std::greater<std::pair<int, int> >());
     size_t i = 0;
-    while(!h.empty())
-    {
+    while(!h.empty()) {
         ASSERT_EQ(h.topKey(), kv_pairs[i].first);
         i++;
         h.deleteTop();

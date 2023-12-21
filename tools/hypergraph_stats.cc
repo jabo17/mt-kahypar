@@ -64,11 +64,9 @@ struct Statistic
 };
 
 template <typename T>
-Statistic createStats(const std::vector<T> &vec, const double avg, const double stdev)
-{
+Statistic createStats(const std::vector<T>& vec, const double avg, const double stdev) {
     Statistic stats;
-    if(!vec.empty())
-    {
+    if(!vec.empty()) {
         const auto quartiles = kahypar::math::firstAndThirdQuartile(vec);
         stats.min = vec.front();
         stats.q1 = quartiles.first;
@@ -82,8 +80,7 @@ Statistic createStats(const std::vector<T> &vec, const double avg, const double 
     return stats;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     Context context;
 
     po::options_description options("Options");
@@ -95,13 +92,10 @@ int main(int argc, char *argv[])
         "input-file-format",
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&](const std::string &s) {
-                if(s == "hmetis")
-                {
+            ->notifier([&](const std::string& s) {
+                if(s == "hmetis") {
                     context.partition.file_format = FileFormat::hMetis;
-                }
-                else if(s == "metis")
-                {
+                } else if(s == "metis") {
                     context.partition.file_format = FileFormat::Metis;
                 }
             }),
@@ -117,7 +111,7 @@ int main(int argc, char *argv[])
     mt_kahypar_hypergraph_t hypergraph = mt_kahypar::io::readInputFile(
         context.partition.graph_filename, PresetType::default_preset,
         InstanceType::hypergraph, context.partition.file_format, true);
-    Hypergraph &hg = utils::cast<Hypergraph>(hypergraph);
+    Hypergraph& hg = utils::cast<Hypergraph>(hypergraph);
 
     std::vector<HypernodeID> he_sizes;
     std::vector<HyperedgeWeight> he_weights;
@@ -131,7 +125,7 @@ int main(int argc, char *argv[])
 
     HypernodeID num_hypernodes = hg.initialNumNodes();
     const double avg_hn_degree = utils::avgHypernodeDegree(hg);
-    hg.doParallelForAllNodes([&](const HypernodeID &hn) {
+    hg.doParallelForAllNodes([&](const HypernodeID& hn) {
         hn_degrees[hn] = hg.nodeDegree(hn);
         hn_weights[hn] = hg.nodeWeight(hn);
     });
@@ -144,11 +138,10 @@ int main(int argc, char *argv[])
     HyperedgeID num_hyperedges = hg.initialNumEdges();
     const double avg_he_size = utils::avgHyperedgeDegree(hg);
     tbb::enumerable_thread_specific<size_t> single_pin_hes(0);
-    hg.doParallelForAllEdges([&](const HyperedgeID &he) {
+    hg.doParallelForAllEdges([&](const HyperedgeID& he) {
         he_sizes[he] = hg.edgeSize(he);
         he_weights[he] = hg.edgeWeight(he);
-        if(hg.edgeSize(he) == 1)
-        {
+        if(hg.edgeSize(he) == 1) {
             ++single_pin_hes.local();
         }
     });
@@ -159,9 +152,8 @@ int main(int argc, char *argv[])
         utils::parallel_stdev(he_weights, avg_he_weight, num_hyperedges);
 
     tbb::enumerable_thread_specific<size_t> graph_edge_count(0);
-    hg.doParallelForAllEdges([&](const HyperedgeID &he) {
-        if(hg.edgeSize(he) == 2)
-        {
+    hg.doParallelForAllEdges([&](const HyperedgeID& he) {
+        if(hg.edgeSize(he) == 2) {
             graph_edge_count.local() += 1;
         }
     });
@@ -176,8 +168,7 @@ int main(int argc, char *argv[])
             total_he_weight = tbb::parallel_reduce(
                 tbb::blocked_range<size_t>(0, he_weights.size()), 0,
                 [&](tbb::blocked_range<size_t> r, HyperedgeWeight running_total) {
-                    for(size_t i = r.begin(); i < r.end(); ++i)
-                    {
+                    for(size_t i = r.begin(); i < r.end(); ++i) {
                         running_total += he_weights[i];
                     }
                     return running_total;

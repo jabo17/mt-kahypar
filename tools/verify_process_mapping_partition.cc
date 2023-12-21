@@ -51,8 +51,7 @@ using Graph = ds::StaticGraph;
 using Hypergraph = ds::StaticHypergraph;
 using PartitionedHypergraph = ds::PartitionedHypergraph<Hypergraph, ds::ConnectivityInfo>;
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     Context context;
     po::options_description options("Options");
     options.add_options()("hypergraph,h",
@@ -72,13 +71,10 @@ int main(int argc, char *argv[])
         "input-file-format",
         po::value<std::string>()
             ->value_name("<string>")
-            ->notifier([&](const std::string &s) {
-                if(s == "hmetis")
-                {
+            ->notifier([&](const std::string& s) {
+                if(s == "hmetis") {
                     context.partition.file_format = FileFormat::hMetis;
-                }
-                else if(s == "metis")
-                {
+                } else if(s == "metis") {
                     context.partition.file_format = FileFormat::Metis;
                 }
             }),
@@ -116,7 +112,7 @@ int main(int argc, char *argv[])
     std::vector<PartitionID> partition;
     io::readPartitionFile(context.partition.graph_partition_filename, partition);
     PartitionedHypergraph partitioned_hg(context.partition.k, hg, parallel_tag_t{});
-    partitioned_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
+    partitioned_hg.doParallelForAllNodes([&](const HypernodeID& hn) {
         partitioned_hg.setOnlyNodePart(hn, partition[hn]);
     });
     partitioned_hg.initializePartition();
@@ -128,8 +124,7 @@ int main(int argc, char *argv[])
                                               static_cast<size_t>(hg.maxEdgeSize())));
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
 
-    if(context.partition.verbose_output)
-    {
+    if(context.partition.verbose_output) {
         std::chrono::duration<double> elapsed_seconds(end - start);
         io::printPartitioningResults(partitioned_hg, context, elapsed_seconds);
     }

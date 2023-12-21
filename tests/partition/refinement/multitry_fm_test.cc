@@ -60,8 +60,7 @@ class MultiTryFMTest : public Test
 
     MultiTryFMTest() :
         hypergraph(), partitioned_hypergraph(), context(), gain_cache(), refiner(nullptr),
-        metrics()
-    {
+        metrics() {
         TBBInitializer::instance(std::thread::hardware_concurrency());
         context.partition.graph_filename = "../tests/instances/contracted_ibm01.hgr";
         context.partition.graph_community_filename =
@@ -90,8 +89,7 @@ class MultiTryFMTest : public Test
 
         context.refinement.fm.algorithm = Config::ALG;
         context.refinement.fm.multitry_rounds = 10;
-        if(context.refinement.fm.algorithm == FMAlgorithm::unconstrained_fm)
-        {
+        if(context.refinement.fm.algorithm == FMAlgorithm::unconstrained_fm) {
             context.refinement.fm.unconstrained_rounds = 10;
             context.refinement.fm.imbalance_penalty_min = 0.5;
             context.refinement.fm.imbalance_penalty_max = 0.5;
@@ -123,8 +121,7 @@ class MultiTryFMTest : public Test
         refiner->initialize(phg);
     }
 
-    void initialPartition()
-    {
+    void initialPartition() {
         Context ip_context(context);
         ip_context.refinement.label_propagation.algorithm =
             LabelPropagationAlgorithm::do_nothing;
@@ -184,8 +181,7 @@ typedef ::testing::Types<
 
 TYPED_TEST_CASE(MultiTryFMTest, TestConfigs);
 
-TYPED_TEST(MultiTryFMTest, UpdatesImbalanceCorrectly)
-{
+TYPED_TEST(MultiTryFMTest, UpdatesImbalanceCorrectly) {
     mt_kahypar_partitioned_hypergraph_t phg =
         utils::partitioned_hg_cast(this->partitioned_hypergraph);
     this->refiner->refine(phg, {}, this->metrics, std::numeric_limits<double>::max());
@@ -193,16 +189,14 @@ TYPED_TEST(MultiTryFMTest, UpdatesImbalanceCorrectly)
                      this->metrics.imbalance);
 }
 
-TYPED_TEST(MultiTryFMTest, DoesNotViolateBalanceConstraint)
-{
+TYPED_TEST(MultiTryFMTest, DoesNotViolateBalanceConstraint) {
     mt_kahypar_partitioned_hypergraph_t phg =
         utils::partitioned_hg_cast(this->partitioned_hypergraph);
     this->refiner->refine(phg, {}, this->metrics, std::numeric_limits<double>::max());
     ASSERT_LE(this->metrics.imbalance, this->context.partition.epsilon);
 }
 
-TYPED_TEST(MultiTryFMTest, UpdatesMetricsCorrectly)
-{
+TYPED_TEST(MultiTryFMTest, UpdatesMetricsCorrectly) {
     mt_kahypar_partitioned_hypergraph_t phg =
         utils::partitioned_hg_cast(this->partitioned_hypergraph);
     this->refiner->refine(phg, {}, this->metrics, std::numeric_limits<double>::max());
@@ -211,8 +205,7 @@ TYPED_TEST(MultiTryFMTest, UpdatesMetricsCorrectly)
         this->metrics.quality);
 }
 
-TYPED_TEST(MultiTryFMTest, DoesNotWorsenSolutionQuality)
-{
+TYPED_TEST(MultiTryFMTest, DoesNotWorsenSolutionQuality) {
     HyperedgeWeight objective_before =
         metrics::quality(this->partitioned_hypergraph, this->context.partition.objective);
     mt_kahypar_partitioned_hypergraph_t phg =
@@ -221,8 +214,7 @@ TYPED_TEST(MultiTryFMTest, DoesNotWorsenSolutionQuality)
     ASSERT_LE(this->metrics.quality, objective_before);
 }
 
-TYPED_TEST(MultiTryFMTest, AlsoWorksWithNonDefaultFeatures)
-{
+TYPED_TEST(MultiTryFMTest, AlsoWorksWithNonDefaultFeatures) {
     this->context.refinement.fm.obey_minimal_parallelism = true;
     this->context.refinement.fm.rollback_parallel = false;
     HyperedgeWeight objective_before =
@@ -239,11 +231,9 @@ TYPED_TEST(MultiTryFMTest, AlsoWorksWithNonDefaultFeatures)
                      this->metrics.imbalance);
 }
 
-TYPED_TEST(MultiTryFMTest, WorksWithRefinementNodes)
-{
+TYPED_TEST(MultiTryFMTest, WorksWithRefinementNodes) {
     parallel::scalable_vector<HypernodeID> refinement_nodes;
-    for(HypernodeID u = 0; u < this->partitioned_hypergraph.initialNumNodes(); ++u)
-    {
+    for(HypernodeID u = 0; u < this->partitioned_hypergraph.initialNumNodes(); ++u) {
         refinement_nodes.push_back(u);
     }
     HyperedgeWeight objective_before =
@@ -267,8 +257,7 @@ TYPED_TEST(MultiTryFMTest, WorksWithRefinementNodes)
     std::cout.rdbuf(old); // and reset again
 }
 
-TYPED_TEST(MultiTryFMTest, ChangesTheNumberOfBlocks)
-{
+TYPED_TEST(MultiTryFMTest, ChangesTheNumberOfBlocks) {
     using PartitionedHypergraph = typename TestFixture::PartitionedHypergraph;
     HyperedgeWeight objective_before =
         metrics::quality(this->partitioned_hypergraph, this->context.partition.objective);
@@ -306,8 +295,7 @@ TYPED_TEST(MultiTryFMTest, ChangesTheNumberOfBlocks)
               this->metrics.quality);
 }
 
-TEST(UnconstrainedFMDataTest, CorrectlyComputesPenalty)
-{
+TEST(UnconstrainedFMDataTest, CorrectlyComputesPenalty) {
     using TypeTraits = StaticHypergraphTypeTraits;
     using Hypergraph = typename TypeTraits::Hypergraph;
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;

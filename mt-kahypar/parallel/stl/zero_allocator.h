@@ -41,12 +41,9 @@ class zero_allocator : public tbb::tbb_allocator<T>
 
     zero_allocator() = default;
     template <typename U>
-    explicit zero_allocator(const U &) noexcept
-    {
-    }
+    explicit zero_allocator(const U&) noexcept {}
 
-    T *allocate(std::size_t n)
-    {
+    T *allocate(std::size_t n) {
         T *ptr = tbb::tbb_allocator<T>::allocate(n);
         std::memset(static_cast<void *>(ptr), 0, n * sizeof(value_type));
         return ptr;

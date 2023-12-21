@@ -34,17 +34,14 @@
 
 namespace mt_kahypar {
 
-std::ostream &operator<<(std::ostream &str, const PartitioningParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const PartitioningParameters& params) {
     str << "Partitioning Parameters:" << std::endl;
     str << "  Hypergraph:                         " << params.graph_filename << std::endl;
-    if(params.fixed_vertex_filename != "")
-    {
+    if(params.fixed_vertex_filename != "") {
         str << "  Fixed Vertex File:                  " << params.fixed_vertex_filename
             << std::endl;
     }
-    if(params.write_partition_file)
-    {
+    if(params.write_partition_file) {
         str << "  Partition File:                     " << params.graph_partition_filename
             << std::endl;
     }
@@ -52,13 +49,11 @@ std::ostream &operator<<(std::ostream &str, const PartitioningParameters &params
     str << "  Objective:                          " << params.objective << std::endl;
     str << "  Gain Policy:                        " << params.gain_policy << std::endl;
     str << "  Input File Format:                  " << params.file_format << std::endl;
-    if(params.instance_type != InstanceType::UNDEFINED)
-    {
+    if(params.instance_type != InstanceType::UNDEFINED) {
         str << "  Instance Type:                      " << params.instance_type
             << std::endl;
     }
-    if(params.preset_type != PresetType::UNDEFINED)
-    {
+    if(params.preset_type != PresetType::UNDEFINED) {
         str << "  Preset Type:                        " << params.preset_type
             << std::endl;
     }
@@ -71,25 +66,21 @@ std::ostream &operator<<(std::ostream &str, const PartitioningParameters &params
         << params.ignore_hyperedge_size_threshold << std::endl;
     str << "  Large HE Size Threshold:            "
         << params.large_hyperedge_size_threshold << std::endl;
-    if(params.use_individual_part_weights)
-    {
+    if(params.use_individual_part_weights) {
         str << "  Individual Part Weights:            ";
-        for(const HypernodeWeight &w : params.max_part_weights)
-        {
+        for(const HypernodeWeight& w : params.max_part_weights) {
             str << w << " ";
         }
         str << std::endl;
     }
-    if(params.mode == Mode::deep_multilevel)
-    {
+    if(params.mode == Mode::deep_multilevel) {
         str << "  Perform Parallel Recursion:         " << std::boolalpha
             << params.perform_parallel_recursion_in_deep_multilevel << std::endl;
     }
     return str;
 }
 
-std::ostream &operator<<(std::ostream &str, const CommunityDetectionParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const CommunityDetectionParameters& params) {
     str << "  Community Detection Parameters:" << std::endl;
     str << "    Edge Weight Function:                " << params.edge_weight_function
         << std::endl;
@@ -104,22 +95,19 @@ std::ostream &operator<<(std::ostream &str, const CommunityDetectionParameters &
     return str;
 }
 
-std::ostream &operator<<(std::ostream &str, const PreprocessingParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const PreprocessingParameters& params) {
     str << "Preprocessing Parameters:" << std::endl;
     str << "  Use Community Detection:            " << std::boolalpha
         << params.use_community_detection << std::endl;
     str << "  Disable C. D. for Mesh Graphs:      " << std::boolalpha
         << params.disable_community_detection_for_mesh_graphs << std::endl;
-    if(params.use_community_detection)
-    {
+    if(params.use_community_detection) {
         str << std::endl << params.community_detection;
     }
     return str;
 }
 
-std::ostream &operator<<(std::ostream &str, const RatingParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const RatingParameters& params) {
     str << "  Rating Parameters:" << std::endl;
     str << "    Rating Function:                  " << params.rating_function
         << std::endl;
@@ -130,8 +118,7 @@ std::ostream &operator<<(std::ostream &str, const RatingParameters &params)
     return str;
 }
 
-std::ostream &operator<<(std::ostream &str, const CoarseningParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const CoarseningParameters& params) {
     str << "Coarsening Parameters:" << std::endl;
     str << "  Algorithm:                          " << params.algorithm << std::endl;
     str << "  Use Adaptive Edge Size:             " << std::boolalpha
@@ -158,12 +145,10 @@ std::ostream &operator<<(std::ostream &str, const CoarseningParameters &params)
     return str;
 }
 
-std::ostream &operator<<(std::ostream &str, const LabelPropagationParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const LabelPropagationParameters& params) {
     str << "  Label Propagation Parameters:" << std::endl;
     str << "    Algorithm:                        " << params.algorithm << std::endl;
-    if(params.algorithm != LabelPropagationAlgorithm::do_nothing)
-    {
+    if(params.algorithm != LabelPropagationAlgorithm::do_nothing) {
         str << "    Maximum Iterations:               " << params.maximum_iterations
             << std::endl;
         str << "    Unconstrained:                    " << std::boolalpha
@@ -178,12 +163,10 @@ std::ostream &operator<<(std::ostream &str, const LabelPropagationParameters &pa
     return str;
 }
 
-std::ostream &operator<<(std::ostream &out, const FMParameters &params)
-{
+std::ostream& operator<<(std::ostream& out, const FMParameters& params) {
     out << "  FM Parameters: \n";
     out << "    Algorithm:                        " << params.algorithm << std::endl;
-    if(params.algorithm != FMAlgorithm::do_nothing)
-    {
+    if(params.algorithm != FMAlgorithm::do_nothing) {
         out << "    Multitry Rounds:                  " << params.multitry_rounds
             << std::endl;
         out << "    Parallel Global Rollbacks:        " << std::boolalpha
@@ -203,8 +186,7 @@ std::ostream &operator<<(std::ostream &out, const FMParameters &params)
         out << "    Time Limit Factor:                " << params.time_limit_factor
             << std::endl;
     }
-    if(params.algorithm == FMAlgorithm::unconstrained_fm)
-    {
+    if(params.algorithm == FMAlgorithm::unconstrained_fm) {
         out << "    Unconstrained Rounds:             " << params.unconstrained_rounds
             << std::endl;
         out << "    Threshold Border Node Inclusion:  "
@@ -221,8 +203,7 @@ std::ostream &operator<<(std::ostream &out, const FMParameters &params)
             << params.unconstrained_min_improvement << std::endl;
         out << "    Activate Unc. Dynamically:        " << std::boolalpha
             << params.activate_unconstrained_dynamically << std::endl;
-        if(params.activate_unconstrained_dynamically)
-        {
+        if(params.activate_unconstrained_dynamically) {
             out << "    Penalty for Activation Test:      "
                 << params.penalty_for_activation_test << std::endl;
         }
@@ -231,10 +212,8 @@ std::ostream &operator<<(std::ostream &out, const FMParameters &params)
     return out;
 }
 
-std::ostream &operator<<(std::ostream &out, const NLevelGlobalFMParameters &params)
-{
-    if(params.use_global_fm)
-    {
+std::ostream& operator<<(std::ostream& out, const NLevelGlobalFMParameters& params) {
+    if(params.use_global_fm) {
         out << "  Boundary FM Parameters: \n";
         out << "    Refine Until No Improvement:      " << std::boolalpha
             << params.refine_until_no_improvement << std::endl;
@@ -246,12 +225,10 @@ std::ostream &operator<<(std::ostream &out, const NLevelGlobalFMParameters &para
     return out;
 }
 
-std::ostream &operator<<(std::ostream &out, const FlowParameters &params)
-{
+std::ostream& operator<<(std::ostream& out, const FlowParameters& params) {
     out << "  Flow Parameters: \n";
     out << "    Algorithm:                        " << params.algorithm << std::endl;
-    if(params.algorithm != FlowAlgorithm::do_nothing)
-    {
+    if(params.algorithm != FlowAlgorithm::do_nothing) {
         out << "    Flow Scaling:                     " << params.alpha << std::endl;
         out << "    Maximum Number of Pins:           " << params.max_num_pins
             << std::endl;
@@ -282,9 +259,8 @@ std::ostream &operator<<(std::ostream &out, const FlowParameters &params)
     return out;
 }
 
-std::ostream &operator<<(std::ostream &out,
-                         const DeterministicRefinementParameters &params)
-{
+std::ostream& operator<<(std::ostream& out,
+                         const DeterministicRefinementParameters& params) {
     out << "    Number of sub-rounds for Sync LP:  " << params.num_sub_rounds_sync_lp
         << std::endl;
     out << "    Use active node set:               " << std::boolalpha
@@ -292,8 +268,7 @@ std::ostream &operator<<(std::ostream &out,
     return out;
 }
 
-std::ostream &operator<<(std::ostream &str, const RefinementParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const RefinementParameters& params) {
     str << "Refinement Parameters:" << std::endl;
     str << "  Rebalancing Algorithm:              " << params.rebalancer << std::endl;
     str << "  Refine Until No Improvement:        " << std::boolalpha
@@ -305,23 +280,20 @@ std::ostream &operator<<(std::ostream &str, const RefinementParameters &params)
         << params.min_border_vertices_per_thread << std::endl;
     str << "\n" << params.label_propagation;
     str << "\n" << params.fm;
-    if(params.global_fm.use_global_fm)
-    {
+    if(params.global_fm.use_global_fm) {
         str << "\n" << params.global_fm;
     }
     str << "\n" << params.flows;
     return str;
 }
 
-std::ostream &operator<<(std::ostream &str, const InitialPartitioningParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const InitialPartitioningParameters& params) {
     str << "Initial Partitioning Parameters:" << std::endl;
     str << "  Initial Partitioning Mode:          " << params.mode << std::endl;
     str << "  Number of Runs:                     " << params.runs << std::endl;
     str << "  Use Adaptive IP Runs:               " << std::boolalpha
         << params.use_adaptive_ip_runs << std::endl;
-    if(params.use_adaptive_ip_runs)
-    {
+    if(params.use_adaptive_ip_runs) {
         str << "  Min Adaptive IP Runs:               " << params.min_adaptive_ip_runs
             << std::endl;
     }
@@ -340,8 +312,7 @@ std::ostream &operator<<(std::ostream &str, const InitialPartitioningParameters 
     return str;
 }
 
-std::ostream &operator<<(std::ostream &str, const MappingParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const MappingParameters& params) {
     str << "Mapping Parameters:                   " << std::endl;
     str << "  Target Graph File:                  " << params.target_graph_file
         << std::endl;
@@ -357,8 +328,7 @@ std::ostream &operator<<(std::ostream &str, const MappingParameters &params)
     return str;
 }
 
-std::ostream &operator<<(std::ostream &str, const SharedMemoryParameters &params)
-{
+std::ostream& operator<<(std::ostream& str, const SharedMemoryParameters& params) {
     str << "Shared Memory Parameters:             " << std::endl;
     str << "  Number of Threads:                  " << params.num_threads << std::endl;
     str << "  Number of used NUMA nodes:          "
@@ -370,22 +340,18 @@ std::ostream &operator<<(std::ostream &str, const SharedMemoryParameters &params
     return str;
 }
 
-bool Context::isNLevelPartitioning() const
-{
+bool Context::isNLevelPartitioning() const {
     return partition.partition_type == N_LEVEL_GRAPH_PARTITIONING ||
            partition.partition_type == N_LEVEL_HYPERGRAPH_PARTITIONING;
 }
 
-bool Context::forceGainCacheUpdates() const
-{
+bool Context::forceGainCacheUpdates() const {
     return isNLevelPartitioning() || partition.mode == Mode::deep_multilevel ||
            refinement.refine_until_no_improvement;
 }
 
-void Context::setupPartWeights(const HypernodeWeight total_hypergraph_weight)
-{
-    if(partition.use_individual_part_weights)
-    {
+void Context::setupPartWeights(const HypernodeWeight total_hypergraph_weight) {
+    if(partition.use_individual_part_weights) {
         ASSERT(static_cast<size_t>(partition.k) == partition.max_part_weights.size());
         const HypernodeWeight max_part_weights_sum = std::accumulate(
             partition.max_part_weights.cbegin(), partition.max_part_weights.cend(), 0);
@@ -393,15 +359,13 @@ void Context::setupPartWeights(const HypernodeWeight total_hypergraph_weight)
             total_hypergraph_weight / static_cast<double>(max_part_weights_sum);
         HypernodeWeight perfect_part_weights_sum = 0;
         partition.perfect_balance_part_weights.clear();
-        for(const HyperedgeWeight &part_weight : partition.max_part_weights)
-        {
+        for(const HyperedgeWeight& part_weight : partition.max_part_weights) {
             const HypernodeWeight perfect_weight = ceil(weight_fraction * part_weight);
             partition.perfect_balance_part_weights.push_back(perfect_weight);
             perfect_part_weights_sum += perfect_weight;
         }
 
-        if(max_part_weights_sum < total_hypergraph_weight)
-        {
+        if(max_part_weights_sum < total_hypergraph_weight) {
             throw InvalidInputException(
                 "Sum of individual part weights is less than the total hypergraph weight. "
                 "Finding a valid partition is not possible.\n"
@@ -410,9 +374,7 @@ void Context::setupPartWeights(const HypernodeWeight total_hypergraph_weight)
                 "\n"
                 "Sum of part weights:     " +
                 std::to_string(max_part_weights_sum));
-        }
-        else
-        {
+        } else {
             // To avoid rounding issues, epsilon should be calculated using the sum of the
             // perfect part weights instead of the total hypergraph weight. See also
             // recursive_bipartitioning_initial_partitioner
@@ -421,38 +383,30 @@ void Context::setupPartWeights(const HypernodeWeight total_hypergraph_weight)
                               static_cast<double>(std::max(perfect_part_weights_sum, 1)) -
                           1);
         }
-    }
-    else
-    {
+    } else {
         partition.perfect_balance_part_weights.clear();
         partition.perfect_balance_part_weights.push_back(
             ceil(total_hypergraph_weight / static_cast<double>(partition.k)));
-        for(PartitionID part = 1; part != partition.k; ++part)
-        {
+        for(PartitionID part = 1; part != partition.k; ++part) {
             partition.perfect_balance_part_weights.push_back(
                 partition.perfect_balance_part_weights[0]);
         }
         partition.max_part_weights.clear();
         partition.max_part_weights.push_back((1 + partition.epsilon) *
                                              partition.perfect_balance_part_weights[0]);
-        for(PartitionID part = 1; part != partition.k; ++part)
-        {
+        for(PartitionID part = 1; part != partition.k; ++part) {
             partition.max_part_weights.push_back(partition.max_part_weights[0]);
         }
     }
 }
 
-void Context::setupContractionLimit(const HypernodeWeight total_hypergraph_weight)
-{
+void Context::setupContractionLimit(const HypernodeWeight total_hypergraph_weight) {
     // Setup contraction limit
-    if(initial_partitioning.mode == Mode::deep_multilevel)
-    {
+    if(initial_partitioning.mode == Mode::deep_multilevel) {
         coarsening.contraction_limit =
             std::max(2 * shared_memory.num_threads, static_cast<size_t>(partition.k)) *
             coarsening.contraction_limit_multiplier;
-    }
-    else
-    {
+    } else {
         coarsening.contraction_limit =
             coarsening.contraction_limit_multiplier * partition.k;
     }
@@ -461,11 +415,10 @@ void Context::setupContractionLimit(const HypernodeWeight total_hypergraph_weigh
     setupMaximumAllowedNodeWeight(total_hypergraph_weight);
 }
 
-void Context::setupMaximumAllowedNodeWeight(const HypernodeWeight total_hypergraph_weight)
-{
+void Context::setupMaximumAllowedNodeWeight(
+    const HypernodeWeight total_hypergraph_weight) {
     HypernodeWeight min_block_weight = std::numeric_limits<HypernodeWeight>::max();
-    for(PartitionID part_id = 0; part_id < partition.k; ++part_id)
-    {
+    for(PartitionID part_id = 0; part_id < partition.k; ++part_id) {
         min_block_weight =
             std::min(min_block_weight, partition.max_part_weights[part_id]);
     }
@@ -478,21 +431,17 @@ void Context::setupMaximumAllowedNodeWeight(const HypernodeWeight total_hypergra
         std::min(coarsening.max_allowed_node_weight, min_block_weight);
 }
 
-void Context::sanityCheck(const TargetGraph *target_graph)
-{
+void Context::sanityCheck(const TargetGraph *target_graph) {
     if(isNLevelPartitioning() &&
-       coarsening.algorithm == CoarseningAlgorithm::multilevel_coarsener)
-    {
+       coarsening.algorithm == CoarseningAlgorithm::multilevel_coarsener) {
         ALGO_SWITCH("Coarsening algorithm"
                         << coarsening.algorithm << "is only supported in multilevel mode."
                         << "Do you want to use the n-level version instead (Y/N)?",
                     "Partitioning with" << coarsening.algorithm
                                         << "coarsener in n-level mode is not supported!",
                     coarsening.algorithm, CoarseningAlgorithm::nlevel_coarsener);
-    }
-    else if(!isNLevelPartitioning() &&
-            coarsening.algorithm == CoarseningAlgorithm::nlevel_coarsener)
-    {
+    } else if(!isNLevelPartitioning() &&
+              coarsening.algorithm == CoarseningAlgorithm::nlevel_coarsener) {
         ALGO_SWITCH("Coarsening algorithm"
                         << coarsening.algorithm << "is only supported in n-Level mode."
                         << "Do you want to use the multilevel version instead (Y/N)?",
@@ -504,8 +453,7 @@ void Context::sanityCheck(const TargetGraph *target_graph)
 
     ASSERT(partition.use_individual_part_weights != partition.max_part_weights.empty());
     if(partition.use_individual_part_weights &&
-       static_cast<size_t>(partition.k) != partition.max_part_weights.size())
-    {
+       static_cast<size_t>(partition.k) != partition.max_part_weights.size()) {
         ALGO_SWITCH(
             "Individual part weights specified, but number of parts doesn't match k."
                 << "Do you want to use k =" << partition.max_part_weights.size()
@@ -517,18 +465,13 @@ void Context::sanityCheck(const TargetGraph *target_graph)
     shared_memory.static_balancing_work_packages =
         std::clamp(shared_memory.static_balancing_work_packages, size_t(4), size_t(256));
 
-    if(partition.objective == Objective::steiner_tree)
-    {
-        if(!target_graph)
-        {
+    if(partition.objective == Objective::steiner_tree) {
+        if(!target_graph) {
             partition.objective = Objective::km1;
             INFO(
                 "No target graph provided for steiner tree metric. Switching to km1 metric.");
-        }
-        else
-        {
-            if(partition.mode == Mode::deep_multilevel)
-            {
+        } else {
+            if(partition.mode == Mode::deep_multilevel) {
                 ALGO_SWITCH(
                     "Partitioning mode"
                         << partition.mode << "is not supported for steiner tree metric."
@@ -537,8 +480,7 @@ void Context::sanityCheck(const TargetGraph *target_graph)
                                         << "is not supported for steiner tree metric!",
                     partition.mode, Mode::direct);
             }
-            if(initial_partitioning.mode == Mode::deep_multilevel)
-            {
+            if(initial_partitioning.mode == Mode::deep_multilevel) {
                 ALGO_SWITCH(
                     "Initial partitioning mode"
                         << partition.mode << "is not supported for steiner tree metric."
@@ -553,8 +495,7 @@ void Context::sanityCheck(const TargetGraph *target_graph)
     shared_memory.static_balancing_work_packages =
         std::clamp(shared_memory.static_balancing_work_packages, UL(4), UL(256));
 
-    if(partition.deterministic)
-    {
+    if(partition.deterministic) {
         coarsening.algorithm = CoarseningAlgorithm::deterministic_multilevel_coarsener;
 
         // disable FM until we have a deterministic version
@@ -567,40 +508,34 @@ void Context::sanityCheck(const TargetGraph *target_graph)
         // switch silently
         auto lp_algo = refinement.label_propagation.algorithm;
         if(lp_algo != LabelPropagationAlgorithm::do_nothing &&
-           lp_algo != LabelPropagationAlgorithm::deterministic)
-        {
+           lp_algo != LabelPropagationAlgorithm::deterministic) {
             refinement.label_propagation.algorithm =
                 LabelPropagationAlgorithm::deterministic;
         }
 
         lp_algo = initial_partitioning.refinement.label_propagation.algorithm;
         if(lp_algo != LabelPropagationAlgorithm::do_nothing &&
-           lp_algo != LabelPropagationAlgorithm::deterministic)
-        {
+           lp_algo != LabelPropagationAlgorithm::deterministic) {
             initial_partitioning.refinement.label_propagation.algorithm =
                 LabelPropagationAlgorithm::deterministic;
         }
     }
 
-    if(partition.instance_type == InstanceType::UNDEFINED)
-    {
+    if(partition.instance_type == InstanceType::UNDEFINED) {
         partition.instance_type = to_instance_type(partition.file_format);
     }
 
     // Set correct gain policy type
     setupGainPolicy();
 
-    if(partition.preset_type == PresetType::large_k)
-    {
+    if(partition.preset_type == PresetType::large_k) {
         // Silently switch to deep multilevel scheme for large k partitioning
         partition.mode = Mode::deep_multilevel;
     }
 }
 
-void Context::setupThreadsPerFlowSearch()
-{
-    if(refinement.flows.algorithm == FlowAlgorithm::flow_cutter)
-    {
+void Context::setupThreadsPerFlowSearch() {
+    if(refinement.flows.algorithm == FlowAlgorithm::flow_cutter) {
         // = min(t, min(tau * k, k * (k - 1) / 2))
         // t = number of threads
         // k * (k - 1) / 2 = maximum number of edges in the quotient graph
@@ -617,11 +552,9 @@ void Context::setupThreadsPerFlowSearch()
     }
 }
 
-void Context::setupGainPolicy()
-{
+void Context::setupGainPolicy() {
 #ifndef KAHYPAR_ENABLE_SOED_METRIC
-    if(partition.objective == Objective::soed)
-    {
+    if(partition.objective == Objective::soed) {
         throw InvalidParameterException(
             "SOED metric is deactivated. Add -DKAHYPAR_ENABLE_SOED_METRIC=ON to the "
             "cmake command and rebuild Mt-KaHyPar.");
@@ -629,18 +562,15 @@ void Context::setupGainPolicy()
 #endif
 
 #ifndef KAHYPAR_ENABLE_STEINER_TREE_METRIC
-    if(partition.objective == Objective::steiner_tree)
-    {
+    if(partition.objective == Objective::steiner_tree) {
         throw InvalidParameterException(
             "Steiner tree metric is deactivated. Add -DKAHYPAR_ENABLE_STEINER_TREE_METRIC=ON "
             "to the cmake command and rebuild Mt-KaHyPar.");
     }
 #endif
 
-    if(partition.instance_type == InstanceType::hypergraph)
-    {
-        switch(partition.objective)
-        {
+    if(partition.instance_type == InstanceType::hypergraph) {
+        switch(partition.objective) {
         case Objective::km1:
             partition.gain_policy = GainPolicy::km1;
             break;
@@ -657,29 +587,22 @@ void Context::setupGainPolicy()
             partition.gain_policy = GainPolicy::none;
             break;
         }
-    }
-    else if(partition.instance_type == InstanceType::graph)
-    {
+    } else if(partition.instance_type == InstanceType::graph) {
         if(partition.objective != Objective::cut &&
-           partition.objective != Objective::steiner_tree)
-        {
+           partition.objective != Objective::steiner_tree) {
             partition.objective = Objective::cut;
             INFO(
                 "Current objective function is equivalent to the edge cut metric for graphs. Objective function is set to edge cut metric.");
         }
-        if(partition.objective == Objective::cut)
-        {
+        if(partition.objective == Objective::cut) {
             partition.gain_policy = GainPolicy::cut_for_graphs;
-        }
-        else
-        {
+        } else {
             partition.gain_policy = GainPolicy::steiner_tree_for_graphs;
         }
     }
 }
 
-void Context::load_default_preset()
-{
+void Context::load_default_preset() {
     // General
     partition.preset_type = PresetType::default_preset;
     partition.mode = Mode::direct;
@@ -791,8 +714,7 @@ void Context::load_default_preset()
     refinement.flows.algorithm = FlowAlgorithm::do_nothing;
 }
 
-void Context::load_quality_preset()
-{
+void Context::load_quality_preset() {
     load_default_preset();
 
     // General
@@ -821,8 +743,7 @@ void Context::load_quality_preset()
     refinement.flows.steiner_tree_policy = SteinerTreeFlowValuePolicy::lower_bound;
 }
 
-void Context::load_deterministic_preset()
-{
+void Context::load_deterministic_preset() {
     // General
     partition.preset_type = PresetType::deterministic;
     partition.mode = Mode::direct;
@@ -913,8 +834,7 @@ void Context::load_deterministic_preset()
     refinement.flows.algorithm = FlowAlgorithm::do_nothing;
 }
 
-void Context::load_n_level_preset()
-{
+void Context::load_n_level_preset() {
     // General
     partition.mode = Mode::direct;
     partition.large_hyperedge_size_threshold_factor = 0.01;
@@ -1031,8 +951,7 @@ void Context::load_n_level_preset()
     refinement.global_fm.obey_minimal_parallelism = true;
 }
 
-void Context::load_highest_quality_preset()
-{
+void Context::load_highest_quality_preset() {
     load_n_level_preset();
 
     // General
@@ -1063,8 +982,7 @@ void Context::load_highest_quality_preset()
     refinement.global_fm.refine_until_no_improvement = true;
 }
 
-void Context::load_large_k_preset()
-{
+void Context::load_large_k_preset() {
     // General
     partition.preset_type = PresetType::large_k;
     partition.mode = Mode::deep_multilevel;
@@ -1146,8 +1064,7 @@ void Context::load_large_k_preset()
     refinement.flows.algorithm = FlowAlgorithm::do_nothing;
 }
 
-std::ostream &operator<<(std::ostream &str, const Context &context)
-{
+std::ostream& operator<<(std::ostream& str, const Context& context) {
     str << "*******************************************************************************\n"
         << "*                            Partitioning Context                             *\n"
         << "*******************************************************************************\n"
@@ -1161,8 +1078,7 @@ std::ostream &operator<<(std::ostream &str, const Context &context)
         << "-------------------------------------------------------------------------------\n"
         << context.refinement
         << "-------------------------------------------------------------------------------\n";
-    if(context.partition.objective == Objective::steiner_tree)
-    {
+    if(context.partition.objective == Objective::steiner_tree) {
         str << context.mapping
             << "-------------------------------------------------------------------------------\n";
     }

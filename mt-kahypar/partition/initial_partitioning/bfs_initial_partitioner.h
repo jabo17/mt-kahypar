@@ -43,19 +43,16 @@ class BFSInitialPartitioner : public IInitialPartitioner
 
   public:
     BFSInitialPartitioner(const InitialPartitioningAlgorithm,
-                          ip_data_container_t *ip_data, const Context &context,
+                          ip_data_container_t *ip_data, const Context& context,
                           const int seed, const int tag) :
         _ip_data(ip::to_reference<TypeTraits>(ip_data)),
-        _context(context), _rng(seed), _tag(tag)
-    {
-    }
+        _context(context), _rng(seed), _tag(tag) {}
 
   private:
     void partitionImpl() final;
 
-    bool fitsIntoBlock(PartitionedHypergraph &hypergraph, const HypernodeID hn,
-                       const PartitionID block) const
-    {
+    bool fitsIntoBlock(PartitionedHypergraph& hypergraph, const HypernodeID hn,
+                       const PartitionID block) const {
         ASSERT(block != kInvalidPartition && block < _context.partition.k);
         return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
                _context.partition.perfect_balance_part_weights[block];
@@ -64,29 +61,27 @@ class BFSInitialPartitioner : public IInitialPartitioner
     // ! Pushes all adjacent hypernodes (not visited before) of hypernode hn
     // ! into the BFS queue of the corresponding block.
     inline void pushIncidentHypernodesIntoQueue(
-        const PartitionedHypergraph &hypergraph, const Context &context, Queue &queue,
-        kahypar::ds::FastResetFlagArray<> &hypernodes_in_queue,
-        kahypar::ds::FastResetFlagArray<> &hyperedges_in_queue, const HypernodeID hn,
+        const PartitionedHypergraph& hypergraph, const Context& context, Queue& queue,
+        kahypar::ds::FastResetFlagArray<>& hypernodes_in_queue,
+        kahypar::ds::FastResetFlagArray<>& hyperedges_in_queue, const HypernodeID hn,
         const PartitionID block);
 
     inline void
-    markHypernodeAsInQueue(const PartitionedHypergraph &hypergraph,
-                           kahypar::ds::FastResetFlagArray<> &hypernodes_in_queue,
-                           const HypernodeID hn, const PartitionID block)
-    {
+    markHypernodeAsInQueue(const PartitionedHypergraph& hypergraph,
+                           kahypar::ds::FastResetFlagArray<>& hypernodes_in_queue,
+                           const HypernodeID hn, const PartitionID block) {
         hypernodes_in_queue.set(block * hypergraph.initialNumNodes() + hn, true);
     }
 
     inline void
-    markHyperedgeAsInQueue(const PartitionedHypergraph &hypergraph,
-                           kahypar::ds::FastResetFlagArray<> &hyperedges_in_queue,
-                           const HyperedgeID he, const PartitionID block)
-    {
+    markHyperedgeAsInQueue(const PartitionedHypergraph& hypergraph,
+                           kahypar::ds::FastResetFlagArray<>& hyperedges_in_queue,
+                           const HyperedgeID he, const PartitionID block) {
         hyperedges_in_queue.set(block * hypergraph.initialNumEdges() + he, true);
     }
 
-    InitialPartitioningDataContainer<TypeTraits> &_ip_data;
-    const Context &_context;
+    InitialPartitioningDataContainer<TypeTraits>& _ip_data;
+    const Context& _context;
     std::mt19937 _rng;
     const int _tag;
 };

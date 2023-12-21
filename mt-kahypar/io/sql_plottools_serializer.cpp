@@ -38,18 +38,15 @@
 namespace mt_kahypar::io::serializer {
 
 template <typename PartitionedHypergraph>
-std::string serialize(const PartitionedHypergraph &hypergraph, const Context &context,
-                      const std::chrono::duration<double> &elapsed_seconds)
-{
-    if(context.partition.sp_process_output)
-    {
+std::string serialize(const PartitionedHypergraph& hypergraph, const Context& context,
+                      const std::chrono::duration<double>& elapsed_seconds) {
+    if(context.partition.sp_process_output) {
         std::stringstream oss;
         oss << "RESULT"
             << " algorithm=" << context.algorithm_name << " graph="
             << context.partition.graph_filename.substr(
                    context.partition.graph_filename.find_last_of('/') + 1);
-        if(context.partition.fixed_vertex_filename != "")
-        {
+        if(context.partition.fixed_vertex_filename != "") {
             oss << " fixed_vertex_filename="
                 << context.partition.fixed_vertex_filename.substr(
                        context.partition.fixed_vertex_filename.find_last_of('/') + 1);
@@ -234,8 +231,7 @@ std::string serialize(const PartitionedHypergraph &hypergraph, const Context &co
             << " static_balancing_work_packages="
             << context.shared_memory.static_balancing_work_packages;
 
-        if(context.partition.objective == Objective::steiner_tree)
-        {
+        if(context.partition.objective == Objective::steiner_tree) {
             oss << " target_graph_file="
                 << context.mapping.target_graph_file.substr(
                        context.mapping.target_graph_file.find_last_of('/') + 1)
@@ -250,32 +246,26 @@ std::string serialize(const PartitionedHypergraph &hypergraph, const Context &co
                 << " mapping_min_pin_coverage_of_largest_hes="
                 << context.mapping.min_pin_coverage_of_largest_hes
                 << " mapping_large_he_threshold=" << context.mapping.large_he_threshold;
-            if(TargetGraph::TRACK_STATS)
-            {
+            if(TargetGraph::TRACK_STATS) {
                 hypergraph.targetGraph()->printStats(oss);
             }
         }
 
         // Metrics
-        if(hypergraph.initialNumEdges() > 0)
-        {
+        if(hypergraph.initialNumEdges() > 0) {
             oss << " " << context.partition.objective << "="
                 << metrics::quality(hypergraph, context);
-            if(context.partition.objective == Objective::steiner_tree)
-            {
+            if(context.partition.objective == Objective::steiner_tree) {
                 oss << " approximation_factor="
                     << metrics::approximationFactorForProcessMapping(hypergraph, context);
             }
-            if(context.partition.objective != Objective::cut)
-            {
+            if(context.partition.objective != Objective::cut) {
                 oss << " cut=" << metrics::quality(hypergraph, Objective::cut);
             }
-            if(context.partition.objective != Objective::km1)
-            {
+            if(context.partition.objective != Objective::km1) {
                 oss << " km1=" << metrics::quality(hypergraph, Objective::km1);
             }
-            if(context.partition.objective != Objective::soed)
-            {
+            if(context.partition.objective != Objective::soed) {
                 oss << " soed=" << metrics::quality(hypergraph, Objective::soed);
             }
             oss << " imbalance=" << metrics::imbalance(hypergraph, context);
@@ -283,7 +273,7 @@ std::string serialize(const PartitionedHypergraph &hypergraph, const Context &co
         oss << " totalPartitionTime=" << elapsed_seconds.count();
 
         // Timings
-        utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+        utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
         timer.showDetailedTimings(context.partition.show_detailed_timings);
         timer.serialize(oss);
 
@@ -295,17 +285,15 @@ std::string serialize(const PartitionedHypergraph &hypergraph, const Context &co
             context.utility_id);
 
         return oss.str();
-    }
-    else
-    {
+    } else {
         return "";
     }
 }
 
 namespace {
 #define SERIALIZE(X)                                                                     \
-    std::string serialize(const X &hypergraph, const Context &context,                   \
-                          const std::chrono::duration<double> &elapsed_seconds)
+    std::string serialize(const X& hypergraph, const Context& context,                   \
+                          const std::chrono::duration<double>& elapsed_seconds)
 } // namespace
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(SERIALIZE)

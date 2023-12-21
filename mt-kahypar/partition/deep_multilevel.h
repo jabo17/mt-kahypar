@@ -39,9 +39,9 @@ class DeepMultilevel
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
   public:
-    static PartitionedHypergraph partition(Hypergraph &hypergraph,
-                                           const Context &context);
-    static void partition(PartitionedHypergraph &hypergraph, const Context &context);
+    static PartitionedHypergraph partition(Hypergraph& hypergraph,
+                                           const Context& context);
+    static void partition(PartitionedHypergraph& hypergraph, const Context& context);
 };
 
 } // namespace mt_kahypar

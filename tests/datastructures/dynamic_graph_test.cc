@@ -41,28 +41,24 @@ namespace ds {
 using ADynamicGraph = HypergraphFixture<DynamicGraph, true>;
 
 template <typename F, typename K>
-void executeParallel(const F &f1, const K &f2)
-{
+void executeParallel(const F& f1, const K& f2) {
     std::atomic<size_t> cnt(0);
     tbb::parallel_invoke(
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
             f1();
         },
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
             f2();
         });
 }
 
-TEST_F(ADynamicGraph, HasCorrectStats)
-{
+TEST_F(ADynamicGraph, HasCorrectStats) {
     ASSERT_EQ(7, hypergraph.initialNumNodes());
     ASSERT_EQ(12, hypergraph.initialNumEdges());
     ASSERT_EQ(12, hypergraph.initialNumPins());
@@ -71,42 +67,35 @@ TEST_F(ADynamicGraph, HasCorrectStats)
     ASSERT_EQ(2, hypergraph.maxEdgeSize());
 }
 
-TEST_F(ADynamicGraph, HasCorrectInitialNodeIterator)
-{
+TEST_F(ADynamicGraph, HasCorrectInitialNodeIterator) {
     HypernodeID expected_hn = 0;
-    for(const HypernodeID &hn : hypergraph.nodes())
-    {
+    for(const HypernodeID& hn : hypergraph.nodes()) {
         ASSERT_EQ(expected_hn++, hn);
     }
     ASSERT_EQ(7, expected_hn);
 }
 
-TEST_F(ADynamicGraph, HasCorrectNodeIteratorIfVerticesAreDisabled)
-{
+TEST_F(ADynamicGraph, HasCorrectNodeIteratorIfVerticesAreDisabled) {
     hypergraph.removeDegreeZeroHypernode(0);
     hypergraph.disableHypernode(5);
     const std::vector<HypernodeID> expected_iter = { 1, 2, 3, 4, 6 };
     HypernodeID pos = 0;
-    for(const HypernodeID &hn : hypergraph.nodes())
-    {
+    for(const HypernodeID& hn : hypergraph.nodes()) {
         ASSERT_EQ(expected_iter[pos++], hn);
     }
     ASSERT_EQ(expected_iter.size(), pos);
 }
 
-TEST_F(ADynamicGraph, HasCorrectInitialEdgeIterator)
-{
+TEST_F(ADynamicGraph, HasCorrectInitialEdgeIterator) {
     std::vector<HyperedgeID> expected_iter = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
     HypernodeID pos = 0;
-    for(const HyperedgeID &he : hypergraph.edges())
-    {
+    for(const HyperedgeID& he : hypergraph.edges()) {
         ASSERT_EQ(expected_iter[pos++], he);
     }
     ASSERT_EQ(expected_iter.size(), pos);
 }
 
-TEST_F(ADynamicGraph, VerifiesIncidentEdges)
-{
+TEST_F(ADynamicGraph, VerifiesIncidentEdges) {
     verifyIncidentNets(0, {});
     verifyIncidentNets(1, { 0, 1 });
     verifyIncidentNets(2, { 2, 3 });
@@ -116,44 +105,36 @@ TEST_F(ADynamicGraph, VerifiesIncidentEdges)
     verifyIncidentNets(6, { 10, 11 });
 }
 
-TEST_F(ADynamicGraph, VerifiesPinsOfEdges)
-{
+TEST_F(ADynamicGraph, VerifiesPinsOfEdges) {
     verifyPins({ 0, 1, 3, 6, 7, 9 },
                { { 1, 2 }, { 1, 4 }, { 2, 3 }, { 4, 5 }, { 4, 6 }, { 5, 6 } });
 }
 
-TEST_F(ADynamicGraph, VerifiesVertexWeights)
-{
-    for(const HypernodeID &hn : hypergraph.nodes())
-    {
+TEST_F(ADynamicGraph, VerifiesVertexWeights) {
+    for(const HypernodeID& hn : hypergraph.nodes()) {
         ASSERT_EQ(1, hypergraph.nodeWeight(hn));
     }
 }
 
-TEST_F(ADynamicGraph, IteratesParallelOverAllNodes)
-{
+TEST_F(ADynamicGraph, IteratesParallelOverAllNodes) {
     std::vector<uint8_t> visited(7, false);
     hypergraph.doParallelForAllNodes([&](const HypernodeID hn) { visited[hn] = true; });
 
-    for(size_t i = 0; i < visited.size(); ++i)
-    {
+    for(size_t i = 0; i < visited.size(); ++i) {
         ASSERT_TRUE(visited[i]) << i;
     }
 }
 
-TEST_F(ADynamicGraph, IteratesParallelOverAllEdges)
-{
+TEST_F(ADynamicGraph, IteratesParallelOverAllEdges) {
     std::vector<uint8_t> visited(12, false);
     hypergraph.doParallelForAllEdges([&](const HyperedgeID he) { visited[he] = true; });
 
-    for(size_t i = 0; i < visited.size(); ++i)
-    {
+    for(size_t i = 0; i < visited.size(); ++i) {
         ASSERT_TRUE(visited[i]) << i;
     }
 }
 
-TEST_F(ADynamicGraph, ModifiesNodeWeight)
-{
+TEST_F(ADynamicGraph, ModifiesNodeWeight) {
     hypergraph.setNodeWeight(0, 2);
     hypergraph.setNodeWeight(6, 2);
     ASSERT_EQ(2, hypergraph.nodeWeight(0));
@@ -162,8 +143,7 @@ TEST_F(ADynamicGraph, ModifiesNodeWeight)
     ASSERT_EQ(9, hypergraph.totalWeight());
 }
 
-TEST_F(ADynamicGraph, VerifiesVertexDegrees)
-{
+TEST_F(ADynamicGraph, VerifiesVertexDegrees) {
     ASSERT_EQ(0, hypergraph.nodeDegree(0));
     ASSERT_EQ(2, hypergraph.nodeDegree(1));
     ASSERT_EQ(2, hypergraph.nodeDegree(2));
@@ -173,39 +153,32 @@ TEST_F(ADynamicGraph, VerifiesVertexDegrees)
     ASSERT_EQ(2, hypergraph.nodeDegree(6));
 }
 
-TEST_F(ADynamicGraph, RemovesVertices)
-{
+TEST_F(ADynamicGraph, RemovesVertices) {
     hypergraph.removeHypernode(0);
     hypergraph.removeHypernode(5);
     ASSERT_EQ(2, hypergraph.numRemovedHypernodes());
 }
 
-TEST_F(ADynamicGraph, VerifiesEdgeWeights)
-{
-    for(const HyperedgeID &he : hypergraph.edges())
-    {
+TEST_F(ADynamicGraph, VerifiesEdgeWeights) {
+    for(const HyperedgeID& he : hypergraph.edges()) {
         ASSERT_EQ(1, hypergraph.edgeWeight(he));
     }
 }
 
-TEST_F(ADynamicGraph, ModifiesEdgeWeight)
-{
+TEST_F(ADynamicGraph, ModifiesEdgeWeight) {
     hypergraph.setEdgeWeight(0, 2);
     hypergraph.setEdgeWeight(2, 2);
     ASSERT_EQ(2, hypergraph.edgeWeight(0));
     ASSERT_EQ(2, hypergraph.edgeWeight(2));
 }
 
-TEST_F(ADynamicGraph, VerifiesEdgeSizes)
-{
-    for(const HyperedgeID &he : hypergraph.edges())
-    {
+TEST_F(ADynamicGraph, VerifiesEdgeSizes) {
+    for(const HyperedgeID& he : hypergraph.edges()) {
         ASSERT_EQ(2, hypergraph.edgeSize(he));
     }
 }
 
-TEST_F(ADynamicGraph, SetsCommunityIDsForEachVertex)
-{
+TEST_F(ADynamicGraph, SetsCommunityIDsForEachVertex) {
     hypergraph.setCommunityID(0, 1);
     hypergraph.setCommunityID(1, 1);
     hypergraph.setCommunityID(2, 1);
@@ -223,8 +196,7 @@ TEST_F(ADynamicGraph, SetsCommunityIDsForEachVertex)
     ASSERT_EQ(3, hypergraph.communityID(6));
 }
 
-TEST_F(ADynamicGraph, ComparesStatsIfCopiedParallel)
-{
+TEST_F(ADynamicGraph, ComparesStatsIfCopiedParallel) {
     DynamicGraph copy_hg = hypergraph.copy(parallel_tag_t());
     ASSERT_EQ(hypergraph.initialNumNodes(), copy_hg.initialNumNodes());
     ASSERT_EQ(hypergraph.initialNumEdges(), copy_hg.initialNumEdges());
@@ -234,8 +206,7 @@ TEST_F(ADynamicGraph, ComparesStatsIfCopiedParallel)
     ASSERT_EQ(hypergraph.maxEdgeSize(), copy_hg.maxEdgeSize());
 }
 
-TEST_F(ADynamicGraph, ComparesStatsIfCopiedSequential)
-{
+TEST_F(ADynamicGraph, ComparesStatsIfCopiedSequential) {
     DynamicGraph copy_hg = hypergraph.copy();
     ASSERT_EQ(hypergraph.initialNumNodes(), copy_hg.initialNumNodes());
     ASSERT_EQ(hypergraph.initialNumEdges(), copy_hg.initialNumEdges());
@@ -245,8 +216,7 @@ TEST_F(ADynamicGraph, ComparesStatsIfCopiedSequential)
     ASSERT_EQ(hypergraph.maxEdgeSize(), copy_hg.maxEdgeSize());
 }
 
-TEST_F(ADynamicGraph, ComparesIncidentEdgesIfCopiedParallel)
-{
+TEST_F(ADynamicGraph, ComparesIncidentEdgesIfCopiedParallel) {
     DynamicGraph copy_hg = hypergraph.copy(parallel_tag_t());
     verifyIncidentNets(copy_hg, 0, {});
     verifyIncidentNets(copy_hg, 1, { 0, 1 });
@@ -257,8 +227,7 @@ TEST_F(ADynamicGraph, ComparesIncidentEdgesIfCopiedParallel)
     verifyIncidentNets(copy_hg, 6, { 10, 11 });
 }
 
-TEST_F(ADynamicGraph, ComparesIncidentEdgesIfCopiedSequential)
-{
+TEST_F(ADynamicGraph, ComparesIncidentEdgesIfCopiedSequential) {
     DynamicGraph copy_hg = hypergraph.copy();
     verifyIncidentNets(copy_hg, 0, {});
     verifyIncidentNets(copy_hg, 1, { 0, 1 });
@@ -269,8 +238,7 @@ TEST_F(ADynamicGraph, ComparesIncidentEdgesIfCopiedSequential)
     verifyIncidentNets(copy_hg, 6, { 10, 11 });
 }
 
-TEST_F(ADynamicGraph, RegistersAContraction1)
-{
+TEST_F(ADynamicGraph, RegistersAContraction1) {
     ASSERT_TRUE(hypergraph.registerContraction(1, 0));
     ASSERT_EQ(1, hypergraph.contractionTree(0));
     ASSERT_EQ(1, hypergraph.contractionTree(1));
@@ -278,8 +246,7 @@ TEST_F(ADynamicGraph, RegistersAContraction1)
     ASSERT_EQ(1, hypergraph.pendingContractions(1));
 }
 
-TEST_F(ADynamicGraph, RegistersAContraction2)
-{
+TEST_F(ADynamicGraph, RegistersAContraction2) {
     ASSERT_TRUE(hypergraph.registerContraction(4, 3));
     ASSERT_TRUE(hypergraph.registerContraction(4, 2));
     ASSERT_EQ(4, hypergraph.contractionTree(2));
@@ -290,8 +257,7 @@ TEST_F(ADynamicGraph, RegistersAContraction2)
     ASSERT_EQ(2, hypergraph.pendingContractions(4));
 }
 
-TEST_F(ADynamicGraph, RegistersAContraction3)
-{
+TEST_F(ADynamicGraph, RegistersAContraction3) {
     ASSERT_TRUE(hypergraph.registerContraction(6, 4));
     ASSERT_TRUE(hypergraph.registerContraction(4, 3));
     ASSERT_TRUE(hypergraph.registerContraction(4, 2));
@@ -305,8 +271,7 @@ TEST_F(ADynamicGraph, RegistersAContraction3)
     ASSERT_EQ(3, hypergraph.pendingContractions(6));
 }
 
-TEST_F(ADynamicGraph, RegistersAContraction4)
-{
+TEST_F(ADynamicGraph, RegistersAContraction4) {
     ASSERT_TRUE(hypergraph.registerContraction(1, 0));
     ASSERT_TRUE(hypergraph.registerContraction(2, 1));
     ASSERT_TRUE(hypergraph.registerContraction(3, 2));
@@ -320,14 +285,12 @@ TEST_F(ADynamicGraph, RegistersAContraction4)
     ASSERT_EQ(1, hypergraph.pendingContractions(3));
 }
 
-TEST_F(ADynamicGraph, RegistersAContractionThatInducesACycle1)
-{
+TEST_F(ADynamicGraph, RegistersAContractionThatInducesACycle1) {
     ASSERT_TRUE(hypergraph.registerContraction(1, 0));
     ASSERT_FALSE(hypergraph.registerContraction(0, 1));
 }
 
-TEST_F(ADynamicGraph, RegistersAContractionThatInducesACycle2)
-{
+TEST_F(ADynamicGraph, RegistersAContractionThatInducesACycle2) {
     ASSERT_TRUE(hypergraph.registerContraction(1, 0));
     ASSERT_TRUE(hypergraph.registerContraction(2, 1));
     ASSERT_TRUE(hypergraph.registerContraction(3, 2));
@@ -336,8 +299,7 @@ TEST_F(ADynamicGraph, RegistersAContractionThatInducesACycle2)
     ASSERT_FALSE(hypergraph.registerContraction(0, 3));
 }
 
-TEST_F(ADynamicGraph, RegistersAContractionThatInducesACycle3)
-{
+TEST_F(ADynamicGraph, RegistersAContractionThatInducesACycle3) {
     ASSERT_TRUE(hypergraph.registerContraction(4, 3));
     ASSERT_TRUE(hypergraph.registerContraction(4, 2));
     ASSERT_TRUE(hypergraph.registerContraction(6, 4));
@@ -345,8 +307,7 @@ TEST_F(ADynamicGraph, RegistersAContractionThatInducesACycle3)
     ASSERT_FALSE(hypergraph.registerContraction(4, 5));
 }
 
-TEST_F(ADynamicGraph, RegisterContractionsInParallel)
-{
+TEST_F(ADynamicGraph, RegisterContractionsInParallel) {
     executeParallel(
         [&] {
             ASSERT_TRUE(hypergraph.registerContraction(2, 0)); // (0)
@@ -395,15 +356,13 @@ TEST_F(ADynamicGraph, RegisterContractionsInParallel)
         << V(hypergraph.contractionTree(3)) << " " << V(hypergraph.contractionTree(4));
 }
 
-void verifyNeighbors(const HypernodeID u, const DynamicGraph &graph,
-                     const std::set<HypernodeID> &_expected_neighbors,
-                     bool strict = false)
-{
+void verifyNeighbors(const HypernodeID u, const DynamicGraph& graph,
+                     const std::set<HypernodeID>& _expected_neighbors,
+                     bool strict = false) {
     size_t num_neighbors = 0;
     size_t degree = 0;
     std::vector<bool> actual_neighbors(graph.initialNumNodes(), false);
-    for(const HyperedgeID &he : graph.incidentEdges(u))
-    {
+    for(const HyperedgeID& he : graph.incidentEdges(u)) {
         const HypernodeID neighbor = graph.edge(he).target;
         ASSERT_NE(_expected_neighbors.find(neighbor), _expected_neighbors.end())
             << "Vertex " << neighbor << " should not be neighbor of vertex " << u;
@@ -412,8 +371,7 @@ void verifyNeighbors(const HypernodeID u, const DynamicGraph &graph,
             << ") should be " << u << " but is " << graph.edge(he).source;
         ASSERT_TRUE(!strict || !actual_neighbors[neighbor])
             << "Vertex " << u << " contain duplicate edge with target " << neighbor;
-        if(!actual_neighbors[neighbor])
-        {
+        if(!actual_neighbors[neighbor]) {
             ++num_neighbors;
         }
         ++degree;
@@ -424,8 +382,7 @@ void verifyNeighbors(const HypernodeID u, const DynamicGraph &graph,
     ASSERT_TRUE(!strict || num_neighbors == degree);
 }
 
-TEST_F(ADynamicGraph, PerformsContractions1)
-{
+TEST_F(ADynamicGraph, PerformsContractions1) {
     ASSERT_TRUE(hypergraph.registerContraction(1, 0));
     hypergraph.contract(0);
 
@@ -436,8 +393,7 @@ TEST_F(ADynamicGraph, PerformsContractions1)
     verifyNeighbors(1, hypergraph, { 2, 4 });
 }
 
-TEST_F(ADynamicGraph, PerformsContractions2)
-{
+TEST_F(ADynamicGraph, PerformsContractions2) {
     ASSERT_TRUE(hypergraph.registerContraction(1, 0));
     ASSERT_TRUE(hypergraph.registerContraction(1, 2));
     ASSERT_TRUE(hypergraph.registerContraction(4, 5));
@@ -459,8 +415,7 @@ TEST_F(ADynamicGraph, PerformsContractions2)
     verifyNeighbors(4, hypergraph, { 1, 4, 6 });
 }
 
-TEST_F(ADynamicGraph, PerformsAContractionWithWeightGreaterThanMaxNodeWeight)
-{
+TEST_F(ADynamicGraph, PerformsAContractionWithWeightGreaterThanMaxNodeWeight) {
     ASSERT_TRUE(hypergraph.registerContraction(1, 0));
     ASSERT_EQ(1, hypergraph.contractionTree(0));
     ASSERT_EQ(1, hypergraph.pendingContractions(1));
@@ -471,31 +426,26 @@ TEST_F(ADynamicGraph, PerformsAContractionWithWeightGreaterThanMaxNodeWeight)
     ASSERT_EQ(0, hypergraph.pendingContractions(1));
 }
 
-void verifyEqualityOfDynamicGraphs(DynamicGraph &expected_graph,
-                                   DynamicGraph &actual_graph)
-{
+void verifyEqualityOfDynamicGraphs(DynamicGraph& expected_graph,
+                                   DynamicGraph& actual_graph) {
     expected_graph.sortIncidentEdges();
     actual_graph.sortIncidentEdges();
     parallel::scalable_vector<HyperedgeID> expected_incident_edges;
     parallel::scalable_vector<HyperedgeID> actual_incident_edges;
-    for(const HypernodeID &hn : expected_graph.nodes())
-    {
+    for(const HypernodeID& hn : expected_graph.nodes()) {
         ASSERT_TRUE(actual_graph.nodeIsEnabled(hn));
         ASSERT_EQ(expected_graph.nodeWeight(hn), actual_graph.nodeWeight(hn));
         ASSERT_EQ(expected_graph.nodeDegree(hn), actual_graph.nodeDegree(hn));
-        for(const HyperedgeID he : expected_graph.incidentEdges(hn))
-        {
+        for(const HyperedgeID he : expected_graph.incidentEdges(hn)) {
             expected_incident_edges.push_back(he);
         }
-        for(const HyperedgeID he : actual_graph.incidentEdges(hn))
-        {
+        for(const HyperedgeID he : actual_graph.incidentEdges(hn)) {
             actual_incident_edges.push_back(he);
         }
         std::sort(expected_incident_edges.begin(), expected_incident_edges.end());
         std::sort(actual_incident_edges.begin(), actual_incident_edges.end());
         ASSERT_EQ(expected_incident_edges.size(), actual_incident_edges.size());
-        for(size_t i = 0; i < expected_incident_edges.size(); ++i)
-        {
+        for(size_t i = 0; i < expected_incident_edges.size(); ++i) {
             ASSERT_EQ(expected_incident_edges[i], actual_incident_edges[i]);
         }
         expected_incident_edges.clear();
@@ -504,35 +454,30 @@ void verifyEqualityOfDynamicGraphs(DynamicGraph &expected_graph,
 
     parallel::scalable_vector<HypernodeID> expected_pins;
     parallel::scalable_vector<HypernodeID> actual_pins;
-    for(const HyperedgeID &he : expected_graph.edges())
-    {
+    for(const HyperedgeID& he : expected_graph.edges()) {
         ASSERT_EQ(expected_graph.edgeSource(he), actual_graph.edgeSource(he));
         ASSERT_EQ(expected_graph.edgeTarget(he), actual_graph.edgeTarget(he));
     }
 }
 
-void verifyBatchUncontractions(DynamicGraph &graph,
-                               const parallel::scalable_vector<Memento> &contractions,
-                               const size_t batch_size)
-{
+void verifyBatchUncontractions(DynamicGraph& graph,
+                               const parallel::scalable_vector<Memento>& contractions,
+                               const size_t batch_size) {
     DynamicGraph expected_graph = graph.copy();
 
     // Perform contractions
-    for(const Memento &memento : contractions)
-    {
+    for(const Memento& memento : contractions) {
         graph.registerContraction(memento.u, memento.v);
         graph.contract(memento.v);
     }
 
     auto versioned_batches = graph.createBatchUncontractionHierarchy(batch_size);
 
-    while(!versioned_batches.empty())
-    {
-        BatchVector &batches = versioned_batches.back();
-        while(!batches.empty())
-        {
+    while(!versioned_batches.empty()) {
+        BatchVector& batches = versioned_batches.back();
+        while(!batches.empty()) {
             const parallel::scalable_vector<Memento> batch = batches.back();
-            graph.uncontract(batch, [](const HyperedgeID &) { return false; });
+            graph.uncontract(batch, [](const HyperedgeID&) { return false; });
             batches.pop_back();
         }
         versioned_batches.pop_back();
@@ -541,57 +486,50 @@ void verifyBatchUncontractions(DynamicGraph &graph,
     verifyEqualityOfDynamicGraphs(expected_graph, graph);
 }
 
-TEST_F(ADynamicGraph, PerformsBatchUncontractions1)
-{
+TEST_F(ADynamicGraph, PerformsBatchUncontractions1) {
     verifyBatchUncontractions(hypergraph,
                               { Memento{ 0, 2 }, Memento{ 3, 4 }, Memento{ 5, 6 } }, 3);
 }
 
-TEST_F(ADynamicGraph, PerformsBatchUncontractions2)
-{
+TEST_F(ADynamicGraph, PerformsBatchUncontractions2) {
     verifyBatchUncontractions(hypergraph,
                               { Memento{ 1, 0 }, Memento{ 2, 1 }, Memento{ 3, 2 } }, 3);
 }
 
-TEST_F(ADynamicGraph, PerformsBatchUncontractions3)
-{
+TEST_F(ADynamicGraph, PerformsBatchUncontractions3) {
     verifyBatchUncontractions(hypergraph,
                               { Memento{ 1, 0 }, Memento{ 1, 2 }, Memento{ 3, 1 },
                                 Memento{ 4, 6 }, Memento{ 4, 5 } },
                               3);
 }
 
-TEST_F(ADynamicGraph, PerformsBatchUncontractions4)
-{
+TEST_F(ADynamicGraph, PerformsBatchUncontractions4) {
     verifyBatchUncontractions(hypergraph,
                               { Memento{ 5, 6 }, Memento{ 4, 5 }, Memento{ 3, 4 },
                                 Memento{ 2, 3 }, Memento{ 1, 2 }, Memento{ 0, 1 } },
                               3);
 }
 
-TEST_F(ADynamicGraph, PerformsBatchUncontractions5)
-{
+TEST_F(ADynamicGraph, PerformsBatchUncontractions5) {
     verifyBatchUncontractions(hypergraph,
                               { Memento{ 2, 6 }, Memento{ 2, 5 }, Memento{ 1, 3 },
                                 Memento{ 1, 4 }, Memento{ 0, 1 }, Memento{ 0, 2 } },
                               2);
 }
 
-TEST_F(ADynamicGraph, GeneratesACompactifiedHypergraph)
-{
+TEST_F(ADynamicGraph, GeneratesACompactifiedHypergraph) {
     const parallel::scalable_vector<Memento> contractions = {
         Memento{ 0, 3 }, Memento{ 1, 5 }, Memento{ 6, 2 }, Memento{ 6, 4 }
     };
 
-    for(const Memento &memento : contractions)
-    {
+    for(const Memento& memento : contractions) {
         hypergraph.registerContraction(memento.u, memento.v);
         hypergraph.contract(memento.v);
     }
     hypergraph.removeSinglePinAndParallelHyperedges();
 
     auto res = DynamicGraphFactory::compactify(hypergraph);
-    DynamicGraph &compactified_hg = res.first;
+    DynamicGraph& compactified_hg = res.first;
     compactified_hg.sortIncidentEdges();
     ASSERT_EQ(3, compactified_hg.initialNumNodes());
     ASSERT_EQ(4, compactified_hg.initialNumEdges());

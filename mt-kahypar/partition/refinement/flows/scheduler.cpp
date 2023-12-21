@@ -36,8 +36,7 @@
 namespace mt_kahypar {
 
 template <typename GraphAndGainTypes>
-void FlowRefinementScheduler<GraphAndGainTypes>::RefinementStats::update_global_stats()
-{
+void FlowRefinementScheduler<GraphAndGainTypes>::RefinementStats::update_global_stats() {
     _stats.update_stat("num_flow_refinements",
                        num_refinements.load(std::memory_order_relaxed));
     _stats.update_stat("num_flow_improvement",
@@ -63,24 +62,21 @@ void FlowRefinementScheduler<GraphAndGainTypes>::RefinementStats::update_global_
 
 template <typename GraphAndGainTypes>
 bool FlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph,
-    const parallel::scalable_vector<HypernodeID> &, Metrics &best_metrics, const double)
-{
-    PartitionedHypergraph &phg = utils::cast<PartitionedHypergraph>(hypergraph);
+    mt_kahypar_partitioned_hypergraph_t& hypergraph,
+    const parallel::scalable_vector<HypernodeID>&, Metrics& best_metrics, const double) {
+    PartitionedHypergraph& phg = utils::cast<PartitionedHypergraph>(hypergraph);
     ASSERT(_phg == &phg);
     _quotient_graph.setObjective(best_metrics.quality);
 
     std::atomic<HyperedgeWeight> overall_delta(0);
-    utils::Timer &timer = utils::Utilities::instance().getTimer(_context.utility_id);
+    utils::Timer& timer = utils::Utilities::instance().getTimer(_context.utility_id);
     tbb::parallel_for(UL(0), _refiner.numAvailableRefiner(), [&](const size_t i) {
         while(i <
               std::max(UL(1), static_cast<size_t>(std::ceil(
                                   _context.refinement.flows.parallel_searches_multiplier *
-                                  _quotient_graph.numActiveBlockPairs()))))
-        {
+                                  _quotient_graph.numActiveBlockPairs())))) {
             SearchID search_id = _quotient_graph.requestNewSearch(_refiner);
-            if(search_id != QuotientGraph<TypeTraits>::INVALID_SEARCH_ID)
-            {
+            if(search_id != QuotientGraph<TypeTraits>::INVALID_SEARCH_ID) {
                 DBG << "Start search" << search_id
                     << "( Blocks =" << blocksOfSearch(search_id) << ", Refiner =" << i
                     << ")";
@@ -92,22 +88,18 @@ bool FlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
 
                 HyperedgeWeight delta = 0;
                 bool improved_solution = false;
-                if(sub_hg.numNodes() > 0)
-                {
+                if(sub_hg.numNodes() > 0) {
                     ++_stats.num_refinements;
                     MoveSequence sequence = _refiner.refine(search_id, phg, sub_hg);
 
-                    if(!sequence.moves.empty())
-                    {
+                    if(!sequence.moves.empty()) {
                         timer.start_timer("apply_moves", "Apply Moves", true);
                         delta = applyMoves(search_id, sequence);
                         overall_delta -= delta;
                         improved_solution =
                             sequence.state == MoveSequenceState::SUCCESS && delta > 0;
                         timer.stop_timer("apply_moves");
-                    }
-                    else if(sequence.state == MoveSequenceState::TIME_LIMIT)
-                    {
+                    } else if(sequence.state == MoveSequenceState::TIME_LIMIT) {
                         ++_stats.num_time_limits;
                         DBG << RED << "Search" << search_id
                             << "reaches the time limit ( Time Limit ="
@@ -119,9 +111,7 @@ bool FlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
                 DBG << "End search" << search_id
                     << "( Blocks =" << blocksOfSearch(search_id) << ", Refiner =" << i
                     << ", Running Time =" << _refiner.runningTime(search_id) << ")";
-            }
-            else
-            {
+            } else {
                 break;
             }
         }
@@ -133,10 +123,8 @@ bool FlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
 
     ASSERT(
         [&]() {
-            for(PartitionID i = 0; i < _context.partition.k; ++i)
-            {
-                if(_part_weights[i] != phg.partWeight(i))
-                {
+            for(PartitionID i = 0; i < _context.partition.k; ++i) {
+                if(_part_weights[i] != phg.partWeight(i)) {
                     LOG << V(_part_weights[i]) << V(phg.partWeight(i));
                     return false;
                 }
@@ -155,11 +143,9 @@ bool FlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
     _stats.update_global_stats();
 
     // Update Gain Cache
-    if(_context.forceGainCacheUpdates() && _gain_cache.isInitialized())
-    {
-        phg.doParallelForAllNodes([&](const HypernodeID &hn) {
-            if(_was_moved[hn])
-            {
+    if(_context.forceGainCacheUpdates() && _gain_cache.isInitialized()) {
+        phg.doParallelForAllNodes([&](const HypernodeID& hn) {
+            if(_was_moved[hn]) {
                 _gain_cache.recomputeInvalidTerms(phg, hn);
                 _was_moved[hn] = uint8_t(false);
             }
@@ -173,22 +159,20 @@ bool FlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
 
 template <typename GraphAndGainTypes>
 void FlowRefinementScheduler<GraphAndGainTypes>::initializeImpl(
-    mt_kahypar_partitioned_hypergraph_t &hypergraph)
-{
-    PartitionedHypergraph &phg = utils::cast<PartitionedHypergraph>(hypergraph);
+    mt_kahypar_partitioned_hypergraph_t& hypergraph) {
+    PartitionedHypergraph& phg = utils::cast<PartitionedHypergraph>(hypergraph);
     _phg = &phg;
     resizeDataStructuresForCurrentK();
 
     // Initialize Part Weights
-    for(PartitionID i = 0; i < _context.partition.k; ++i)
-    {
+    for(PartitionID i = 0; i < _context.partition.k; ++i) {
         _part_weights[i] = phg.partWeight(i);
         _max_part_weights[i] =
             std::max(phg.partWeight(i), _context.partition.max_part_weights[i]);
     }
 
     _stats.reset();
-    utils::Timer &timer = utils::Utilities::instance().getTimer(_context.utility_id);
+    utils::Timer& timer = utils::Utilities::instance().getTimer(_context.utility_id);
     timer.start_timer("initialize_quotient_graph", "Initialize Quotient Graph");
     _quotient_graph.initialize(phg);
     timer.stop_timer("initialize_quotient_graph");
@@ -200,17 +184,14 @@ void FlowRefinementScheduler<GraphAndGainTypes>::initializeImpl(
 }
 
 template <typename GraphAndGainTypes>
-void FlowRefinementScheduler<GraphAndGainTypes>::resizeDataStructuresForCurrentK()
-{
-    if(_current_k != _context.partition.k)
-    {
+void FlowRefinementScheduler<GraphAndGainTypes>::resizeDataStructuresForCurrentK() {
+    if(_current_k != _context.partition.k) {
         _current_k = _context.partition.k;
         // Note that in general changing the number of blocks should not resize
         // any data structure as we initialize the scheduler with the final
         // number of blocks. This is just a fallback if someone changes this in the
         // future.
-        if(static_cast<size_t>(_current_k) > _part_weights.size())
-        {
+        if(static_cast<size_t>(_current_k) > _part_weights.size()) {
             _part_weights.resize(_current_k);
             _max_part_weights.resize(_current_k);
         }
@@ -228,19 +209,15 @@ struct NewCutHyperedge
 };
 
 template <typename PartitionedHypergraph, typename GainCache, typename F>
-bool changeNodePart(PartitionedHypergraph &phg, GainCache &gain_cache,
+bool changeNodePart(PartitionedHypergraph& phg, GainCache& gain_cache,
                     const HypernodeID hn, const PartitionID from, const PartitionID to,
-                    const F &objective_delta, const bool gain_cache_update)
-{
+                    const F& objective_delta, const bool gain_cache_update) {
     bool success = false;
-    if(gain_cache_update && gain_cache.isInitialized())
-    {
+    if(gain_cache_update && gain_cache.isInitialized()) {
         success = phg.changeNodePart(
             gain_cache, hn, from, to, std::numeric_limits<HypernodeWeight>::max(), [] {},
             objective_delta);
-    }
-    else
-    {
+    } else {
         success = phg.changeNodePart(
             hn, from, to, std::numeric_limits<HypernodeWeight>::max(), [] {},
             objective_delta);
@@ -250,24 +227,20 @@ bool changeNodePart(PartitionedHypergraph &phg, GainCache &gain_cache,
 }
 
 template <typename PartitionedHypergraph, typename GainCache, typename F>
-void applyMoveSequence(PartitionedHypergraph &phg, GainCache &gain_cache,
-                       const MoveSequence &sequence, const F &objective_delta,
-                       const bool gain_cache_update, vec<uint8_t> &was_moved,
-                       vec<NewCutHyperedge> &new_cut_hes)
-{
-    for(const Move &move : sequence.moves)
-    {
+void applyMoveSequence(PartitionedHypergraph& phg, GainCache& gain_cache,
+                       const MoveSequence& sequence, const F& objective_delta,
+                       const bool gain_cache_update, vec<uint8_t>& was_moved,
+                       vec<NewCutHyperedge>& new_cut_hes) {
+    for(const Move& move : sequence.moves) {
         ASSERT(move.from == phg.partID(move.node));
-        if(move.from != move.to)
-        {
+        if(move.from != move.to) {
             changeNodePart(phg, gain_cache, move.node, move.from, move.to,
                            objective_delta, gain_cache_update);
             was_moved[move.node] = uint8_t(true);
             // If move increases the pin count of some hyperedges in block 'move.to' to
             // one 1 we set the corresponding block here.
             int i = new_cut_hes.size() - 1;
-            while(i >= 0 && new_cut_hes[i].block == kInvalidPartition)
-            {
+            while(i >= 0 && new_cut_hes[i].block == kInvalidPartition) {
                 new_cut_hes[i].block = move.to;
                 --i;
             }
@@ -276,14 +249,11 @@ void applyMoveSequence(PartitionedHypergraph &phg, GainCache &gain_cache,
 }
 
 template <typename PartitionedHypergraph, typename GainCache, typename F>
-void revertMoveSequence(PartitionedHypergraph &phg, GainCache &gain_cache,
-                        const MoveSequence &sequence, const F &objective_delta,
-                        const bool gain_cache_update)
-{
-    for(const Move &move : sequence.moves)
-    {
-        if(move.from != move.to)
-        {
+void revertMoveSequence(PartitionedHypergraph& phg, GainCache& gain_cache,
+                        const MoveSequence& sequence, const F& objective_delta,
+                        const bool gain_cache_update) {
+    for(const Move& move : sequence.moves) {
+        if(move.from != move.to) {
             ASSERT(phg.partID(move.node) == move.to);
             changeNodePart(phg, gain_cache, move.node, move.to, move.from,
                            objective_delta, gain_cache_update);
@@ -292,11 +262,9 @@ void revertMoveSequence(PartitionedHypergraph &phg, GainCache &gain_cache,
 }
 
 template <typename TypeTraits>
-void addCutHyperedgesToQuotientGraph(QuotientGraph<TypeTraits> &quotient_graph,
-                                     const vec<NewCutHyperedge> &new_cut_hes)
-{
-    for(const NewCutHyperedge &new_cut_he : new_cut_hes)
-    {
+void addCutHyperedgesToQuotientGraph(QuotientGraph<TypeTraits>& quotient_graph,
+                                     const vec<NewCutHyperedge>& new_cut_hes) {
+    for(const NewCutHyperedge& new_cut_he : new_cut_hes) {
         ASSERT(new_cut_he.block != kInvalidPartition);
         quotient_graph.addNewCutHyperedge(new_cut_he.he, new_cut_he.block);
     }
@@ -307,8 +275,7 @@ void addCutHyperedgesToQuotientGraph(QuotientGraph<TypeTraits> &quotient_graph,
 template <typename GraphAndGainTypes>
 HyperedgeWeight
 FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id,
-                                                       MoveSequence &sequence)
-{
+                                                       MoveSequence& sequence) {
     unused(search_id);
     ASSERT(_phg);
 
@@ -318,11 +285,9 @@ FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id,
 
     // Compute Part Weight Deltas
     vec<HypernodeWeight> part_weight_deltas(_context.partition.k, 0);
-    for(Move &move : sequence.moves)
-    {
+    for(Move& move : sequence.moves) {
         move.from = _phg->partID(move.node);
-        if(move.from != move.to)
-        {
+        if(move.from != move.to) {
             const HypernodeWeight node_weight = _phg->nodeWeight(move.node);
             part_weight_deltas[move.from] -= node_weight;
             part_weight_deltas[move.to] += node_weight;
@@ -331,12 +296,11 @@ FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id,
 
     HyperedgeWeight improvement = 0;
     vec<NewCutHyperedge> new_cut_hes;
-    auto delta_func = [&](const SynchronizedEdgeUpdate &sync_update) {
+    auto delta_func = [&](const SynchronizedEdgeUpdate& sync_update) {
         improvement -= AttributedGains::gain(sync_update);
 
         // Collect hyperedges with new blocks in its connectivity set
-        if(sync_update.pin_count_in_to_part_after == 1)
-        {
+        if(sync_update.pin_count_in_to_part_after == 1) {
             // the corresponding block will be set in applyMoveSequence(...) function
             new_cut_hes.emplace_back(
                 NewCutHyperedge{ sync_update.he, kInvalidPartition });
@@ -345,17 +309,14 @@ FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id,
 
     // Update part weights atomically
     PartWeightUpdateResult update_res = partWeightUpdate(part_weight_deltas, false);
-    if(update_res.is_balanced)
-    {
+    if(update_res.is_balanced) {
         // Apply move sequence to partition
         applyMoveSequence(*_phg, _gain_cache, sequence, delta_func,
                           _context.forceGainCacheUpdates(), _was_moved, new_cut_hes);
 
-        if(improvement < 0)
-        {
+        if(improvement < 0) {
             update_res = partWeightUpdate(part_weight_deltas, true);
-            if(update_res.is_balanced)
-            {
+            if(update_res.is_balanced) {
                 // Move sequence worsen solution quality => Rollback
                 DBG << RED << "Move sequence worsen solution quality ("
                     << "Expected Improvement =" << sequence.expected_improvement
@@ -365,9 +326,7 @@ FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id,
                                    _context.forceGainCacheUpdates());
                 ++_stats.failed_updates_due_to_conflicting_moves;
                 sequence.state = MoveSequenceState::WORSEN_SOLUTION_QUALITY;
-            }
-            else
-            {
+            } else {
                 // Rollback would violate balance constraint => Worst Case
                 ++_stats.failed_updates_due_to_conflicting_moves_without_rollback;
                 sequence.state =
@@ -379,9 +338,7 @@ FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id,
                     << ", Real Improvement =" << improvement
                     << ", Search ID =" << search_id << ")" << END;
             }
-        }
-        else
-        {
+        } else {
             ++_stats.num_improvements;
             _stats.correct_expected_improvement +=
                 (improvement == sequence.expected_improvement);
@@ -393,9 +350,7 @@ FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id,
                 << ", Real Improvement =" << improvement << ", Search ID =" << search_id
                 << (improvement > 0 ? END : "");
         }
-    }
-    else
-    {
+    } else {
         ++_stats.failed_updates_due_to_balance_constraint;
         sequence.state = MoveSequenceState::VIOLATES_BALANCE_CONSTRAINT;
         DBG << RED << "Move sequence violated balance constraint ( Moved Nodes ="
@@ -406,8 +361,7 @@ FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id,
 
     _apply_moves_lock.unlock();
 
-    if(sequence.state == MoveSequenceState::SUCCESS && improvement > 0)
-    {
+    if(sequence.state == MoveSequenceState::SUCCESS && improvement > 0) {
         addCutHyperedgesToQuotientGraph(_quotient_graph, new_cut_hes);
         _stats.total_improvement += improvement;
     }
@@ -418,16 +372,13 @@ FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id,
 template <typename GraphAndGainTypes>
 typename FlowRefinementScheduler<GraphAndGainTypes>::PartWeightUpdateResult
 FlowRefinementScheduler<GraphAndGainTypes>::partWeightUpdate(
-    const vec<HypernodeWeight> &part_weight_deltas, const bool rollback)
-{
+    const vec<HypernodeWeight>& part_weight_deltas, const bool rollback) {
     const HypernodeWeight multiplier = rollback ? -1 : 1;
     PartWeightUpdateResult res;
     _part_weights_lock.lock();
     PartitionID i = 0;
-    for(; i < _context.partition.k; ++i)
-    {
-        if(_part_weights[i] + multiplier * part_weight_deltas[i] > _max_part_weights[i])
-        {
+    for(; i < _context.partition.k; ++i) {
+        if(_part_weights[i] + multiplier * part_weight_deltas[i] > _max_part_weights[i]) {
             DBG << "Move sequence violated balance constraint of block" << i
                 << "(Max =" << _max_part_weights[i]
                 << ", Actual =" << (_part_weights[i] + multiplier * part_weight_deltas[i])
@@ -439,8 +390,7 @@ FlowRefinementScheduler<GraphAndGainTypes>::partWeightUpdate(
                 _max_part_weights[i];
             // Move Sequence Violates Balance Constraint => Rollback
             --i;
-            for(; i >= 0; --i)
-            {
+            for(; i >= 0; --i) {
                 _part_weights[i] -= multiplier * part_weight_deltas[i];
             }
             break;

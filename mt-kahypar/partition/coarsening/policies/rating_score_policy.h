@@ -37,8 +37,7 @@ class HeavyEdgeScore final : public kahypar::meta::PolicyBase
 {
   public:
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static RatingType
-    score(const HyperedgeWeight edge_weight, const HypernodeID edge_size)
-    {
+    score(const HyperedgeWeight edge_weight, const HypernodeID edge_size) {
         return static_cast<RatingType>(edge_weight) / (edge_size - 1);
     }
 };
@@ -48,8 +47,7 @@ class SamenessScore final : public kahypar::meta::PolicyBase
 {
   public:
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static RatingType
-    score(const HyperedgeWeight edge_weight, const HypernodeID)
-    {
+    score(const HyperedgeWeight edge_weight, const HypernodeID) {
         return static_cast<RatingType>(edge_weight);
     }
 };

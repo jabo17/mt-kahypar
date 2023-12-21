@@ -42,12 +42,10 @@ struct ThreadLocalFree
     using RangeType = typename ThreadLocal<T>::range_type;
     using Iterator = typename ThreadLocal<T>::iterator;
 
-    explicit ThreadLocalFree(F &&free_func) : _free_func(free_func) {}
+    explicit ThreadLocalFree(F&& free_func) : _free_func(free_func) {}
 
-    void operator()(RangeType &range) const
-    {
-        for(Iterator it = range.begin(); it < range.end(); ++it)
-        {
+    void operator()(RangeType& range) const {
+        for(Iterator it = range.begin(); it < range.end(); ++it) {
             _free_func(*it);
         }
     }
@@ -58,9 +56,8 @@ struct ThreadLocalFree
 
 namespace parallel {
 template <typename T, typename F>
-static void parallel_free_thread_local_internal_data(internals::ThreadLocal<T> &local,
-                                                     F &&free_func)
-{
+static void parallel_free_thread_local_internal_data(internals::ThreadLocal<T>& local,
+                                                     F&& free_func) {
     internals::ThreadLocalFree<T, F> thread_local_free(std::move(free_func));
     tbb::parallel_for(local.range(), thread_local_free);
 }

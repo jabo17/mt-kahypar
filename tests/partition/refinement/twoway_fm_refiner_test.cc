@@ -47,8 +47,7 @@ class ATwoWayFmRefiner : public Test
 
   public:
     ATwoWayFmRefiner() :
-        hypergraph(), partitioned_hypergraph(), context(), refiner(nullptr), metrics()
-    {
+        hypergraph(), partitioned_hypergraph(), context(), refiner(nullptr), metrics() {
         context.partition.mode = Mode::direct;
         context.partition.objective = Objective::cut;
         context.partition.gain_policy =
@@ -77,8 +76,7 @@ class ATwoWayFmRefiner : public Test
         prng = std::make_unique<std::mt19937>(420);
     }
 
-    void initialPartition()
-    {
+    void initialPartition() {
         Context ip_context(context);
         ip_context.refinement.label_propagation.algorithm =
             LabelPropagationAlgorithm::do_nothing;
@@ -103,34 +101,29 @@ class ATwoWayFmRefiner : public Test
 
 static constexpr double EPS = 0.05;
 
-TEST_F(ATwoWayFmRefiner, UpdatesImbalanceCorrectly)
-{
+TEST_F(ATwoWayFmRefiner, UpdatesImbalanceCorrectly) {
     refiner->refine(metrics, *prng);
     ASSERT_DOUBLE_EQ(metrics::imbalance(partitioned_hypergraph, context),
                      metrics.imbalance);
 }
 
-TEST_F(ATwoWayFmRefiner, DoesNotViolateBalanceConstraint)
-{
+TEST_F(ATwoWayFmRefiner, DoesNotViolateBalanceConstraint) {
     refiner->refine(metrics, *prng);
     ASSERT_LE(metrics.imbalance, context.partition.epsilon + EPS);
 }
 
-TEST_F(ATwoWayFmRefiner, UpdatesMetricsCorrectly)
-{
+TEST_F(ATwoWayFmRefiner, UpdatesMetricsCorrectly) {
     refiner->refine(metrics, *prng);
     ASSERT_EQ(metrics::quality(partitioned_hypergraph, context), metrics.quality);
 }
 
-TEST_F(ATwoWayFmRefiner, DoesNotWorsenSolutionQuality)
-{
+TEST_F(ATwoWayFmRefiner, DoesNotWorsenSolutionQuality) {
     HyperedgeWeight objective_before = metrics::quality(partitioned_hypergraph, context);
     refiner->refine(metrics, *prng);
     ASSERT_LE(metrics.quality, objective_before);
 }
 
-TEST_F(ATwoWayFmRefiner, DoesProduceCorrectMetricIfExecutedSeveralTimes)
-{
+TEST_F(ATwoWayFmRefiner, DoesProduceCorrectMetricIfExecutedSeveralTimes) {
     refiner->refine(metrics, *prng);
     ASSERT_EQ(metrics::quality(partitioned_hypergraph, context), metrics.quality);
 

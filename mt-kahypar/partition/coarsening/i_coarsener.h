@@ -40,13 +40,12 @@ class ICoarsener
 {
 
   public:
-    ICoarsener(const ICoarsener &) = delete;
-    ICoarsener(ICoarsener &&) = delete;
-    ICoarsener &operator=(const ICoarsener &) = delete;
-    ICoarsener &operator=(ICoarsener &&) = delete;
+    ICoarsener(const ICoarsener&) = delete;
+    ICoarsener(ICoarsener&&) = delete;
+    ICoarsener& operator=(const ICoarsener&) = delete;
+    ICoarsener& operator=(ICoarsener&&) = delete;
 
-    void coarsen()
-    {
+    void coarsen() {
         initialize();
         bool should_continue = true;
         // Coarsening algorithms proceed in passes where each pass computes a clustering
@@ -55,8 +54,7 @@ class ICoarsener
         // a predefined contraction limit (!shouldNotTerminate) or the number of nodes
         // could not be significantly reduced within one coarsening pass
         // (should_continue).
-        while(shouldNotTerminate() && should_continue)
-        {
+        while(shouldNotTerminate() && should_continue) {
             should_continue = coarseningPass();
         }
         terminate();
@@ -74,8 +72,7 @@ class ICoarsener
 
     mt_kahypar_hypergraph_t coarsestHypergraph() { return coarsestHypergraphImpl(); }
 
-    mt_kahypar_partitioned_hypergraph_t coarsestPartitionedHypergraph()
-    {
+    mt_kahypar_partitioned_hypergraph_t coarsestPartitionedHypergraph() {
         return coarsestPartitionedHypergraphImpl();
     }
 

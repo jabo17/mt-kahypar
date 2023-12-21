@@ -60,11 +60,9 @@ struct Statistic
 };
 
 template <typename T>
-Statistic createStats(const std::vector<T> &vec, const double avg, const double stdev)
-{
+Statistic createStats(const std::vector<T>& vec, const double avg, const double stdev) {
     internal::Statistic stats;
-    if(!vec.empty())
-    {
+    if(!vec.empty()) {
         const auto quartiles = kahypar::math::firstAndThirdQuartile(vec);
         stats.min = vec.front();
         stats.q1 = quartiles.first;
@@ -77,10 +75,9 @@ Statistic createStats(const std::vector<T> &vec, const double avg, const double 
     return stats;
 }
 
-void printHypergraphStats(const Statistic &he_size_stats,
-                          const Statistic &he_weight_stats, const Statistic &hn_deg_stats,
-                          const Statistic &hn_weight_stats)
-{
+void printHypergraphStats(const Statistic& he_size_stats,
+                          const Statistic& he_weight_stats, const Statistic& hn_deg_stats,
+                          const Statistic& hn_weight_stats) {
     // default double precision is 7
     const uint8_t double_width = 7;
     const uint8_t he_size_width =
@@ -128,9 +125,8 @@ void printHypergraphStats(const Statistic &he_size_stats,
 } // namespace internal
 
 template <typename Hypergraph>
-void printHypergraphInfo(const Hypergraph &hypergraph, const Context &context,
-                         const std::string &name, const bool show_memory_consumption)
-{
+void printHypergraphInfo(const Hypergraph& hypergraph, const Context& context,
+                         const std::string& name, const bool show_memory_consumption) {
     std::vector<HypernodeID> he_sizes;
     std::vector<HyperedgeWeight> he_weights;
     std::vector<HyperedgeID> hn_degrees;
@@ -143,7 +139,7 @@ void printHypergraphInfo(const Hypergraph &hypergraph, const Context &context,
 
     HypernodeID num_hypernodes = hypergraph.initialNumNodes();
     const double avg_hn_degree = utils::avgHypernodeDegree(hypergraph);
-    hypergraph.doParallelForAllNodes([&](const HypernodeID &hn) {
+    hypergraph.doParallelForAllNodes([&](const HypernodeID& hn) {
         hn_degrees[hn] = hypergraph.nodeDegree(hn);
         hn_weights[hn] = hypergraph.nodeWeight(hn);
     });
@@ -156,7 +152,7 @@ void printHypergraphInfo(const Hypergraph &hypergraph, const Context &context,
     HyperedgeID num_hyperedges = hypergraph.initialNumEdges();
     HypernodeID num_pins = hypergraph.initialNumPins();
     const double avg_he_size = utils::avgHyperedgeDegree(hypergraph);
-    hypergraph.doParallelForAllEdges([&](const HyperedgeID &he) {
+    hypergraph.doParallelForAllEdges([&](const HyperedgeID& he) {
         he_sizes[he] = hypergraph.edgeSize(he);
         he_weights[he] = hypergraph.edgeWeight(he);
     });
@@ -167,9 +163,8 @@ void printHypergraphInfo(const Hypergraph &hypergraph, const Context &context,
         utils::parallel_stdev(he_weights, avg_he_weight, num_hyperedges);
 
     tbb::enumerable_thread_specific<size_t> graph_edge_count(0);
-    hypergraph.doParallelForAllEdges([&](const HyperedgeID &he) {
-        if(hypergraph.edgeSize(he) == 2)
-        {
+    hypergraph.doParallelForAllEdges([&](const HyperedgeID& he) {
+        if(hypergraph.edgeSize(he) == 2) {
             graph_edge_count.local() += 1;
         }
     });
@@ -194,13 +189,11 @@ void printHypergraphInfo(const Hypergraph &hypergraph, const Context &context,
         internal::createStats(hn_degrees, avg_hn_degree, stdev_hn_degree),
         internal::createStats(hn_weights, avg_hn_weight, stdev_hn_weight));
 
-    if(hypergraph.hasFixedVertices())
-    {
+    if(hypergraph.hasFixedVertices()) {
         printFixedVertexPartWeights(hypergraph, context);
     }
 
-    if(show_memory_consumption)
-    {
+    if(show_memory_consumption) {
         // Print Memory Consumption
         utils::MemoryTreeNode hypergraph_memory_consumption("Hypergraph",
                                                             utils::OutputType::MEGABYTE);
@@ -212,12 +205,10 @@ void printHypergraphInfo(const Hypergraph &hypergraph, const Context &context,
 }
 
 template <typename PartitionedHypergraph>
-void printPartWeightsAndSizes(const PartitionedHypergraph &hypergraph,
-                              const Context &context)
-{
+void printPartWeightsAndSizes(const PartitionedHypergraph& hypergraph,
+                              const Context& context) {
     vec<HypernodeID> part_sizes(context.partition.k, 0);
-    for(HypernodeID u : hypergraph.nodes())
-    {
+    for(HypernodeID u : hypergraph.nodes()) {
         part_sizes[hypergraph.partID(u)]++;
     }
     PartitionID min_block = kInvalidPartition;
@@ -227,16 +218,13 @@ void printPartWeightsAndSizes(const PartitionedHypergraph &hypergraph,
     HypernodeWeight max_part_weight = 0;
     HypernodeID max_part_size = 0;
     size_t num_imbalanced_blocks = 0;
-    for(PartitionID i = 0; i < context.partition.k; ++i)
-    {
+    for(PartitionID i = 0; i < context.partition.k; ++i) {
         avg_part_weight += hypergraph.partWeight(i);
-        if(hypergraph.partWeight(i) < min_part_weight)
-        {
+        if(hypergraph.partWeight(i) < min_part_weight) {
             min_block = i;
             min_part_weight = hypergraph.partWeight(i);
         }
-        if(hypergraph.partWeight(i) > max_part_weight)
-        {
+        if(hypergraph.partWeight(i) > max_part_weight) {
             max_block = i;
             max_part_weight = hypergraph.partWeight(i);
         }
@@ -250,10 +238,8 @@ void printPartWeightsAndSizes(const PartitionedHypergraph &hypergraph,
 
     const uint8_t part_digits = kahypar::math::digits(max_part_weight);
     const uint8_t k_digits = kahypar::math::digits(context.partition.k);
-    if(context.partition.k <= 32)
-    {
-        for(PartitionID i = 0; i != context.partition.k; ++i)
-        {
+    if(context.partition.k <= 32) {
+        for(PartitionID i = 0; i != context.partition.k; ++i) {
             bool is_imbalanced =
                 hypergraph.partWeight(i) > context.partition.max_part_weights[i] ||
                 (context.partition.preset_type != PresetType::large_k &&
@@ -272,9 +258,7 @@ void printPartWeightsAndSizes(const PartitionedHypergraph &hypergraph,
             if(is_imbalanced)
                 std::cout << END;
         }
-    }
-    else
-    {
+    } else {
         std::cout << "Avg Block Weight = " << avg_part_weight << std::endl;
         std::cout << "Min Block Weight = " << min_part_weight
                   << (min_part_weight <= context.partition.max_part_weights[min_block] ?
@@ -288,17 +272,14 @@ void printPartWeightsAndSizes(const PartitionedHypergraph &hypergraph,
                           " > ")
                   << context.partition.max_part_weights[max_block] << " (Block "
                   << max_block << ")" << std::endl;
-        if(num_imbalanced_blocks > 0)
-        {
+        if(num_imbalanced_blocks > 0) {
             LOG << RED << "Number of Imbalanced Blocks =" << num_imbalanced_blocks << END;
-            for(PartitionID i = 0; i != context.partition.k; ++i)
-            {
+            for(PartitionID i = 0; i != context.partition.k; ++i) {
                 const bool is_imbalanced =
                     hypergraph.partWeight(i) > context.partition.max_part_weights[i] ||
                     (context.partition.preset_type != PresetType::large_k &&
                      hypergraph.partWeight(i) == 0);
-                if(is_imbalanced)
-                {
+                if(is_imbalanced) {
                     std::cout << RED << "|block " << std::left << std::setw(k_digits) << i
                               << std::setw(1) << "| = " << std::right
                               << std::setw(part_digits) << part_sizes[i] << std::setw(1)
@@ -317,19 +298,14 @@ void printPartWeightsAndSizes(const PartitionedHypergraph &hypergraph,
 }
 
 template <typename Hypergraph>
-void printFixedVertexPartWeights(const Hypergraph &hypergraph, const Context &context)
-{
-    if(context.partition.verbose_output && hypergraph.hasFixedVertices())
-    {
+void printFixedVertexPartWeights(const Hypergraph& hypergraph, const Context& context) {
+    if(context.partition.verbose_output && hypergraph.hasFixedVertices()) {
         HypernodeWeight max_part_weight = 0;
-        for(PartitionID i = 0; i < context.partition.k; ++i)
-        {
-            if(hypergraph.fixedVertexBlockWeight(i) > max_part_weight)
-            {
+        for(PartitionID i = 0; i < context.partition.k; ++i) {
+            if(hypergraph.fixedVertexBlockWeight(i) > max_part_weight) {
                 max_part_weight = hypergraph.fixedVertexBlockWeight(i);
             }
-            if(context.partition.max_part_weights[i] > max_part_weight)
-            {
+            if(context.partition.max_part_weights[i] > max_part_weight) {
                 max_part_weight = context.partition.max_part_weights[i];
             }
         }
@@ -337,8 +313,7 @@ void printFixedVertexPartWeights(const Hypergraph &hypergraph, const Context &co
         const uint8_t part_digits = kahypar::math::digits(max_part_weight);
         const uint8_t k_digits = kahypar::math::digits(context.partition.k);
         LOG << BOLD << "\nHypergraph contains fixed vertices" << END;
-        for(PartitionID i = 0; i != context.partition.k; ++i)
-        {
+        for(PartitionID i = 0; i != context.partition.k; ++i) {
             std::cout << "Fixed vertex weight of block " << std::left
                       << std::setw(k_digits) << i << std::setw(1) << ": " << std::setw(1)
                       << "  w( " << std::right << std::setw(k_digits) << i << std::setw(1)
@@ -352,11 +327,9 @@ void printFixedVertexPartWeights(const Hypergraph &hypergraph, const Context &co
 }
 
 template <typename PartitionedHypergraph>
-void printPartitioningResults(const PartitionedHypergraph &hypergraph,
-                              const Context &context, const std::string &description)
-{
-    if(context.partition.verbose_output)
-    {
+void printPartitioningResults(const PartitionedHypergraph& hypergraph,
+                              const Context& context, const std::string& description) {
+    if(context.partition.verbose_output) {
         LOG << description;
         LOG << context.partition.objective << "      ="
             << metrics::quality(hypergraph, context);
@@ -367,18 +340,14 @@ void printPartitioningResults(const PartitionedHypergraph &hypergraph,
     }
 }
 
-void printContext(const Context &context)
-{
-    if(context.partition.verbose_output)
-    {
+void printContext(const Context& context) {
+    if(context.partition.verbose_output) {
         LOG << context;
     }
 }
 
-void printMemoryPoolConsumption(const Context &context)
-{
-    if(context.partition.verbose_output && context.partition.show_memory_consumption)
-    {
+void printMemoryPoolConsumption(const Context& context) {
+    if(context.partition.verbose_output && context.partition.show_memory_consumption) {
         utils::MemoryTreeNode memory_pool_consumption("Memory Pool",
                                                       utils::OutputType::MEGABYTE);
         parallel::MemoryPool::instance().memory_consumption(&memory_pool_consumption);
@@ -390,10 +359,8 @@ void printMemoryPoolConsumption(const Context &context)
 }
 
 template <typename Hypergraph>
-void printInputInformation(const Context &context, const Hypergraph &hypergraph)
-{
-    if(context.partition.verbose_output)
-    {
+void printInputInformation(const Context& context, const Hypergraph& hypergraph) {
+    if(context.partition.verbose_output) {
         LOG << "\n*****************************************************************"
                "**********"
                "*****";
@@ -411,10 +378,8 @@ void printInputInformation(const Context &context, const Hypergraph &hypergraph)
     }
 }
 
-void printTopLevelPreprocessingBanner(const Context &context)
-{
-    if(context.partition.verbose_output)
-    {
+void printTopLevelPreprocessingBanner(const Context& context) {
+    if(context.partition.verbose_output) {
         LOG << "\n*****************************************************************"
                "**********"
                "*****";
@@ -427,10 +392,8 @@ void printTopLevelPreprocessingBanner(const Context &context)
     }
 }
 
-void printCoarseningBanner(const Context &context)
-{
-    if(context.partition.verbose_output)
-    {
+void printCoarseningBanner(const Context& context) {
+    if(context.partition.verbose_output) {
         LOG << "*******************************************************************"
                "**********"
                "***";
@@ -443,10 +406,8 @@ void printCoarseningBanner(const Context &context)
     }
 }
 
-void printInitialPartitioningBanner(const Context &context)
-{
-    if(context.partition.verbose_output)
-    {
+void printInitialPartitioningBanner(const Context& context) {
+    if(context.partition.verbose_output) {
         LOG << "\n*****************************************************************"
                "**********"
                "*****";
@@ -459,10 +420,8 @@ void printInitialPartitioningBanner(const Context &context)
     }
 }
 
-void printLocalSearchBanner(const Context &context)
-{
-    if(context.partition.verbose_output)
-    {
+void printLocalSearchBanner(const Context& context) {
+    if(context.partition.verbose_output) {
         LOG << "\n*****************************************************************"
                "**********"
                "*****";
@@ -475,20 +434,15 @@ void printLocalSearchBanner(const Context &context)
     }
 }
 
-void printVCycleBanner(const Context &context, const size_t vcycle_num)
-{
-    if(context.partition.verbose_output)
-    {
+void printVCycleBanner(const Context& context, const size_t vcycle_num) {
+    if(context.partition.verbose_output) {
         LOG << "\n*****************************************************************"
                "**********"
                "*****";
         std::cout << "*                                  V-Cycle  " << vcycle_num;
-        if(vcycle_num < 10)
-        {
+        if(vcycle_num < 10) {
             std::cout << "                                  *\n";
-        }
-        else
-        {
+        } else {
             std::cout << "                                 *\n";
         }
         LOG << "*******************************************************************"
@@ -496,10 +450,8 @@ void printVCycleBanner(const Context &context, const size_t vcycle_num)
                "***";
     }
 }
-void printDeepMultilevelBanner(const Context &context)
-{
-    if(context.partition.verbose_output)
-    {
+void printDeepMultilevelBanner(const Context& context) {
+    if(context.partition.verbose_output) {
         LOG << "\n*****************************************************************"
                "**********"
                "*****";
@@ -515,34 +467,30 @@ void printDeepMultilevelBanner(const Context &context)
 namespace {
 
 template <typename T, typename V>
-void printKeyValue(const T &key, const V &value, const std::string &details = "")
-{
+void printKeyValue(const T& key, const V& value, const std::string& details = "") {
     LOG << " " << std::left << std::setw(20) << key << "=" << value << details;
 }
 } // namespace
 
 template <typename PartitionedHypergraph>
-void printObjectives(const PartitionedHypergraph &hypergraph, const Context &context,
-                     const std::chrono::duration<double> &elapsed_seconds)
-{
+void printObjectives(const PartitionedHypergraph& hypergraph, const Context& context,
+                     const std::chrono::duration<double>& elapsed_seconds) {
     LOG << "Objectives:";
     printKeyValue(context.partition.objective, metrics::quality(hypergraph, context),
                   "(primary objective function)");
-    if(context.partition.objective == Objective::steiner_tree)
-    {
+    if(context.partition.objective == Objective::steiner_tree) {
         printKeyValue("Approximation Factor",
                       metrics::approximationFactorForProcessMapping(hypergraph, context));
     }
-    if(context.partition.objective != Objective::cut)
-    {
+    if(context.partition.objective != Objective::cut) {
         printKeyValue(Objective::cut, metrics::quality(hypergraph, Objective::cut));
     }
-    if(context.partition.objective != Objective::km1 && !PartitionedHypergraph::is_graph)
-    {
+    if(context.partition.objective != Objective::km1 &&
+       !PartitionedHypergraph::is_graph) {
         printKeyValue(Objective::km1, metrics::quality(hypergraph, Objective::km1));
     }
-    if(context.partition.objective != Objective::soed && !PartitionedHypergraph::is_graph)
-    {
+    if(context.partition.objective != Objective::soed &&
+       !PartitionedHypergraph::is_graph) {
         printKeyValue(Objective::soed, metrics::quality(hypergraph, Objective::soed));
     }
     printKeyValue("Imbalance", metrics::imbalance(hypergraph, context));
@@ -550,24 +498,19 @@ void printObjectives(const PartitionedHypergraph &hypergraph, const Context &con
 }
 
 template <typename PartitionedHypergraph>
-void printCutMatrix(const PartitionedHypergraph &hypergraph)
-{
+void printCutMatrix(const PartitionedHypergraph& hypergraph) {
     const PartitionID k = hypergraph.k();
 
     using MCell = parallel::IntegralAtomicWrapper<HyperedgeWeight>;
     using MCol = std::vector<MCell>;
     std::vector<MCol> cut_matrix(k, MCol(k, MCell(0)));
 
-    hypergraph.doParallelForAllEdges([&](const HyperedgeID &he) {
-        if(hypergraph.connectivity(he) > 1)
-        {
+    hypergraph.doParallelForAllEdges([&](const HyperedgeID& he) {
+        if(hypergraph.connectivity(he) > 1) {
             const HyperedgeWeight edge_weight = hypergraph.edgeWeight(he);
-            for(const PartitionID &block_1 : hypergraph.connectivitySet(he))
-            {
-                for(const PartitionID &block_2 : hypergraph.connectivitySet(he))
-                {
-                    if(block_1 < block_2)
-                    {
+            for(const PartitionID& block_1 : hypergraph.connectivitySet(he)) {
+                for(const PartitionID& block_2 : hypergraph.connectivitySet(he)) {
+                    if(block_1 < block_2) {
                         cut_matrix[block_1][block_2] += edge_weight;
                     }
                 }
@@ -576,10 +519,8 @@ void printCutMatrix(const PartitionedHypergraph &hypergraph)
     });
 
     HyperedgeWeight max_cut = 0;
-    for(PartitionID block_1 = 0; block_1 < k; ++block_1)
-    {
-        for(PartitionID block_2 = block_1 + 1; block_2 < k; ++block_2)
-        {
+    for(PartitionID block_1 = 0; block_1 < k; ++block_1) {
+        for(PartitionID block_2 = block_1 + 1; block_2 < k; ++block_2) {
             max_cut = std::max(max_cut, cut_matrix[block_1][block_2].load());
         }
     }
@@ -587,18 +528,15 @@ void printCutMatrix(const PartitionedHypergraph &hypergraph)
     // HEADER
     const uint8_t column_width = std::max(kahypar::math::digits(max_cut) + 2, 5);
     std::cout << std::right << std::setw(column_width) << "Block";
-    for(PartitionID block = 0; block < k; ++block)
-    {
+    for(PartitionID block = 0; block < k; ++block) {
         std::cout << std::right << std::setw(column_width) << block;
     }
     std::cout << std::endl;
 
     // CUT MATRIX
-    for(PartitionID block_1 = 0; block_1 < k; ++block_1)
-    {
+    for(PartitionID block_1 = 0; block_1 < k; ++block_1) {
         std::cout << std::right << std::setw(column_width) << block_1;
-        for(PartitionID block_2 = 0; block_2 < k; ++block_2)
-        {
+        for(PartitionID block_2 = 0; block_2 < k; ++block_2) {
             std::cout << std::right << std::setw(column_width)
                       << (PartitionedHypergraph::is_graph ?
                               cut_matrix[block_1][block_2].load() / 2 :
@@ -609,8 +547,7 @@ void printCutMatrix(const PartitionedHypergraph &hypergraph)
 }
 
 template <typename PartitionedHypergraph>
-void printPotentialPositiveGainMoveMatrix(const PartitionedHypergraph &hypergraph)
-{
+void printPotentialPositiveGainMoveMatrix(const PartitionedHypergraph& hypergraph) {
     const PartitionID k = hypergraph.k();
 
     using MCell = parallel::IntegralAtomicWrapper<HyperedgeWeight>;
@@ -620,35 +557,28 @@ void printPotentialPositiveGainMoveMatrix(const PartitionedHypergraph &hypergrap
     tbb::enumerable_thread_specific<std::vector<Gain> > local_gain(k, 0);
     hypergraph.doParallelForAllNodes([&](const HypernodeID hn) {
         // Calculate gain to all blocks of the partition
-        std::vector<Gain> &tmp_scores = local_gain.local();
+        std::vector<Gain>& tmp_scores = local_gain.local();
         const PartitionID from = hypergraph.partID(hn);
         Gain internal_weight = 0;
-        for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
-        {
+        for(const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
             HypernodeID pin_count_in_from_part = hypergraph.pinCountInPart(he, from);
             HyperedgeWeight he_weight = hypergraph.edgeWeight(he);
 
-            if(pin_count_in_from_part > 1)
-            {
+            if(pin_count_in_from_part > 1) {
                 internal_weight += he_weight;
             }
 
-            for(const PartitionID &to : hypergraph.connectivitySet(he))
-            {
-                if(from != to)
-                {
+            for(const PartitionID& to : hypergraph.connectivitySet(he)) {
+                if(from != to) {
                     tmp_scores[to] -= he_weight;
                 }
             }
         }
 
-        for(PartitionID to = 0; to < k; ++to)
-        {
-            if(from != to)
-            {
+        for(PartitionID to = 0; to < k; ++to) {
+            if(from != to) {
                 Gain score = tmp_scores[to] + internal_weight;
-                if(score < 0)
-                {
+                if(score < 0) {
                     positive_gains[from][to] += std::abs(score);
                 }
             }
@@ -657,10 +587,8 @@ void printPotentialPositiveGainMoveMatrix(const PartitionedHypergraph &hypergrap
     });
 
     HyperedgeWeight max_gain = 0;
-    for(PartitionID block_1 = 0; block_1 < k; ++block_1)
-    {
-        for(PartitionID block_2 = block_1 + 1; block_2 < k; ++block_2)
-        {
+    for(PartitionID block_1 = 0; block_1 < k; ++block_1) {
+        for(PartitionID block_2 = block_1 + 1; block_2 < k; ++block_2) {
             max_gain = std::max(max_gain, positive_gains[block_1][block_2].load());
         }
     }
@@ -668,18 +596,15 @@ void printPotentialPositiveGainMoveMatrix(const PartitionedHypergraph &hypergrap
     // HEADER
     const uint8_t column_width = std::max(kahypar::math::digits(max_gain) + 2, 5);
     std::cout << std::right << std::setw(column_width) << "Block";
-    for(PartitionID block = 0; block < k; ++block)
-    {
+    for(PartitionID block = 0; block < k; ++block) {
         std::cout << std::right << std::setw(column_width) << block;
     }
     std::cout << std::endl;
 
     // CUT MATRIX
-    for(PartitionID block_1 = 0; block_1 < k; ++block_1)
-    {
+    for(PartitionID block_1 = 0; block_1 < k; ++block_1) {
         std::cout << std::right << std::setw(column_width) << block_1;
-        for(PartitionID block_2 = 0; block_2 < k; ++block_2)
-        {
+        for(PartitionID block_2 = 0; block_2 < k; ++block_2) {
             std::cout << std::right << std::setw(column_width)
                       << positive_gains[block_1][block_2].load();
         }
@@ -688,8 +613,7 @@ void printPotentialPositiveGainMoveMatrix(const PartitionedHypergraph &hypergrap
 }
 
 template <typename PartitionedHypergraph>
-void printConnectedCutHyperedgeAnalysis(const PartitionedHypergraph &hypergraph)
-{
+void printConnectedCutHyperedgeAnalysis(const PartitionedHypergraph& hypergraph) {
     std::vector<bool> visited_he(hypergraph.initialNumEdges(), false);
     std::vector<HyperedgeWeight> connected_cut_hyperedges;
 
@@ -699,19 +623,15 @@ void printConnectedCutHyperedgeAnalysis(const PartitionedHypergraph &hypergraph)
         s.push_back(he);
         visited_he[hypergraph.uniqueEdgeID(he)] = true;
 
-        while(!s.empty())
-        {
+        while(!s.empty()) {
             const HyperedgeID e = s.back();
             s.pop_back();
             component_weight += hypergraph.edgeWeight(e);
 
-            for(const HypernodeID &pin : hypergraph.pins(e))
-            {
-                for(const HyperedgeID &tmp_e : hypergraph.incidentEdges(pin))
-                {
+            for(const HypernodeID& pin : hypergraph.pins(e)) {
+                for(const HyperedgeID& tmp_e : hypergraph.incidentEdges(pin)) {
                     if(!visited_he[hypergraph.uniqueEdgeID(tmp_e)] &&
-                       hypergraph.connectivity(tmp_e) > 1)
-                    {
+                       hypergraph.connectivity(tmp_e) > 1) {
                         s.push_back(tmp_e);
                         visited_he[hypergraph.uniqueEdgeID(tmp_e)] = true;
                     }
@@ -722,10 +642,8 @@ void printConnectedCutHyperedgeAnalysis(const PartitionedHypergraph &hypergraph)
         return component_weight;
     };
 
-    for(const HyperedgeID &he : hypergraph.edges())
-    {
-        if(hypergraph.connectivity(he) > 1 && !visited_he[hypergraph.uniqueEdgeID(he)])
-        {
+    for(const HyperedgeID& he : hypergraph.edges()) {
+        if(hypergraph.connectivity(he) > 1 && !visited_he[hypergraph.uniqueEdgeID(he)]) {
             connected_cut_hyperedges.push_back(analyse_component(he));
         }
     }
@@ -738,20 +656,17 @@ void printConnectedCutHyperedgeAnalysis(const PartitionedHypergraph &hypergraph)
     LOG << "Max Component Weight         =" << connected_cut_hyperedges.back();
     LOG << "Component Weight Vector:";
     std::cout << "(";
-    for(const HyperedgeWeight &weight : connected_cut_hyperedges)
-    {
+    for(const HyperedgeWeight& weight : connected_cut_hyperedges) {
         std::cout << weight << ",";
     }
     std::cout << "\b)" << std::endl;
 }
 
 template <typename PartitionedHypergraph>
-void printPartitioningResults(const PartitionedHypergraph &hypergraph,
-                              const Context &context,
-                              const std::chrono::duration<double> &elapsed_seconds)
-{
-    if(context.partition.verbose_output)
-    {
+void printPartitioningResults(const PartitionedHypergraph& hypergraph,
+                              const Context& context,
+                              const std::chrono::duration<double>& elapsed_seconds) {
+    if(context.partition.verbose_output) {
         LOG << "\n*****************************************************************"
                "**********"
                "*****";
@@ -762,8 +677,7 @@ void printPartitioningResults(const PartitionedHypergraph &hypergraph,
                "**********"
                "***";
 
-        if(context.partition.show_advanced_cut_analysis)
-        {
+        if(context.partition.show_advanced_cut_analysis) {
             LOG << "\nCut Matrix: ";
             printCutMatrix(hypergraph);
 
@@ -779,8 +693,7 @@ void printPartitioningResults(const PartitionedHypergraph &hypergraph,
         LOG << "\nPartition sizes and weights: ";
         printPartWeightsAndSizes(hypergraph, context);
 
-        if(context.partition.show_memory_consumption)
-        {
+        if(context.partition.show_memory_consumption) {
             // Print Memory Consumption
             utils::MemoryTreeNode hypergraph_memory_consumption(
                 "Partitioned Hypergraph", utils::OutputType::MEGABYTE);
@@ -790,27 +703,24 @@ void printPartitioningResults(const PartitionedHypergraph &hypergraph,
             LOG << hypergraph_memory_consumption;
         }
 
-        if(hypergraph.hasTargetGraph() && TargetGraph::TRACK_STATS)
-        {
+        if(hypergraph.hasTargetGraph() && TargetGraph::TRACK_STATS) {
             hypergraph.targetGraph()->printStats();
         }
 
         LOG << "\nTimings:";
-        utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+        utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
         timer.showDetailedTimings(context.partition.show_detailed_timings);
         timer.setMaximumOutputDepth(context.partition.timings_output_depth);
         LOG << timer;
     }
 }
 
-void printStripe()
-{
+void printStripe() {
     LOG << "---------------------------------------------------------------------"
            "-----------";
 }
 
-void printBanner()
-{
+void printBanner() {
     // clang-format off
   LOG << R"(+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++)";
   LOG << R"(+         __  __ _______       _  __     _    _       _____                   +)";
@@ -827,10 +737,9 @@ void printBanner()
 }
 
 namespace internal {
-void printCommunityStats(const Statistic &community_size_stats,
-                         const Statistic &community_pins_stats,
-                         const Statistic &community_degree_stats)
-{
+void printCommunityStats(const Statistic& community_size_stats,
+                         const Statistic& community_pins_stats,
+                         const Statistic& community_degree_stats) {
     // default double precision is 7
     const uint8_t double_width = 7;
     const uint8_t community_size_width =
@@ -882,17 +791,14 @@ void printCommunityStats(const Statistic &community_size_stats,
 } // namespace internal
 
 template <typename Hypergraph>
-void printCommunityInformation(const Hypergraph &hypergraph)
-{
+void printCommunityInformation(const Hypergraph& hypergraph) {
 
     PartitionID num_communities = tbb::parallel_reduce(
         tbb::blocked_range<HypernodeID>(ID(0), hypergraph.initialNumNodes()), 0,
-        [&](const tbb::blocked_range<HypernodeID> &range, PartitionID init) {
+        [&](const tbb::blocked_range<HypernodeID>& range, PartitionID init) {
             PartitionID my_range_num_communities = init;
-            for(HypernodeID hn = range.begin(); hn < range.end(); ++hn)
-            {
-                if(hypergraph.nodeIsEnabled(hn))
-                {
+            for(HypernodeID hn = range.begin(); hn < range.end(); ++hn) {
+                if(hypergraph.nodeIsEnabled(hn)) {
                     my_range_num_communities = std::max(my_range_num_communities,
                                                         hypergraph.communityID(hn) + 1);
                 }
@@ -915,10 +821,8 @@ void printCommunityInformation(const Hypergraph &hypergraph)
             ets_nodes.local()[cu].second += hypergraph.nodeDegree(u);
         });
 
-        for(const auto &x : ets_nodes)
-        {
-            for(PartitionID i = 0; i < num_communities; ++i)
-            {
+        for(const auto& x : ets_nodes) {
+            for(PartitionID i = 0; i < num_communities; ++i) {
                 nodes_per_community[i] += x[i].first;
                 internal_degree[i] += x[i].second;
             }
@@ -928,17 +832,14 @@ void printCommunityInformation(const Hypergraph &hypergraph)
     auto reduce_hyperedges = [&] {
         tbb::enumerable_thread_specific<vec<size_t> > ets_pins(num_communities, 0);
         hypergraph.doParallelForAllEdges([&](const HyperedgeID he) {
-            auto &pin_counter = ets_pins.local();
-            for(const HypernodeID pin : hypergraph.pins(he))
-            {
+            auto& pin_counter = ets_pins.local();
+            for(const HypernodeID pin : hypergraph.pins(he)) {
                 pin_counter[hypergraph.communityID(pin)]++;
             }
         });
 
-        for(const auto &x : ets_pins)
-        {
-            for(PartitionID i = 0; i < num_communities; ++i)
-            {
+        for(const auto& x : ets_pins) {
+            for(PartitionID i = 0; i < num_communities; ++i) {
                 internal_pins[i] += x[i];
             }
         }
@@ -952,12 +853,11 @@ void printCommunityInformation(const Hypergraph &hypergraph)
 
     auto square = [&](size_t x) { return x * x; };
 
-    auto avg_and_std_dev = [&](const std::vector<size_t> &v) {
+    auto avg_and_std_dev = [&](const std::vector<size_t>& v) {
         const double avg =
             std::accumulate(v.begin(), v.end(), 0.0) / static_cast<double>(v.size());
         double std_dev = 0.0;
-        for(size_t x : v)
-        {
+        for(size_t x : v) {
             std_dev += square(x - avg);
         }
         std_dev = std::sqrt(std_dev / static_cast<double>(v.size() - 1));
@@ -977,24 +877,24 @@ void printCommunityInformation(const Hypergraph &hypergraph)
 }
 
 namespace {
-#define PRINT_CUT_MATRIX(X) void printCutMatrix(const X &hypergraph)
+#define PRINT_CUT_MATRIX(X) void printCutMatrix(const X& hypergraph)
 #define PRINT_HYPERGRAPH_INFO(X)                                                         \
-    void printHypergraphInfo(const X &hypergraph, const Context &context,                \
-                             const std::string &name,                                    \
+    void printHypergraphInfo(const X& hypergraph, const Context& context,                \
+                             const std::string& name,                                    \
                              const bool show_memory_consumption)
 #define PRINT_PARTITIONING_RESULTS(X)                                                    \
-    void printPartitioningResults(const X &hypergraph, const Context &context,           \
-                                  const std::string &description)
+    void printPartitioningResults(const X& hypergraph, const Context& context,           \
+                                  const std::string& description)
 #define PRINT_PARTITIONING_RESULTS_2(X)                                                  \
-    void printPartitioningResults(const X &hypergraph, const Context &context,           \
-                                  const std::chrono::duration<double> &elapsed_seconds)
+    void printPartitioningResults(const X& hypergraph, const Context& context,           \
+                                  const std::chrono::duration<double>& elapsed_seconds)
 #define PRINT_PART_WEIGHT_AND_SIZES(X)                                                   \
-    void printPartWeightsAndSizes(const X &hypergraph, const Context &context)
+    void printPartWeightsAndSizes(const X& hypergraph, const Context& context)
 #define PRINT_FIXED_VERTEX_PART_WEIGHTS(X)                                               \
-    void printFixedVertexPartWeights(const X &hypergraph, const Context &context)
+    void printFixedVertexPartWeights(const X& hypergraph, const Context& context)
 #define PRINT_INPUT_INFORMATION(X)                                                       \
-    void printInputInformation(const Context &context, const X &hypergraph)
-#define PRINT_COMMUNITY_INFORMATION(X) void printCommunityInformation(const X &hypergraph)
+    void printInputInformation(const Context& context, const X& hypergraph)
+#define PRINT_COMMUNITY_INFORMATION(X) void printCommunityInformation(const X& hypergraph)
 } // namespace
 
 INSTANTIATE_FUNC_WITH_HYPERGRAPHS(PRINT_HYPERGRAPH_INFO)

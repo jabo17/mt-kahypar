@@ -41,8 +41,7 @@ using ::testing::Test;
 namespace mt_kahypar {
 template <typename TypeTraitsT, PartitionID k, bool unconstrained, Objective objective>
 struct TestConfig
-{
-};
+{};
 
 template <typename TypeTraitsT, PartitionID k, bool unconstrained>
 struct TestConfig<TypeTraitsT, k, unconstrained, Objective::km1>
@@ -85,8 +84,7 @@ class ALabelPropagationRefiner : public Test
 
     ALabelPropagationRefiner() :
         hypergraph(), partitioned_hypergraph(), context(), gain_cache(), refiner(nullptr),
-        metrics()
-    {
+        metrics() {
         context.partition.graph_filename = "../tests/instances/contracted_ibm01.hgr";
         context.partition.graph_community_filename =
             "../tests/instances/contracted_ibm01.hgr.community";
@@ -143,8 +141,7 @@ class ALabelPropagationRefiner : public Test
         refiner->initialize(phg);
     }
 
-    void initialPartition()
-    {
+    void initialPartition() {
         Context ip_context(context);
         ip_context.refinement.label_propagation.algorithm =
             LabelPropagationAlgorithm::do_nothing;
@@ -231,8 +228,7 @@ typedef ::testing::Types<
 
 TYPED_TEST_CASE(ALabelPropagationRefiner, TestConfigs);
 
-TYPED_TEST(ALabelPropagationRefiner, UpdatesImbalanceCorrectly)
-{
+TYPED_TEST(ALabelPropagationRefiner, UpdatesImbalanceCorrectly) {
     mt_kahypar_partitioned_hypergraph_t phg =
         utils::partitioned_hg_cast(this->partitioned_hypergraph);
     this->refiner->refine(phg, {}, this->metrics, std::numeric_limits<double>::max());
@@ -240,16 +236,14 @@ TYPED_TEST(ALabelPropagationRefiner, UpdatesImbalanceCorrectly)
                      this->metrics.imbalance);
 }
 
-TYPED_TEST(ALabelPropagationRefiner, DoesNotViolateBalanceConstraint)
-{
+TYPED_TEST(ALabelPropagationRefiner, DoesNotViolateBalanceConstraint) {
     mt_kahypar_partitioned_hypergraph_t phg =
         utils::partitioned_hg_cast(this->partitioned_hypergraph);
     this->refiner->refine(phg, {}, this->metrics, std::numeric_limits<double>::max());
     ASSERT_LE(this->metrics.imbalance, this->context.partition.epsilon + EPS);
 }
 
-TYPED_TEST(ALabelPropagationRefiner, UpdatesMetricsCorrectly)
-{
+TYPED_TEST(ALabelPropagationRefiner, UpdatesMetricsCorrectly) {
     mt_kahypar_partitioned_hypergraph_t phg =
         utils::partitioned_hg_cast(this->partitioned_hypergraph);
     this->refiner->refine(phg, {}, this->metrics, std::numeric_limits<double>::max());
@@ -258,8 +252,7 @@ TYPED_TEST(ALabelPropagationRefiner, UpdatesMetricsCorrectly)
         this->metrics.quality);
 }
 
-TYPED_TEST(ALabelPropagationRefiner, DoesNotWorsenSolutionQuality)
-{
+TYPED_TEST(ALabelPropagationRefiner, DoesNotWorsenSolutionQuality) {
     HyperedgeWeight objective_before =
         metrics::quality(this->partitioned_hypergraph, this->context.partition.objective);
     mt_kahypar_partitioned_hypergraph_t phg =
@@ -268,8 +261,7 @@ TYPED_TEST(ALabelPropagationRefiner, DoesNotWorsenSolutionQuality)
     ASSERT_LE(this->metrics.quality, objective_before);
 }
 
-TYPED_TEST(ALabelPropagationRefiner, ChangesTheNumberOfBlocks)
-{
+TYPED_TEST(ALabelPropagationRefiner, ChangesTheNumberOfBlocks) {
     using PartitionedHypergraph = typename TestFixture::PartitionedHypergraph;
     HyperedgeWeight objective_before =
         metrics::quality(this->partitioned_hypergraph, this->context.partition.objective);
@@ -311,10 +303,8 @@ TYPED_TEST(ALabelPropagationRefiner, ChangesTheNumberOfBlocks)
 
     // Check if refiner has moved some nodes
     bool has_moved_nodes = false;
-    for(const HypernodeID hn : phg_with_new_k.nodes())
-    {
-        if(non_optimized_partition[hn] != phg_with_new_k.partID(hn))
-        {
+    for(const HypernodeID hn : phg_with_new_k.nodes()) {
+        if(non_optimized_partition[hn] != phg_with_new_k.partID(hn)) {
             has_moved_nodes = true;
             break;
         }

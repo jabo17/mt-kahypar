@@ -38,19 +38,19 @@
 
 namespace mt_kahypar::ds {
 
-DynamicGraph DynamicGraphFactory::construct(
-    const HypernodeID num_nodes, const HyperedgeID num_edges,
-    const HyperedgeVector &edge_vector, const HyperedgeWeight *edge_weight,
-    const HypernodeWeight *node_weight, const bool stable_construction_of_incident_edges)
-{
+DynamicGraph
+DynamicGraphFactory::construct(const HypernodeID num_nodes, const HyperedgeID num_edges,
+                               const HyperedgeVector& edge_vector,
+                               const HyperedgeWeight *edge_weight,
+                               const HypernodeWeight *node_weight,
+                               const bool stable_construction_of_incident_edges) {
     ASSERT(edge_vector.size() == num_edges);
 
     EdgeVector edges;
     edges.resize(num_edges);
     tbb::parallel_for(UL(0), edge_vector.size(), [&](const size_t i) {
-        const auto &e = edge_vector[i];
-        if(e.size() != 2)
-        {
+        const auto& e = edge_vector[i];
+        if(e.size() != 2) {
             throw InvalidInputException(
                 "Using graph data structure; but the input hypergraph is not a graph.");
         }
@@ -62,9 +62,9 @@ DynamicGraph DynamicGraphFactory::construct(
 
 DynamicGraph DynamicGraphFactory::construct_from_graph_edges(
     const HypernodeID num_nodes, const HyperedgeID num_edges,
-    const EdgeVector &edge_vector, const HyperedgeWeight *edge_weight,
-    const HypernodeWeight *node_weight, const bool stable_construction_of_incident_edges)
-{
+    const EdgeVector& edge_vector, const HyperedgeWeight *edge_weight,
+    const HypernodeWeight *node_weight,
+    const bool stable_construction_of_incident_edges) {
     DynamicGraph graph;
     ASSERT(edge_vector.size() == num_edges);
     graph._num_edges = 2 * num_edges;
@@ -75,10 +75,9 @@ DynamicGraph DynamicGraphFactory::construct_from_graph_edges(
             graph._nodes.resize(num_nodes + 1);
             tbb::parallel_for(ID(0), num_nodes, [&](const HypernodeID n) {
                 // setup nodes
-                DynamicGraph::Node &node = graph._nodes[n];
+                DynamicGraph::Node& node = graph._nodes[n];
                 node.enable();
-                if(node_weight)
-                {
+                if(node_weight) {
                     node.setWeight(node_weight[n]);
                 }
             });
@@ -88,8 +87,7 @@ DynamicGraph DynamicGraphFactory::construct_from_graph_edges(
         [&] {
             graph._adjacency_array =
                 DynamicAdjacencyArray(num_nodes, edge_vector, edge_weight);
-            if(stable_construction_of_incident_edges)
-            {
+            if(stable_construction_of_incident_edges) {
                 graph._adjacency_array.sortIncidentEdges();
             }
         },
@@ -105,8 +103,7 @@ DynamicGraph DynamicGraphFactory::construct_from_graph_edges(
 }
 
 std::pair<DynamicGraph, parallel::scalable_vector<HypernodeID> >
-DynamicGraphFactory::compactify(const DynamicGraph &graph)
-{
+DynamicGraphFactory::compactify(const DynamicGraph& graph) {
     HypernodeID num_nodes = 0;
     HyperedgeID num_edges = 0;
     parallel::scalable_vector<HypernodeID> hn_mapping;
@@ -127,9 +124,8 @@ DynamicGraphFactory::compactify(const DynamicGraph &graph)
         },
         [&] {
             he_mapping.assign(graph._num_edges + 1, 0);
-            graph.doParallelForAllEdges([&](const HyperedgeID &he) {
-                if(graph.edgeSource(he) < graph.edgeTarget(he))
-                {
+            graph.doParallelForAllEdges([&](const HyperedgeID& he) {
+                if(graph.edgeSource(he) < graph.edgeTarget(he)) {
                     he_mapping[he + 1] = ID(1);
                 }
             });
@@ -158,8 +154,7 @@ DynamicGraphFactory::compactify(const DynamicGraph &graph)
             edge_vector.resize(num_edges);
             edge_weights.resize(num_edges);
             graph.doParallelForAllEdges([&](const HyperedgeID he) {
-                if(graph.edgeSource(he) < graph.edgeTarget(he))
-                {
+                if(graph.edgeSource(he) < graph.edgeTarget(he)) {
                     const HyperedgeID mapped_he = he_mapping[he];
                     ASSERT(mapped_he < num_edges);
                     edge_weights[mapped_he] = graph.edgeWeight(he);
@@ -179,22 +174,20 @@ DynamicGraphFactory::compactify(const DynamicGraph &graph)
     tbb::parallel_invoke(
         [&] {
             // Set community ids
-            graph.doParallelForAllNodes([&](const HypernodeID &hn) {
+            graph.doParallelForAllNodes([&](const HypernodeID& hn) {
                 const HypernodeID mapped_hn = hn_mapping[hn];
                 compactified_graph.setCommunityID(mapped_hn, graph.communityID(hn));
             });
         },
         [&] {
-            if(graph.hasFixedVertices())
-            {
+            if(graph.hasFixedVertices()) {
                 // Set fixed vertices
                 ds::FixedVertexSupport<DynamicGraph> fixed_vertices(
                     compactified_graph.initialNumNodes(),
                     graph._fixed_vertices.numBlocks());
                 fixed_vertices.setHypergraph(&compactified_graph);
-                graph.doParallelForAllNodes([&](const HypernodeID &hn) {
-                    if(graph.isFixed(hn))
-                    {
+                graph.doParallelForAllNodes([&](const HypernodeID& hn) {
+                    if(graph.isFixed(hn)) {
                         const HypernodeID mapped_hn = hn_mapping[hn];
                         fixed_vertices.fixToBlock(mapped_hn, graph.fixedVertexBlock(hn));
                     }

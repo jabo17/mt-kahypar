@@ -39,14 +39,13 @@ namespace io {
 namespace {
 
 template <typename Hypergraph>
-mt_kahypar_hypergraph_t constructHypergraph(const HypernodeID &num_hypernodes,
-                                            const HyperedgeID &num_hyperedges,
-                                            const HyperedgeVector &hyperedges,
+mt_kahypar_hypergraph_t constructHypergraph(const HypernodeID& num_hypernodes,
+                                            const HyperedgeID& num_hyperedges,
+                                            const HyperedgeVector& hyperedges,
                                             const HyperedgeWeight *hyperedge_weight,
                                             const HypernodeWeight *hypernode_weight,
                                             const HypernodeID num_removed_single_pin_hes,
-                                            const bool stable_construction)
-{
+                                            const bool stable_construction) {
     Hypergraph *hypergraph = new Hypergraph();
     *hypergraph = Hypergraph::Factory::construct(num_hypernodes, num_hyperedges,
                                                  hyperedges, hyperedge_weight,
@@ -57,11 +56,10 @@ mt_kahypar_hypergraph_t constructHypergraph(const HypernodeID &num_hypernodes,
     };
 }
 
-mt_kahypar_hypergraph_t readHMetisFile(const std::string &filename,
-                                       const mt_kahypar_hypergraph_type_t &type,
+mt_kahypar_hypergraph_t readHMetisFile(const std::string& filename,
+                                       const mt_kahypar_hypergraph_type_t& type,
                                        const bool stable_construction,
-                                       const bool remove_single_pin_hes)
-{
+                                       const bool remove_single_pin_hes) {
     HyperedgeID num_hyperedges = 0;
     HypernodeID num_hypernodes = 0;
     HyperedgeID num_removed_single_pin_hyperedges = 0;
@@ -72,8 +70,7 @@ mt_kahypar_hypergraph_t readHMetisFile(const std::string &filename,
                        num_removed_single_pin_hyperedges, hyperedges, hyperedges_weight,
                        hypernodes_weight, remove_single_pin_hes);
 
-    switch(type)
-    {
+    switch(type) {
     case STATIC_GRAPH:
         return constructHypergraph<ds::StaticGraph>(
             num_hypernodes, num_hyperedges, hyperedges, hyperedges_weight.data(),
@@ -101,10 +98,9 @@ mt_kahypar_hypergraph_t readHMetisFile(const std::string &filename,
     return mt_kahypar_hypergraph_t{ nullptr, NULLPTR_HYPERGRAPH };
 }
 
-mt_kahypar_hypergraph_t readMetisFile(const std::string &filename,
-                                      const mt_kahypar_hypergraph_type_t &type,
-                                      const bool stable_construction)
-{
+mt_kahypar_hypergraph_t readMetisFile(const std::string& filename,
+                                      const mt_kahypar_hypergraph_type_t& type,
+                                      const bool stable_construction) {
     HyperedgeID num_edges = 0;
     HypernodeID num_vertices = 0;
     HyperedgeVector edges;
@@ -112,8 +108,7 @@ mt_kahypar_hypergraph_t readMetisFile(const std::string &filename,
     vec<HypernodeWeight> nodes_weight;
     readGraphFile(filename, num_edges, num_vertices, edges, edges_weight, nodes_weight);
 
-    switch(type)
-    {
+    switch(type) {
     case STATIC_GRAPH:
         return constructHypergraph<ds::StaticGraph>(
             num_vertices, num_edges, edges, edges_weight.data(), nodes_weight.data(), 0,
@@ -140,13 +135,11 @@ mt_kahypar_hypergraph_t readMetisFile(const std::string &filename,
 } // namespace
 
 mt_kahypar_hypergraph_t
-readInputFile(const std::string &filename, const PresetType &preset,
-              const InstanceType &instance, const FileFormat &format,
-              const bool stable_construction, const bool remove_single_pin_hes)
-{
+readInputFile(const std::string& filename, const PresetType& preset,
+              const InstanceType& instance, const FileFormat& format,
+              const bool stable_construction, const bool remove_single_pin_hes) {
     mt_kahypar_hypergraph_type_t type = to_hypergraph_c_type(preset, instance);
-    switch(format)
-    {
+    switch(format) {
     case FileFormat::hMetis:
         return readHMetisFile(filename, type, stable_construction, remove_single_pin_hes);
     case FileFormat::Metis:
@@ -156,12 +149,11 @@ readInputFile(const std::string &filename, const PresetType &preset,
 }
 
 template <typename Hypergraph>
-Hypergraph readInputFile(const std::string &filename, const FileFormat &format,
-                         const bool stable_construction, const bool remove_single_pin_hes)
-{
+Hypergraph readInputFile(const std::string& filename, const FileFormat& format,
+                         const bool stable_construction,
+                         const bool remove_single_pin_hes) {
     mt_kahypar_hypergraph_t hypergraph{ nullptr, NULLPTR_HYPERGRAPH };
-    switch(format)
-    {
+    switch(format) {
     case FileFormat::hMetis:
         hypergraph = readHMetisFile(filename, Hypergraph::TYPE, stable_construction,
                                     remove_single_pin_hes);
@@ -174,10 +166,8 @@ Hypergraph readInputFile(const std::string &filename, const FileFormat &format,
 
 namespace {
 
-HypernodeID numberOfNodes(mt_kahypar_hypergraph_t hypergraph)
-{
-    switch(hypergraph.type)
-    {
+HypernodeID numberOfNodes(mt_kahypar_hypergraph_t hypergraph) {
+    switch(hypergraph.type) {
     case STATIC_HYPERGRAPH:
         return utils::cast<ds::StaticHypergraph>(hypergraph).initialNumNodes();
 #ifdef KAHYPAR_ENABLE_GRAPH_PARTITIONING_FEATURES
@@ -200,18 +190,15 @@ HypernodeID numberOfNodes(mt_kahypar_hypergraph_t hypergraph)
 }
 
 template <typename Hypergraph>
-void addFixedVertices(Hypergraph &hypergraph,
+void addFixedVertices(Hypergraph& hypergraph,
                       const mt_kahypar_partition_id_t *fixed_vertices,
-                      const PartitionID k)
-{
+                      const PartitionID k) {
     ds::FixedVertexSupport<Hypergraph> fixed_vertex_support(hypergraph.initialNumNodes(),
                                                             k);
     fixed_vertex_support.setHypergraph(&hypergraph);
-    hypergraph.doParallelForAllNodes([&](const HypernodeID &hn) {
-        if(fixed_vertices[hn] != -1)
-        {
-            if(fixed_vertices[hn] < 0 || fixed_vertices[hn] >= k)
-            {
+    hypergraph.doParallelForAllNodes([&](const HypernodeID& hn) {
+        if(fixed_vertices[hn] != -1) {
+            if(fixed_vertices[hn] < 0 || fixed_vertices[hn] >= k) {
                 throw InvalidInputException(
                     "Try to partition hypergraph into " + STR(k) + " blocks, but node " +
                     STR(hn) + " is fixed to block " + STR(fixed_vertices[hn]));
@@ -223,8 +210,7 @@ void addFixedVertices(Hypergraph &hypergraph,
 }
 
 template <typename Hypergraph>
-void removeFixedVertices(Hypergraph &hypergraph)
-{
+void removeFixedVertices(Hypergraph& hypergraph) {
     ds::FixedVertexSupport<Hypergraph> fixed_vertex_support;
     hypergraph.addFixedVertexSupport(std::move(fixed_vertex_support));
 }
@@ -233,10 +219,8 @@ void removeFixedVertices(Hypergraph &hypergraph)
 
 void addFixedVertices(mt_kahypar_hypergraph_t hypergraph,
                       const mt_kahypar_partition_id_t *fixed_vertices,
-                      const PartitionID k)
-{
-    switch(hypergraph.type)
-    {
+                      const PartitionID k) {
+    switch(hypergraph.type) {
     case STATIC_HYPERGRAPH:
         addFixedVertices(utils::cast<ds::StaticHypergraph>(hypergraph), fixed_vertices,
                          k);
@@ -264,22 +248,18 @@ void addFixedVertices(mt_kahypar_hypergraph_t hypergraph,
 }
 
 void addFixedVerticesFromFile(mt_kahypar_hypergraph_t hypergraph,
-                              const std::string &filename, const PartitionID k)
-{
+                              const std::string& filename, const PartitionID k) {
     std::vector<PartitionID> fixed_vertices;
     io::readPartitionFile(filename, fixed_vertices);
-    if(ID(fixed_vertices.size()) != numberOfNodes(hypergraph))
-    {
+    if(ID(fixed_vertices.size()) != numberOfNodes(hypergraph)) {
         throw InvalidInputException(
             "Fixed vertex file has more lines than the number of nodes!");
     }
     addFixedVertices(hypergraph, fixed_vertices.data(), k);
 }
 
-void removeFixedVertices(mt_kahypar_hypergraph_t hypergraph)
-{
-    switch(hypergraph.type)
-    {
+void removeFixedVertices(mt_kahypar_hypergraph_t hypergraph) {
+    switch(hypergraph.type) {
     case STATIC_HYPERGRAPH:
         removeFixedVertices(utils::cast<ds::StaticHypergraph>(hypergraph));
         break;
@@ -306,15 +286,15 @@ void removeFixedVertices(mt_kahypar_hypergraph_t hypergraph)
 
 namespace {
 #define READ_INPUT_FILE(X)                                                               \
-    X readInputFile(const std::string &filename, const FileFormat &format,               \
+    X readInputFile(const std::string& filename, const FileFormat& format,               \
                     const bool stable_construction, const bool remove_single_pin_hes)
 }
 
 INSTANTIATE_FUNC_WITH_HYPERGRAPHS(READ_INPUT_FILE)
 
 #ifndef KAHYPAR_ENABLE_GRAPH_PARTITIONING_FEATURES
-template ds::StaticGraph readInputFile(const std::string &filename,
-                                       const FileFormat &format,
+template ds::StaticGraph readInputFile(const std::string& filename,
+                                       const FileFormat& format,
                                        const bool stable_construction,
                                        const bool remove_single_pin_hes);
 #endif

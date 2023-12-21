@@ -45,23 +45,18 @@ using HypernodeID = mt_kahypar::HypernodeID;
 using HyperedgeID = mt_kahypar::HyperedgeID;
 using Graph = ds::StaticGraph;
 
-static void writeScotchGraphFile(const Graph &graph, const std::string &hgr_filename)
-{
+static void writeScotchGraphFile(const Graph& graph, const std::string& hgr_filename) {
     std::ofstream out(hgr_filename.c_str());
     out << "0" << std::endl;
     out << graph.initialNumNodes() << " " << (2 * graph.initialNumEdges()) << std::endl;
     out << "0 000"
         << std::endl; // we only support conversion of unweighted instances here
 
-    for(const HypernodeID &u : graph.nodes())
-    {
+    for(const HypernodeID& u : graph.nodes()) {
         out << graph.nodeDegree(u);
-        for(const HyperedgeID &e : graph.incidentEdges(u))
-        {
-            for(const HypernodeID &v : graph.pins(e))
-            {
-                if(u != v)
-                {
+        for(const HyperedgeID& e : graph.incidentEdges(u)) {
+            for(const HypernodeID& v : graph.pins(e)) {
+                if(u != v) {
                     out << " " << v;
                 }
             }
@@ -72,8 +67,7 @@ static void writeScotchGraphFile(const Graph &graph, const std::string &hgr_file
     out.close();
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     std::string graph_filename;
     std::string out_filename;
 
@@ -94,7 +88,7 @@ int main(int argc, char *argv[])
     mt_kahypar_hypergraph_t gr =
         mt_kahypar::io::readInputFile(graph_filename, PresetType::default_preset,
                                       InstanceType::graph, FileFormat::Metis, true);
-    Graph &graph = utils::cast<Graph>(gr);
+    Graph& graph = utils::cast<Graph>(gr);
 
     writeScotchGraphFile(graph, out_filename);
 

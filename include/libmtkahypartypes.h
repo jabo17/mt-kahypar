@@ -1,8 +1,7 @@
 #ifndef TYPEDEFS_H
 #define TYPEDEFS_H
 
-typedef enum
-{
+typedef enum {
     STATIC_GRAPH,
     DYNAMIC_GRAPH,
     STATIC_HYPERGRAPH,
@@ -10,8 +9,7 @@ typedef enum
     NULLPTR_HYPERGRAPH
 } mt_kahypar_hypergraph_type_t;
 
-typedef enum
-{
+typedef enum {
     MULTILEVEL_GRAPH_PARTITIONING,
     N_LEVEL_GRAPH_PARTITIONING,
     MULTILEVEL_HYPERGRAPH_PARTITIONING,
@@ -60,8 +58,7 @@ typedef int mt_kahypar_partition_id_t;
 /**
  * Configurable parameters of the partitioning context.
  */
-typedef enum
-{
+typedef enum {
     // number of blocks of the partition
     NUM_BLOCKS,
     // imbalance factor
@@ -77,18 +74,12 @@ typedef enum
 /**
  * Supported objective functions.
  */
-typedef enum
-{
-    CUT,
-    KM1,
-    SOED
-} mt_kahypar_objective_t;
+typedef enum { CUT, KM1, SOED } mt_kahypar_objective_t;
 
 /**
  * Preset types for partitioning context.
  */
-typedef enum
-{
+typedef enum {
     // deterministic partitioning mode (corresponds to Mt-KaHyPar-SDet)
     DETERMINISTIC,
     // partitioning mode for partitioning a (hyper)graph into a large number of blocks
@@ -106,8 +97,7 @@ typedef enum
 /**
  * Supported (hyper)graph file formats.
  */
-typedef enum
-{
+typedef enum {
     // Standard file format for graphs
     METIS,
     // Standard file format for hypergraphs

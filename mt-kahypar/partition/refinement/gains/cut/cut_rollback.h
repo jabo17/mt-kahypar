@@ -62,12 +62,9 @@ class CutRollback
         HypernodeID moved_out;
         RecalculationData() :
             first_out(std::numeric_limits<MoveID>::max()),
-            last_in(std::numeric_limits<MoveID>::min()), moved_out(0)
-        {
-        }
+            last_in(std::numeric_limits<MoveID>::min()), moved_out(0) {}
 
-        void reset()
-        {
+        void reset() {
             first_out = std::numeric_limits<MoveID>::max();
             last_in = std::numeric_limits<MoveID>::min();
             moved_out = 0;
@@ -75,23 +72,20 @@ class CutRollback
     };
 
     // Updates the auxilliary data for a node move m with index m_id.
-    static void updateMove(const MoveID m_id, const Move &m, vec<RecalculationData> &r)
-    {
+    static void updateMove(const MoveID m_id, const Move& m, vec<RecalculationData>& r) {
         r[m.from].first_out = std::min(r[m.from].first_out, m_id);
         r[m.to].last_in = std::max(r[m.to].last_in, m_id);
         ++r[m.from].moved_out;
     }
 
-    static void updateNonMovedPinInBlock(const PartitionID, vec<RecalculationData> &)
-    {
+    static void updateNonMovedPinInBlock(const PartitionID, vec<RecalculationData>&) {
         // Do nothing here
     }
 
     template <typename PartitionedHypergraph>
-    static HyperedgeWeight benefit(const PartitionedHypergraph &phg, const HyperedgeID e,
-                                   const MoveID m_id, const Move &m,
-                                   vec<RecalculationData> &r)
-    {
+    static HyperedgeWeight benefit(const PartitionedHypergraph& phg, const HyperedgeID e,
+                                   const MoveID m_id, const Move& m,
+                                   vec<RecalculationData>& r) {
         const HypernodeID edge_size = phg.edgeSize(e);
         // If the hyperedge was potentially a non-cut edge at some point and m is the last
         // node that moves into the corresponding block, while the first node that moves
@@ -105,10 +99,9 @@ class CutRollback
     }
 
     template <typename PartitionedHypergraph>
-    static HyperedgeWeight penalty(const PartitionedHypergraph &phg, const HyperedgeID e,
-                                   const MoveID m_id, const Move &m,
-                                   vec<RecalculationData> &r)
-    {
+    static HyperedgeWeight penalty(const PartitionedHypergraph& phg, const HyperedgeID e,
+                                   const MoveID m_id, const Move& m,
+                                   vec<RecalculationData>& r) {
         const HypernodeID edge_size = phg.edgeSize(e);
         // If the hyperedge was potentially a non-cut edge at some point and m is the
         // first node that moves out of the corresponding block, while the last node that

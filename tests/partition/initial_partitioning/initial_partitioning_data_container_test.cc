@@ -51,8 +51,7 @@ class AInitialPartitioningDataContainer : public ds::HypergraphFixture<Hypergrap
     using Base = ds::HypergraphFixture<Hypergraph>;
 
   public:
-    AInitialPartitioningDataContainer() : Base(), context()
-    {
+    AInitialPartitioningDataContainer() : Base(), context() {
         context.partition.k = 2;
         context.partition.epsilon = 0.2;
         context.partition.objective = Objective::km1;
@@ -66,34 +65,30 @@ class AInitialPartitioningDataContainer : public ds::HypergraphFixture<Hypergrap
     Context context;
 };
 
-TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode1)
-{
+TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode1) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
     std::mt19937 prng(420);
     ip_data.reset_unassigned_hypernodes(prng);
     ASSERT_EQ(-1, local_hg.partID(ip_data.get_unassigned_hypernode()));
 }
 
-TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode2)
-{
+TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode2) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
     std::mt19937 prng(420);
     ip_data.reset_unassigned_hypernodes(prng);
 
     size_t num_hypernodes_to_assign = 2;
     size_t assigned_hypernodes = 0;
-    for(const HypernodeID &hn : local_hg.nodes())
-    {
+    for(const HypernodeID& hn : local_hg.nodes()) {
         local_hg.setNodePart(hn, 0);
         ++assigned_hypernodes;
-        if(assigned_hypernodes == num_hypernodes_to_assign)
-        {
+        if(assigned_hypernodes == num_hypernodes_to_assign) {
             break;
         }
     }
@@ -101,23 +96,20 @@ TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode2)
     ASSERT_EQ(-1, local_hg.partID(ip_data.get_unassigned_hypernode()));
 }
 
-TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode3)
-{
+TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode3) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
     std::mt19937 prng(420);
     ip_data.reset_unassigned_hypernodes(prng);
 
     size_t num_hypernodes_to_assign = 4;
     size_t assigned_hypernodes = 0;
-    for(const HypernodeID &hn : local_hg.nodes())
-    {
+    for(const HypernodeID& hn : local_hg.nodes()) {
         local_hg.setNodePart(hn, 0);
         ++assigned_hypernodes;
-        if(assigned_hypernodes == num_hypernodes_to_assign)
-        {
+        if(assigned_hypernodes == num_hypernodes_to_assign) {
             break;
         }
     }
@@ -125,23 +117,20 @@ TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode3)
     ASSERT_EQ(-1, local_hg.partID(ip_data.get_unassigned_hypernode()));
 }
 
-TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode4)
-{
+TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode4) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
     std::mt19937 prng(420);
     ip_data.reset_unassigned_hypernodes(prng);
 
     size_t num_hypernodes_to_assign = 6;
     size_t assigned_hypernodes = 0;
-    for(const HypernodeID &hn : local_hg.nodes())
-    {
+    for(const HypernodeID& hn : local_hg.nodes()) {
         local_hg.setNodePart(hn, 0);
         ++assigned_hypernodes;
-        if(assigned_hypernodes == num_hypernodes_to_assign)
-        {
+        if(assigned_hypernodes == num_hypernodes_to_assign) {
             break;
         }
     }
@@ -150,17 +139,15 @@ TEST_F(AInitialPartitioningDataContainer, ReturnsAnUnassignedLocalHypernode4)
 }
 
 TEST_F(AInitialPartitioningDataContainer,
-       ReturnsInvalidHypernodeIfAllHypernodesAreAssigned)
-{
+       ReturnsInvalidHypernodeIfAllHypernodesAreAssigned) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
     std::mt19937 prng(420);
     ip_data.reset_unassigned_hypernodes(prng);
 
-    for(const HypernodeID &hn : local_hg.nodes())
-    {
+    for(const HypernodeID& hn : local_hg.nodes()) {
         local_hg.setNodePart(hn, 0);
     }
 
@@ -169,16 +156,14 @@ TEST_F(AInitialPartitioningDataContainer,
 }
 
 TEST_F(AInitialPartitioningDataContainer,
-       ReturnsValidUnassignedHypernodeIfPartitionIsResetted)
-{
+       ReturnsValidUnassignedHypernodeIfPartitionIsResetted) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
     std::mt19937 prng(420);
     ip_data.reset_unassigned_hypernodes(prng);
-    for(const HypernodeID &hn : local_hg.nodes())
-    {
+    for(const HypernodeID& hn : local_hg.nodes()) {
         local_hg.setNodePart(hn, 0);
     }
 
@@ -190,12 +175,11 @@ TEST_F(AInitialPartitioningDataContainer,
     ASSERT_EQ(-1, local_hg.partID(ip_data.get_unassigned_hypernode()));
 }
 
-TEST_F(AInitialPartitioningDataContainer, AppliesPartitionToHypergraph)
-{
+TEST_F(AInitialPartitioningDataContainer, AppliesPartitionToHypergraph) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
 
     // Cut = 2
     local_hg.setNodePart(0, 0);
@@ -220,12 +204,11 @@ TEST_F(AInitialPartitioningDataContainer, AppliesPartitionToHypergraph)
     ASSERT_EQ(1, partitioned_hypergraph.partID(6));
 }
 
-TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraph)
-{
+TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraph) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
 
     // Cut = 3
     local_hg.setNodePart(0, 0);
@@ -261,12 +244,11 @@ TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraph)
 }
 
 TEST_F(AInitialPartitioningDataContainer,
-       AppliesBestPartitionWithImbalancedPartitionToHypergraph1)
-{
+       AppliesBestPartitionWithImbalancedPartitionToHypergraph1) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
 
     // Cut = 1, but imbalanced
     local_hg.setNodePart(0, 1);
@@ -301,12 +283,11 @@ TEST_F(AInitialPartitioningDataContainer,
 }
 
 TEST_F(AInitialPartitioningDataContainer,
-       AppliesBestPartitionWithImbalancedPartitionToHypergraph2)
-{
+       AppliesBestPartitionWithImbalancedPartitionToHypergraph2) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
 
     // Cut = 1, but imbalanced
     local_hg.setNodePart(0, 1);
@@ -341,12 +322,11 @@ TEST_F(AInitialPartitioningDataContainer,
 }
 
 TEST_F(AInitialPartitioningDataContainer,
-       AppliesBestPartitionWithImbalancedPartitionToHypergraph3)
-{
+       AppliesBestPartitionWithImbalancedPartitionToHypergraph3) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
-    PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+    PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
 
     // Cut = 1
     local_hg.setNodePart(0, 1);
@@ -380,8 +360,7 @@ TEST_F(AInitialPartitioningDataContainer,
     ASSERT_EQ(1, partitioned_hypergraph.partID(6));
 }
 
-TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInParallel1)
-{
+TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInParallel1) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
@@ -390,10 +369,9 @@ TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInPara
     tbb::parallel_invoke(
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
-            PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+            PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
             // Cut = 3
             local_hg.setNodePart(0, 0);
             local_hg.setNodePart(1, 0);
@@ -406,10 +384,9 @@ TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInPara
         },
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
-            PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+            PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
             // Cut = 2
             local_hg.setNodePart(0, 0);
             local_hg.setNodePart(1, 0);
@@ -433,8 +410,7 @@ TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInPara
     ASSERT_EQ(1, partitioned_hypergraph.partID(6));
 }
 
-TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInParallel2)
-{
+TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInParallel2) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
@@ -443,10 +419,9 @@ TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInPara
     tbb::parallel_invoke(
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
-            PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+            PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
             // Cut = 1, but imbalanced
             local_hg.setNodePart(0, 1);
             local_hg.setNodePart(1, 0);
@@ -459,10 +434,9 @@ TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInPara
         },
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
-            PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+            PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
             // Cut = 2, but balanced
             local_hg.setNodePart(0, 0);
             local_hg.setNodePart(1, 0);
@@ -486,8 +460,7 @@ TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInPara
     ASSERT_EQ(1, partitioned_hypergraph.partID(6));
 }
 
-TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInParallel3)
-{
+TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInParallel3) {
     PartitionedHypergraph partitioned_hypergraph(context.partition.k, hypergraph);
     InitialPartitioningDataContainer<TypeTraits> ip_data(partitioned_hypergraph, context,
                                                          true);
@@ -496,10 +469,9 @@ TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInPara
     tbb::parallel_invoke(
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
-            PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+            PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
             // Cut = 3
             local_hg.setNodePart(0, 0);
             local_hg.setNodePart(1, 0);
@@ -512,10 +484,9 @@ TEST_F(AInitialPartitioningDataContainer, AppliesBestPartitionToHypergraphInPara
         },
         [&] {
             ++cnt;
-            while(cnt < 2)
-            {
+            while(cnt < 2) {
             }
-            PartitionedHypergraph &local_hg = ip_data.local_partitioned_hypergraph();
+            PartitionedHypergraph& local_hg = ip_data.local_partitioned_hypergraph();
             // Cut = 2
             local_hg.setNodePart(0, 0);
             local_hg.setNodePart(1, 0);

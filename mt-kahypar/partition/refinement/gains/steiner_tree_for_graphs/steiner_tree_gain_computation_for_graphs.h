@@ -51,15 +51,13 @@ class GraphSteinerTreeGainComputation
     static constexpr size_t BITS_PER_BLOCK = ds::StaticBitset::BITS_PER_BLOCK;
 
   public:
-    GraphSteinerTreeGainComputation(const Context &context,
+    GraphSteinerTreeGainComputation(const Context& context,
                                     bool disable_randomization = false) :
         Base(context, disable_randomization),
         _local_adjacent_blocks([&] { return constructBitset(); }),
         _all_blocks(context.partition.k),
-        _ets_incident_edge_weights([&] { return constructIncidentEdgeWeightVector(); })
-    {
-        for(PartitionID to = 0; to < context.partition.k; ++to)
-        {
+        _ets_incident_edge_weights([&] { return constructIncidentEdgeWeightVector(); }) {
+        for(PartitionID to = 0; to < context.partition.k; ++to) {
             _all_blocks.set(to);
         }
     }
@@ -70,10 +68,9 @@ class GraphSteinerTreeGainComputation
     // ! The gain of that node to a block to can then be computed by
     // ! 'isolated_block_gain - tmp_scores[to]' (see gain(...))
     template <typename PartitionedHypergraph>
-    void precomputeGains(const PartitionedHypergraph &phg, const HypernodeID hn,
-                         RatingMap &tmp_scores, Gain &,
-                         const bool consider_non_adjacent_blocks)
-    {
+    void precomputeGains(const PartitionedHypergraph& phg, const HypernodeID hn,
+                         RatingMap& tmp_scores, Gain&,
+                         const bool consider_non_adjacent_blocks) {
         ASSERT(tmp_scores.size() == 0, "Rating map not empty");
 
         // The gain of moving a node u from its current block Π[u] to target block V_j can
@@ -92,14 +89,13 @@ class GraphSteinerTreeGainComputation
 
         // Precompute adjacent blocks of node and the w(u, V_k) terms
         const PartitionID from = phg.partID(hn);
-        vec<HyperedgeWeight> &incident_edge_weights = _ets_incident_edge_weights.local();
-        ds::Bitset &adjacent_blocks =
+        vec<HyperedgeWeight>& incident_edge_weights = _ets_incident_edge_weights.local();
+        ds::Bitset& adjacent_blocks =
             consider_non_adjacent_blocks ? _all_blocks : _local_adjacent_blocks.local();
         ds::StaticBitset adjacent_blocks_view(adjacent_blocks.numBlocks(),
                                               adjacent_blocks.data());
         adjacent_blocks.set(from);
-        for(const HyperedgeID &he : phg.incidentEdges(hn))
-        {
+        for(const HyperedgeID& he : phg.incidentEdges(hn)) {
             const PartitionID block_of_target = phg.partID(phg.edgeTarget(he));
             adjacent_blocks.set(block_of_target);
             incident_edge_weights[block_of_target] += phg.edgeWeight(he);
@@ -109,39 +105,32 @@ class GraphSteinerTreeGainComputation
         // gain(u, V_j) := \sum_{V_k \in R(u)} (dist(V_j, V_k) - dist(Π[u], V_k)) * w(u,
         // V_k)
         ASSERT(phg.hasTargetGraph());
-        const TargetGraph &target_graph = *phg.targetGraph();
-        for(const PartitionID &j : adjacent_blocks_view)
-        {
-            for(const PartitionID k : adjacent_blocks_view)
-            {
+        const TargetGraph& target_graph = *phg.targetGraph();
+        for(const PartitionID& j : adjacent_blocks_view) {
+            for(const PartitionID k : adjacent_blocks_view) {
                 tmp_scores[j] -=
                     (target_graph.distance(from, k) - target_graph.distance(j, k)) *
                     incident_edge_weights[k];
             }
         }
 
-        for(const PartitionID &to : adjacent_blocks_view)
-        {
+        for(const PartitionID& to : adjacent_blocks_view) {
             incident_edge_weights[to] = 0;
         }
     }
 
     HyperedgeWeight gain(const Gain to_score, const Gain) { return to_score; }
 
-    void changeNumberOfBlocksImpl(const PartitionID new_k)
-    {
+    void changeNumberOfBlocksImpl(const PartitionID new_k) {
         ASSERT(new_k == _context.partition.k);
-        for(auto &adjacent_blocks : _local_adjacent_blocks)
-        {
+        for(auto& adjacent_blocks : _local_adjacent_blocks) {
             adjacent_blocks.resize(new_k);
         }
         _all_blocks.resize(new_k);
-        for(PartitionID to = 0; to < new_k; ++to)
-        {
+        for(PartitionID to = 0; to < new_k; ++to) {
             _all_blocks.set(to);
         }
-        for(auto &incident_edge_weights : _ets_incident_edge_weights)
-        {
+        for(auto& incident_edge_weights : _ets_incident_edge_weights) {
             incident_edge_weights.assign(new_k, 0);
         }
     }
@@ -149,8 +138,7 @@ class GraphSteinerTreeGainComputation
   private:
     ds::Bitset constructBitset() const { return ds::Bitset(_context.partition.k); }
 
-    vec<HyperedgeWeight> constructIncidentEdgeWeightVector() const
-    {
+    vec<HyperedgeWeight> constructIncidentEdgeWeightVector() const {
         return vec<HyperedgeWeight>(_context.partition.k, 0);
     }
 

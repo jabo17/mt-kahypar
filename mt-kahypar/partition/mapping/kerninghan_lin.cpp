@@ -36,9 +36,8 @@ namespace mt_kahypar {
 namespace {
 
 template <typename CommunicationHypergraph>
-MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void swap(CommunicationHypergraph &communication_hg,
-                                             const HypernodeID u, const HypernodeID v)
-{
+MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void swap(CommunicationHypergraph& communication_hg,
+                                             const HypernodeID u, const HypernodeID v) {
     const PartitionID block_of_u = communication_hg.partID(u);
     const PartitionID block_of_v = communication_hg.partID(v);
     ASSERT(block_of_u != block_of_v);
@@ -47,10 +46,9 @@ MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void swap(CommunicationHypergraph &communicat
 }
 
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HyperedgeWeight
-swap_gain(const TargetGraph &target_graph, ds::Bitset &connectivity_set,
+swap_gain(const TargetGraph& target_graph, ds::Bitset& connectivity_set,
           const HyperedgeWeight edge_weight, const PartitionID removed_block,
-          const PartitionID new_block)
-{
+          const PartitionID new_block) {
     ASSERT(connectivity_set.isSet(removed_block));
     ASSERT(!connectivity_set.isSet(new_block));
     // Current distance between all nodes in the connectivity set
@@ -65,9 +63,8 @@ swap_gain(const TargetGraph &target_graph, ds::Bitset &connectivity_set,
 // in the communication hypergraph for the steiner tree metric.
 template <typename CommunicationHypergraph>
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HyperedgeWeight
-swap_gain(CommunicationHypergraph &communication_hg, const TargetGraph &target_graph,
-          const HypernodeID u, const HypernodeID v, vec<bool> &marked_hes)
-{
+swap_gain(CommunicationHypergraph& communication_hg, const TargetGraph& target_graph,
+          const HypernodeID u, const HypernodeID v, vec<bool>& marked_hes) {
     HyperedgeWeight gain = 0;
     const PartitionID block_of_u = communication_hg.partID(u);
     const PartitionID block_of_v = communication_hg.partID(v);
@@ -76,35 +73,28 @@ swap_gain(CommunicationHypergraph &communication_hg, const TargetGraph &target_g
     // connectivity set does not change due to the swap operation.
     // We therefore mark all incident hyperedges of u and only compute the
     // gain for hyperedges that are not in the intersection of u and v.
-    for(const HyperedgeID &he : communication_hg.incidentEdges(u))
-    {
+    for(const HyperedgeID& he : communication_hg.incidentEdges(u)) {
         marked_hes[communication_hg.uniqueEdgeID(he)] = true;
     }
 
-    for(const HyperedgeID &he : communication_hg.incidentEdges(v))
-    {
+    for(const HyperedgeID& he : communication_hg.incidentEdges(v)) {
         const HyperedgeID unique_id = communication_hg.uniqueEdgeID(he);
-        if(!marked_hes[unique_id])
-        {
+        if(!marked_hes[unique_id]) {
             // Hyperedge only contains v => compute swap gain
-            ds::Bitset &connectivity_set = communication_hg.deepCopyOfConnectivitySet(he);
+            ds::Bitset& connectivity_set = communication_hg.deepCopyOfConnectivitySet(he);
             gain += swap_gain(target_graph, connectivity_set,
                               communication_hg.edgeWeight(he), block_of_v, block_of_u);
-        }
-        else
-        {
+        } else {
             // Hyperedge contains u and v => unmark hyperedge
             marked_hes[unique_id] = false;
         }
     }
 
-    for(const HyperedgeID &he : communication_hg.incidentEdges(u))
-    {
+    for(const HyperedgeID& he : communication_hg.incidentEdges(u)) {
         const HyperedgeID unique_id = communication_hg.uniqueEdgeID(he);
-        if(marked_hes[unique_id])
-        {
+        if(marked_hes[unique_id]) {
             // Hyperedge only contains u => compute swap gain
-            ds::Bitset &connectivity_set = communication_hg.deepCopyOfConnectivitySet(he);
+            ds::Bitset& connectivity_set = communication_hg.deepCopyOfConnectivitySet(he);
             gain += swap_gain(target_graph, connectivity_set,
                               communication_hg.edgeWeight(he), block_of_u, block_of_v);
             marked_hes[unique_id] = false;
@@ -122,13 +112,11 @@ struct PQElement
     Swap swap;
 };
 
-bool operator<(const PQElement &lhs, const PQElement &rhs)
-{
+bool operator<(const PQElement& lhs, const PQElement& rhs) {
     return lhs.gain < rhs.gain || (lhs.gain == rhs.gain && lhs.swap < rhs.swap);
 }
 
-bool operator>(const PQElement &lhs, const PQElement &rhs)
-{
+bool operator>(const PQElement& lhs, const PQElement& rhs) {
     return lhs.gain > rhs.gain || (lhs.gain == rhs.gain && lhs.swap > rhs.swap);
 }
 
@@ -138,8 +126,7 @@ using PQ = std::priority_queue<PQElement>;
 
 template <typename CommunicationHypergraph>
 void KerninghanLin<CommunicationHypergraph>::improve(
-    CommunicationHypergraph &communication_hg, const TargetGraph &target_graph)
-{
+    CommunicationHypergraph& communication_hg, const TargetGraph& target_graph) {
     ASSERT(communication_hg.initialNumNodes() == target_graph.graph().initialNumNodes());
 
     HyperedgeWeight current_objective =
@@ -148,8 +135,7 @@ void KerninghanLin<CommunicationHypergraph>::improve(
     bool found_improvement = true;
     size_t fruitless_rounds = 0;
     size_t pass_nr = 1;
-    while(found_improvement)
-    {
+    while(found_improvement) {
         DBG << "Start of pass" << pass_nr << "( Current Objective =" << current_objective
             << ")";
         found_improvement = false;
@@ -157,12 +143,9 @@ void KerninghanLin<CommunicationHypergraph>::improve(
 
         // Initialize priority queue
         PQ pq;
-        for(const HypernodeID &u : communication_hg.nodes())
-        {
-            for(const HypernodeID &v : communication_hg.nodes())
-            {
-                if(u < v)
-                {
+        for(const HypernodeID& u : communication_hg.nodes()) {
+            for(const HypernodeID& v : communication_hg.nodes()) {
+                if(u < v) {
                     const HyperedgeWeight gain =
                         swap_gain(communication_hg, target_graph, u, v, marked_hes);
                     pq.push(PQElement{ gain, std::make_pair(u, v) });
@@ -175,16 +158,14 @@ void KerninghanLin<CommunicationHypergraph>::improve(
         HyperedgeWeight best_objective = current_objective;
         vec<PQElement> performed_swaps;
         vec<bool> already_moved(communication_hg.initialNumNodes(), false);
-        while(!pq.empty())
-        {
+        while(!pq.empty()) {
             const PQElement elem = pq.top();
             pq.pop();
             const HyperedgeWeight gain = elem.gain;
             const HypernodeID u = elem.swap.first;
             const HypernodeID v = elem.swap.second;
 
-            if(already_moved[u] || already_moved[v])
-            {
+            if(already_moved[u] || already_moved[v]) {
                 // Each node can move at most once in each round
                 continue;
             }
@@ -192,8 +173,7 @@ void KerninghanLin<CommunicationHypergraph>::improve(
             // Recompute gain
             const HyperedgeWeight recomputed_gain =
                 swap_gain(communication_hg, target_graph, u, v, marked_hes);
-            if(gain != recomputed_gain)
-            {
+            if(gain != recomputed_gain) {
                 // Lazy update of PQ
                 // Note that since we do not immediately update the PQ after a swap
                 // operation, we may not be able do perform the node swap with highest
@@ -211,8 +191,7 @@ void KerninghanLin<CommunicationHypergraph>::improve(
             already_moved[v] = true;
             DBG << "Swap block ID of nodes" << u << "and" << v << "with gain" << gain
                 << "( New Objective =" << current_objective << ")";
-            if(current_objective <= best_objective)
-            {
+            if(current_objective <= best_objective) {
                 best_idx = performed_swaps.size();
                 best_objective = current_objective;
             }
@@ -221,9 +200,8 @@ void KerninghanLin<CommunicationHypergraph>::improve(
         }
 
         // Rollback to best seen solution
-        for(int i = performed_swaps.size() - 1; i >= best_idx; --i)
-        {
-            const PQElement &elem = performed_swaps[i];
+        for(int i = performed_swaps.size() - 1; i >= best_idx; --i) {
+            const PQElement& elem = performed_swaps[i];
             swap(communication_hg, elem.swap.first, elem.swap.second);
             current_objective += elem.gain;
         }
@@ -231,12 +209,9 @@ void KerninghanLin<CommunicationHypergraph>::improve(
                metrics::quality(communication_hg, Objective::steiner_tree));
         ASSERT(current_objective == best_objective);
 
-        if(current_objective == objective_before)
-        {
+        if(current_objective == objective_before) {
             ++fruitless_rounds;
-        }
-        else
-        {
+        } else {
             fruitless_rounds = 0;
         }
 

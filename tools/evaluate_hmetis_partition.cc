@@ -48,35 +48,28 @@ namespace po = boost::program_options;
 using Hypergraph = ds::StaticHypergraph;
 using PartitionedHypergraph = ds::PartitionedHypergraph<Hypergraph, ds::ConnectivityInfo>;
 
-void readPartitionFile(const std::string &partition_file,
-                       PartitionedHypergraph &hypergraph)
-{
+void readPartitionFile(const std::string& partition_file,
+                       PartitionedHypergraph& hypergraph) {
     ASSERT(!partition_file.empty(), "No filename for partition file specified");
     std::ifstream file(partition_file);
-    if(file)
-    {
+    if(file) {
         PartitionID part_id;
         HypernodeID node = 0;
-        while(file >> part_id)
-        {
+        while(file >> part_id) {
             hypergraph.setOnlyNodePart(node, part_id);
             node++;
         }
-        if(node != hypergraph.initialNumNodes())
-        {
+        if(node != hypergraph.initialNumNodes()) {
             std::cerr << "Number of nodes doesnt match partition file size" << std::endl;
         }
         hypergraph.initializePartition();
         file.close();
-    }
-    else
-    {
+    } else {
         std::cerr << "Error: File not found: " << std::endl;
     }
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     Context context;
 
     po::options_description options("Options");
@@ -102,7 +95,7 @@ int main(int argc, char *argv[])
     mt_kahypar_hypergraph_t hypergraph = mt_kahypar::io::readInputFile(
         context.partition.graph_filename, PresetType::default_preset,
         InstanceType::hypergraph, FileFormat::hMetis, true);
-    Hypergraph &hg = utils::cast<Hypergraph>(hypergraph);
+    Hypergraph& hg = utils::cast<Hypergraph>(hypergraph);
     PartitionedHypergraph phg(context.partition.k, hg, parallel_tag_t());
 
     // Setup Context

@@ -49,8 +49,8 @@ class InitialMapping
     // ! then solves a one-to-one mapping problem. The function is called after initial
     // ! partitioning via recursive bipartitioning (RB) since RB can not optimize
     // ! the steiner tree metric.
-    static void mapToTargetGraph(PartitionedHypergraph &communication_hg,
-                                 const TargetGraph &target_graph, const Context &context);
+    static void mapToTargetGraph(PartitionedHypergraph& communication_hg,
+                                 const TargetGraph& target_graph, const Context& context);
 
   private:
     InitialMapping() {}

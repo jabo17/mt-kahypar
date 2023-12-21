@@ -34,11 +34,11 @@ class LastRatingWins
   public:
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int) { return true; }
 
-    LastRatingWins(const LastRatingWins &) = delete;
-    LastRatingWins &operator=(const LastRatingWins &) = delete;
+    LastRatingWins(const LastRatingWins&) = delete;
+    LastRatingWins& operator=(const LastRatingWins&) = delete;
 
-    LastRatingWins(LastRatingWins &&) = delete;
-    LastRatingWins &operator=(LastRatingWins &&) = delete;
+    LastRatingWins(LastRatingWins&&) = delete;
+    LastRatingWins& operator=(LastRatingWins&&) = delete;
 
   protected:
     ~LastRatingWins() = default;
@@ -47,16 +47,15 @@ class LastRatingWins
 class FirstRatingWins
 {
   public:
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int)
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int) {
         return false;
     }
 
-    FirstRatingWins(const FirstRatingWins &) = delete;
-    FirstRatingWins &operator=(const FirstRatingWins &) = delete;
+    FirstRatingWins(const FirstRatingWins&) = delete;
+    FirstRatingWins& operator=(const FirstRatingWins&) = delete;
 
-    FirstRatingWins(FirstRatingWins &&) = delete;
-    FirstRatingWins &operator=(FirstRatingWins &&) = delete;
+    FirstRatingWins(FirstRatingWins&&) = delete;
+    FirstRatingWins& operator=(FirstRatingWins&&) = delete;
 
   protected:
     ~FirstRatingWins() = default;
@@ -65,16 +64,15 @@ class FirstRatingWins
 class RandomRatingWins
 {
   public:
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int cpu_id)
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptEqual(const int cpu_id) {
         return utils::Randomize::instance().flipCoin(cpu_id);
     }
 
-    RandomRatingWins(const RandomRatingWins &) = delete;
-    RandomRatingWins &operator=(const RandomRatingWins &) = delete;
+    RandomRatingWins(const RandomRatingWins&) = delete;
+    RandomRatingWins& operator=(const RandomRatingWins&) = delete;
 
-    RandomRatingWins(RandomRatingWins &&) = delete;
-    RandomRatingWins &operator=(RandomRatingWins &&) = delete;
+    RandomRatingWins(RandomRatingWins&&) = delete;
+    RandomRatingWins& operator=(RandomRatingWins&&) = delete;
 
   protected:
     ~RandomRatingWins() = default;

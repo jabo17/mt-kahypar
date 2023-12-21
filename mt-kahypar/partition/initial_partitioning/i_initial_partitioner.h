@@ -30,10 +30,10 @@ namespace mt_kahypar {
 class IInitialPartitioner
 {
   public:
-    IInitialPartitioner(const IInitialPartitioner &) = delete;
-    IInitialPartitioner(IInitialPartitioner &&) = delete;
-    IInitialPartitioner &operator=(const IInitialPartitioner &) = delete;
-    IInitialPartitioner &operator=(IInitialPartitioner &&) = delete;
+    IInitialPartitioner(const IInitialPartitioner&) = delete;
+    IInitialPartitioner(IInitialPartitioner&&) = delete;
+    IInitialPartitioner& operator=(const IInitialPartitioner&) = delete;
+    IInitialPartitioner& operator=(IInitialPartitioner&&) = delete;
 
     void partition() { partitionImpl(); }
 

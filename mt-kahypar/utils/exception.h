@@ -39,8 +39,7 @@ class MtKaHyParException : public std::exception
 {
 
   public:
-    MtKaHyParException(const std::string &what) : _what("")
-    {
+    MtKaHyParException(const std::string& what) : _what("") {
         std::stringstream ss;
         ss << RED << "[" << Derived::TYPE << "] " << END << " " << what;
         _what = ss.str();
@@ -60,7 +59,7 @@ class InvalidInputException : public MtKaHyParException<InvalidInputException>
   public:
     static constexpr char TYPE[] = "Invalid Input";
 
-    InvalidInputException(const std::string &what) : Base(what) {}
+    InvalidInputException(const std::string& what) : Base(what) {}
 };
 
 class InvalidParameterException : public MtKaHyParException<InvalidParameterException>
@@ -71,7 +70,7 @@ class InvalidParameterException : public MtKaHyParException<InvalidParameterExce
   public:
     static constexpr char TYPE[] = "Invalid Parameter";
 
-    InvalidParameterException(const std::string &what) : Base(what) {}
+    InvalidParameterException(const std::string& what) : Base(what) {}
 };
 
 class NonSupportedOperationException
@@ -83,7 +82,7 @@ class NonSupportedOperationException
   public:
     static constexpr char TYPE[] = "Non Supported Operation";
 
-    NonSupportedOperationException(const std::string &what) : Base(what) {}
+    NonSupportedOperationException(const std::string& what) : Base(what) {}
 };
 
 class SystemException : public MtKaHyParException<SystemException>
@@ -94,7 +93,7 @@ class SystemException : public MtKaHyParException<SystemException>
   public:
     static constexpr char TYPE[] = "System Error";
 
-    SystemException(const std::string &what) : Base(what) {}
+    SystemException(const std::string& what) : Base(what) {}
 };
 
 } // namespace mt_kahypar

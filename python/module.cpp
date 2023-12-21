@@ -56,12 +56,10 @@ namespace py = pybind11;
 using namespace mt_kahypar;
 
 namespace {
-void initialize_thread_pool(const size_t num_threads)
-{
+void initialize_thread_pool(const size_t num_threads) {
     size_t P = num_threads;
     size_t num_available_cpus = mt_kahypar::HardwareTopology::instance().num_cpus();
-    if(num_available_cpus < num_threads)
-    {
+    if(num_available_cpus < num_threads) {
         WARNING("There are currently only" << num_available_cpus << "cpus available."
                                            << "Setting number of threads from"
                                            << num_threads << "to" << num_available_cpus);
@@ -79,14 +77,12 @@ void initialize_thread_pool(const size_t num_threads)
 }
 
 template <typename PartitionedHypergraph>
-double imbalance(const PartitionedHypergraph &partitioned_graph)
-{
+double imbalance(const PartitionedHypergraph& partitioned_graph) {
     const mt_kahypar::HypernodeWeight perfectly_balanced_weight = std::ceil(
         partitioned_graph.totalWeight() / static_cast<double>(partitioned_graph.k()));
     double max_balance =
         partitioned_graph.partWeight(0) / static_cast<double>(perfectly_balanced_weight);
-    for(mt_kahypar::PartitionID i = 1; i < partitioned_graph.k(); ++i)
-    {
+    for(mt_kahypar::PartitionID i = 1; i < partitioned_graph.k(); ++i) {
         max_balance =
             std::max(max_balance, partitioned_graph.partWeight(i) /
                                       static_cast<double>(perfectly_balanced_weight));
@@ -96,42 +92,31 @@ double imbalance(const PartitionedHypergraph &partitioned_graph)
 
 template <typename TypeTraits>
 typename TypeTraits::PartitionedHypergraph
-partition(typename TypeTraits::Hypergraph &hypergraph, Context &context)
-{
+partition(typename TypeTraits::Hypergraph& hypergraph, Context& context) {
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
     const bool is_graph = PartitionedHypergraph::TYPE == MULTILEVEL_GRAPH_PARTITIONING ||
                           PartitionedHypergraph::TYPE == N_LEVEL_HYPERGRAPH_PARTITIONING;
     if(is_graph || context.partition.preset_type != PresetType::large_k ||
-       PartitionedHypergraph::TYPE == LARGE_K_PARTITIONING)
-    {
-        if(lib::check_if_all_relavant_parameters_are_set(context))
-        {
+       PartitionedHypergraph::TYPE == LARGE_K_PARTITIONING) {
+        if(lib::check_if_all_relavant_parameters_are_set(context)) {
             mt_kahypar_hypergraph_t hg = utils::hypergraph_cast(hypergraph);
             if(lib::check_compatibility(
-                   hg, lib::get_preset_c_type(context.partition.preset_type)))
-            {
+                   hg, lib::get_preset_c_type(context.partition.preset_type))) {
                 context.partition.instance_type = lib::get_instance_type(hg);
                 context.partition.partition_type = to_partition_c_type(
                     context.partition.preset_type, context.partition.instance_type);
                 lib::prepare_context(context);
                 context.partition.num_vcycles = 0;
-                try
-                {
+                try {
                     return Partitioner<TypeTraits>::partition(hypergraph, context);
-                }
-                catch(std::exception &ex)
-                {
+                } catch(std::exception& ex) {
                     LOG << ex.what();
                 }
-            }
-            else
-            {
+            } else {
                 WARNING(lib::incompatibility_description(hg));
             }
         }
-    }
-    else
-    {
+    } else {
         WARNING(
             "You want to partition the hypergraph into a large number of blocks,"
             << "which is only possible when calling the function partitionIntoLargeK(...).");
@@ -141,20 +126,17 @@ partition(typename TypeTraits::Hypergraph &hypergraph, Context &context)
 
 template <typename TypeTraits>
 typename TypeTraits::PartitionedHypergraph
-map(typename TypeTraits::Hypergraph &hypergraph, ds::StaticGraph &graph, Context &context)
-{
+map(typename TypeTraits::Hypergraph& hypergraph, ds::StaticGraph& graph,
+    Context& context) {
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
     const bool is_graph = PartitionedHypergraph::TYPE == MULTILEVEL_GRAPH_PARTITIONING ||
                           PartitionedHypergraph::TYPE == N_LEVEL_GRAPH_PARTITIONING;
     if(is_graph || context.partition.preset_type != PresetType::large_k ||
-       PartitionedHypergraph::TYPE == LARGE_K_PARTITIONING)
-    {
-        if(lib::check_if_all_relavant_parameters_are_set(context))
-        {
+       PartitionedHypergraph::TYPE == LARGE_K_PARTITIONING) {
+        if(lib::check_if_all_relavant_parameters_are_set(context)) {
             mt_kahypar_hypergraph_t hg = utils::hypergraph_cast(hypergraph);
             if(lib::check_compatibility(
-                   hg, lib::get_preset_c_type(context.partition.preset_type)))
-            {
+                   hg, lib::get_preset_c_type(context.partition.preset_type))) {
                 context.partition.instance_type = lib::get_instance_type(hg);
                 context.partition.partition_type = to_partition_c_type(
                     context.partition.preset_type, context.partition.instance_type);
@@ -162,24 +144,17 @@ map(typename TypeTraits::Hypergraph &hypergraph, ds::StaticGraph &graph, Context
                 context.partition.num_vcycles = 0;
                 context.partition.objective = Objective::steiner_tree;
                 TargetGraph target_graph(graph.copy(parallel_tag_t{}));
-                try
-                {
+                try {
                     return Partitioner<TypeTraits>::partition(hypergraph, context,
                                                               &target_graph);
-                }
-                catch(std::exception &ex)
-                {
+                } catch(std::exception& ex) {
                     LOG << ex.what();
                 }
-            }
-            else
-            {
+            } else {
                 WARNING(lib::incompatibility_description(hg));
             }
         }
-    }
-    else
-    {
+    } else {
         WARNING(
             "You want to partition the hypergraph into a large number of blocks,"
             << "which is only possible when calling the function partitionIntoLargeK(...).");
@@ -188,48 +163,37 @@ map(typename TypeTraits::Hypergraph &hypergraph, ds::StaticGraph &graph, Context
 }
 
 template <typename TypeTraits>
-void improve(typename TypeTraits::PartitionedHypergraph &partitioned_hg, Context &context,
-             const size_t num_vcycles)
-{
-    if(lib::check_if_all_relavant_parameters_are_set(context))
-    {
+void improve(typename TypeTraits::PartitionedHypergraph& partitioned_hg, Context& context,
+             const size_t num_vcycles) {
+    if(lib::check_if_all_relavant_parameters_are_set(context)) {
         mt_kahypar_partitioned_hypergraph_t phg =
             utils::partitioned_hg_cast(partitioned_hg);
         if(lib::check_compatibility(
-               phg, lib::get_preset_c_type(context.partition.preset_type)))
-        {
+               phg, lib::get_preset_c_type(context.partition.preset_type))) {
             context.partition.instance_type = lib::get_instance_type(phg);
             context.partition.partition_type = to_partition_c_type(
                 context.partition.preset_type, context.partition.instance_type);
             lib::prepare_context(context);
             context.partition.num_vcycles = num_vcycles;
-            try
-            {
+            try {
                 Partitioner<TypeTraits>::partitionVCycle(partitioned_hg, context);
-            }
-            catch(std::exception &ex)
-            {
+            } catch(std::exception& ex) {
                 LOG << ex.what();
             }
-        }
-        else
-        {
+        } else {
             WARNING(lib::incompatibility_description(phg));
         }
     }
 }
 
 template <typename TypeTraits>
-void improveMapping(typename TypeTraits::PartitionedHypergraph &partitioned_hg,
-                    ds::StaticGraph &graph, Context &context, const size_t num_vcycles)
-{
-    if(lib::check_if_all_relavant_parameters_are_set(context))
-    {
+void improveMapping(typename TypeTraits::PartitionedHypergraph& partitioned_hg,
+                    ds::StaticGraph& graph, Context& context, const size_t num_vcycles) {
+    if(lib::check_if_all_relavant_parameters_are_set(context)) {
         mt_kahypar_partitioned_hypergraph_t phg =
             utils::partitioned_hg_cast(partitioned_hg);
         if(lib::check_compatibility(
-               phg, lib::get_preset_c_type(context.partition.preset_type)))
-        {
+               phg, lib::get_preset_c_type(context.partition.preset_type))) {
             context.partition.instance_type = lib::get_instance_type(phg);
             context.partition.partition_type = to_partition_c_type(
                 context.partition.preset_type, context.partition.instance_type);
@@ -238,26 +202,20 @@ void improveMapping(typename TypeTraits::PartitionedHypergraph &partitioned_hg,
             context.partition.objective = Objective::steiner_tree;
             TargetGraph target_graph(graph.copy(parallel_tag_t{}));
             partitioned_hg.setTargetGraph(&target_graph);
-            try
-            {
+            try {
                 Partitioner<TypeTraits>::partitionVCycle(partitioned_hg, context,
                                                          &target_graph);
-            }
-            catch(std::exception &ex)
-            {
+            } catch(std::exception& ex) {
                 LOG << ex.what();
             }
-        }
-        else
-        {
+        } else {
             WARNING(lib::incompatibility_description(phg));
         }
     }
 }
 }
 
-PYBIND11_MODULE(mtkahypar, m)
-{
+PYBIND11_MODULE(mtkahypar, m) {
 
     // ####################### Enum Types #######################
 
@@ -298,9 +256,8 @@ PYBIND11_MODULE(mtkahypar, m)
         .def(py::init<>())
         .def(
             "loadPreset",
-            [](Context &context, const PresetType preset) {
-                switch(preset)
-                {
+            [](Context& context, const PresetType preset) {
+                switch(preset) {
                 case PresetType::deterministic:
                     context.load_deterministic_preset();
                     break;
@@ -323,14 +280,14 @@ PYBIND11_MODULE(mtkahypar, m)
 #ifndef MT_KAHYPAR_DISABLE_BOOST
         .def(
             "loadConfigurationFile",
-            [](Context &context, const std::string &config_file) {
+            [](Context& context, const std::string& config_file) {
                 mt_kahypar::parseIniToContext(context, config_file);
             },
             "Read partitioning configuration from file", py::arg("configuration file"))
 #endif
         .def(
             "setPartitioningParameters",
-            [](Context &context, const PartitionID k, const double epsilon,
+            [](Context& context, const PartitionID k, const double epsilon,
                const Objective objective) {
                 context.partition.k = k;
                 context.partition.epsilon = epsilon;
@@ -339,50 +296,49 @@ PYBIND11_MODULE(mtkahypar, m)
             "Sets all required parameters for partitioning", py::arg("k"),
             py::arg("epsilon"), py::arg("objective function"))
         .def_property(
-            "k", [](const Context &context) { return context.partition.k; },
-            [](Context &context, const PartitionID k) { context.partition.k = k; },
+            "k", [](const Context& context) { return context.partition.k; },
+            [](Context& context, const PartitionID k) { context.partition.k = k; },
             "Number of blocks in which the (hyper)graph should be partitioned into")
         .def_property(
-            "epsilon", [](const Context &context) { return context.partition.epsilon; },
-            [](Context &context, const double epsilon) {
+            "epsilon", [](const Context& context) { return context.partition.epsilon; },
+            [](Context& context, const double epsilon) {
                 context.partition.epsilon = epsilon;
             },
             "Allowed imbalance")
         .def_property(
             "objective",
-            [](const Context &context) { return context.partition.objective; },
-            [](Context &context, const Objective objective) {
+            [](const Context& context) { return context.partition.objective; },
+            [](Context& context, const Objective objective) {
                 context.partition.objective = objective;
             },
             "Sets the objective function for partitioning (CUT, KM1 or SOED)")
         .def_property(
             "num_vcycles",
-            [](const Context &context) { return context.partition.num_vcycles; },
-            [](Context &context, const size_t num_vcycles) {
+            [](const Context& context) { return context.partition.num_vcycles; },
+            [](Context& context, const size_t num_vcycles) {
                 context.partition.num_vcycles = num_vcycles;
             },
             "Sets the number of V-cycles")
         .def_property(
             "logging",
-            [](const Context &context) { return context.partition.verbose_output; },
-            [](Context &context, const bool verbose_output) {
+            [](const Context& context) { return context.partition.verbose_output; },
+            [](Context& context, const bool verbose_output) {
                 context.partition.verbose_output = verbose_output;
             },
             "Enable partitioning output")
         .def_property(
             "max_block_weights",
-            [](const Context &context) { return context.partition.max_part_weights; },
-            [](Context &context, std::vector<HypernodeWeight> &block_weights) {
+            [](const Context& context) { return context.partition.max_part_weights; },
+            [](Context& context, std::vector<HypernodeWeight>& block_weights) {
                 context.partition.use_individual_part_weights = true;
                 context.partition.max_part_weights.assign(block_weights.size(), 0);
-                for(size_t block = 0; block < block_weights.size(); ++block)
-                {
+                for(size_t block = 0; block < block_weights.size(); ++block) {
                     context.partition.max_part_weights[block] = block_weights[block];
                 }
             },
             "Maximum allowed weight for each block of the output partition")
         .def(
-            "outputConfiguration", [](const Context &context) { LOG << context; },
+            "outputConfiguration", [](const Context& context) { LOG << context; },
             "Output partitioning configuration");
 
     // ####################### Graph #######################
@@ -393,13 +349,10 @@ PYBIND11_MODULE(mtkahypar, m)
     .def(py::init<>([](const HypernodeID num_nodes,
                        const HyperedgeID num_edges,
                        const vec<std::pair<HypernodeID,HypernodeID>>& edges) {
-        try
-        {
+        try {
             return GraphFactory::construct_from_graph_edges(num_nodes, num_edges, edges,
                                                             nullptr, nullptr, true);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
         return Graph();
@@ -418,14 +371,11 @@ Construct an unweighted graph.
                        const vec<std::pair<HypernodeID,HypernodeID>>& edges,
                        const vec<HypernodeWeight>& node_weights,
                        const vec<HyperedgeWeight>& edge_weights) {
-        try
-        {
+        try {
             return GraphFactory::construct_from_graph_edges(num_nodes, num_edges, edges,
                                                             edge_weights.data(),
                                                             node_weights.data(), true);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
         return Graph();
@@ -445,12 +395,9 @@ Construct a weighted graph.
       py::arg("edge_weights"))
     .def(py::init<>([](const std::string& file_name,
                       const FileFormat file_format) {
-        try
-        {
+        try {
             return io::readInputFile<Graph>(file_name, file_format, true);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
         return Graph();
@@ -480,12 +427,9 @@ Construct a weighted graph.
                                  const vec<PartitionID>& fixed_vertices,
                                  const PartitionID num_blocks) {
         mt_kahypar_hypergraph_t gr = utils::hypergraph_cast(graph);
-        try
-        {
+        try {
             io::addFixedVertices(gr, fixed_vertices.data(), num_blocks);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
       }, R"pbdoc(
@@ -497,12 +441,9 @@ corresponding node or -1 if the node is not fixed.
                                          const std::string& fixed_vertex_file,
                                          const PartitionID num_blocks) {
         mt_kahypar_hypergraph_t gr = utils::hypergraph_cast(graph);
-        try
-        {
+        try {
             io::addFixedVerticesFromFile(gr, fixed_vertex_file, num_blocks);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
       }, R"pbdoc(
@@ -525,8 +466,7 @@ corresponding node or -1 if the node is not fixed.
     .def("doForAllNodes",
       [&](Graph& graph,
           const std::function<void(const HypernodeID&)>& f) {
-        for(const HypernodeID &hn : graph.nodes())
-        {
+        for(const HypernodeID& hn : graph.nodes()) {
             f(hn);
         }
       }, "Executes lambda expression for all nodes",
@@ -534,8 +474,7 @@ corresponding node or -1 if the node is not fixed.
     .def("doForAllEdges",
       [&](Graph& graph,
           const std::function<void(const HyperedgeID&)>& f) {
-        for(const HyperedgeID &he : graph.edges())
-        {
+        for(const HyperedgeID& he : graph.edges()) {
             f(he);
         }
       }, "Executes lambda expression for all edges",
@@ -544,8 +483,7 @@ corresponding node or -1 if the node is not fixed.
       [&](Graph& graph,
           const HypernodeID hn,
           const std::function<void(const HyperedgeID&)>& f) {
-        for(const HyperedgeID &he : graph.incidentEdges(hn))
-        {
+        for(const HyperedgeID& he : graph.incidentEdges(hn)) {
             f(he);
         }
       }, "Executes lambda expression for all incident edges of a node",
@@ -554,8 +492,7 @@ corresponding node or -1 if the node is not fixed.
       [&](Graph& graph,
           const HypernodeID hn,
           const std::function<void(const HyperedgeID&)>& f) {
-        for(const HyperedgeID &he : graph.incidentEdges(hn))
-        {
+        for(const HyperedgeID& he : graph.incidentEdges(hn)) {
             f(graph.edgeTarget(he));
         }
       }, "Executes lambda expression for all adjacent nodes of a node",
@@ -582,13 +519,10 @@ corresponding node or -1 if the node is not fixed.
     .def(py::init<>([](const HypernodeID num_hypernodes,
                        const HyperedgeID num_hyperedges,
                        const vec<vec<HypernodeID>>& hyperedges) {
-        try
-        {
+        try {
             return HypergraphFactory::construct(num_hypernodes, num_hyperedges,
                                                 hyperedges, nullptr, nullptr, true);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
         return Hypergraph();
@@ -607,14 +541,11 @@ Construct an unweighted hypergraph.
                        const vec<vec<HypernodeID>>& hyperedges,
                        const vec<HypernodeWeight>& node_weights,
                        const vec<HyperedgeWeight>& hyperedge_weights) {
-        try
-        {
+        try {
             return HypergraphFactory::construct(num_hypernodes, num_hyperedges,
                                                 hyperedges, hyperedge_weights.data(),
                                                 node_weights.data(), true);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
         return Hypergraph();
@@ -634,12 +565,9 @@ Construct a weighted hypergraph.
       py::arg("hyperedge_weights"))
     .def(py::init<>([](const std::string& file_name,
                        const FileFormat file_format) {
-        try
-        {
+        try {
             return io::readInputFile<Hypergraph>(file_name, file_format, true);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
         return Hypergraph();
@@ -669,12 +597,9 @@ Construct a weighted hypergraph.
                                  const vec<PartitionID>& fixed_vertices,
                                  const PartitionID num_blocks) {
         mt_kahypar_hypergraph_t hg = utils::hypergraph_cast(hypergraph);
-        try
-        {
+        try {
             io::addFixedVertices(hg, fixed_vertices.data(), num_blocks);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
       }, R"pbdoc(
@@ -686,12 +611,9 @@ corresponding node or -1 if the node is not fixed.
                                          const std::string& fixed_vertex_file,
                                          const PartitionID num_blocks) {
         mt_kahypar_hypergraph_t hg = utils::hypergraph_cast(hypergraph);
-        try
-        {
+        try {
             io::addFixedVerticesFromFile(hg, fixed_vertex_file, num_blocks);
-        }
-        catch(std::exception &ex)
-        {
+        } catch(std::exception& ex) {
             LOG << ex.what();
         }
       }, R"pbdoc(
@@ -710,8 +632,7 @@ corresponding node or -1 if the node is not fixed.
     .def("doForAllNodes",
       [&](Hypergraph& hypergraph,
           const std::function<void(const HypernodeID&)>& f) {
-        for(const HypernodeID &hn : hypergraph.nodes())
-        {
+        for(const HypernodeID& hn : hypergraph.nodes()) {
             f(hn);
         }
       }, "Executes lambda expression for all nodes",
@@ -719,8 +640,7 @@ corresponding node or -1 if the node is not fixed.
     .def("doForAllEdges",
       [&](Hypergraph& hypergraph,
           const std::function<void(const HyperedgeID&)>& f) {
-        for(const HyperedgeID &he : hypergraph.edges())
-        {
+        for(const HyperedgeID& he : hypergraph.edges()) {
             f(he);
         }
       }, "Executes lambda expression for all hyperedges",
@@ -729,8 +649,7 @@ corresponding node or -1 if the node is not fixed.
       [&](Hypergraph& hypergraph,
           const HypernodeID hn,
           const std::function<void(const HyperedgeID&)>& f) {
-        for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
-        {
+        for(const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
             f(he);
         }
       }, "Executes lambda expression for all incident hyperedges of a node",
@@ -739,8 +658,7 @@ corresponding node or -1 if the node is not fixed.
       [&](Hypergraph& hypergraph,
           const HyperedgeID& he,
           const std::function<void(const HypernodeID&)>& f) {
-        for(const HyperedgeID &hn : hypergraph.pins(he))
-        {
+        for(const HyperedgeID& hn : hypergraph.pins(he)) {
             f(hn);
         }
       }, "Executes lambda expression for all pins of a hyperedge",
@@ -770,10 +688,9 @@ corresponding node or -1 if the node is not fixed.
                        const PartitionID num_blocks,
                        const vec<PartitionID>& partition) {
         PartitionedGraph partitioned_graph(num_blocks, graph, parallel_tag_t{});
-        partitioned_graph.doParallelForAllNodes([&](const HypernodeID &hn) {
+        partitioned_graph.doParallelForAllNodes([&](const HypernodeID& hn) {
             PartitionID block = partition[hn];
-            if(block < 0 || block >= num_blocks)
-            {
+            if(block < 0 || block >= num_blocks) {
                 WARNING("Invalid block ID for node"
                         << hn << "( block ID =" << partition[hn] << ")");
                 block = 0;
@@ -797,10 +714,9 @@ Construct a partitioned graph.
         io::readPartitionFile(partition_file, partition);
         PartitionedGraph partitioned_graph(num_blocks, graph,
                                            mt_kahypar::parallel_tag_t{});
-        partitioned_graph.doParallelForAllNodes([&](const HypernodeID &hn) {
+        partitioned_graph.doParallelForAllNodes([&](const HypernodeID& hn) {
             PartitionID block = partition[hn];
-            if(block < 0 || block >= num_blocks)
-            {
+            if(block < 0 || block >= num_blocks) {
                 WARNING("Invalid block ID for node"
                         << hn << "( block ID =" << partition[hn] << ")");
                 block = 0;
@@ -843,8 +759,7 @@ Construct a partitioned graph.
       [](PartitionedGraph& partitioned_graph,
          const HyperedgeID he,
          const std::function<void(const PartitionID&)>& f) {
-        for(const PartitionID &block : partitioned_graph.connectivitySet(he))
-        {
+        for(const PartitionID& block : partitioned_graph.connectivitySet(he)) {
             f(block);
         }
       }, "Executes lambda expression on blocks contained in the given edge",
@@ -885,10 +800,9 @@ Construct a partitioned graph.
                        const PartitionID num_blocks,
                        const vec<PartitionID>& partition) {
         PartitionedHypergraph partitioned_hg(num_blocks, hypergraph, parallel_tag_t{});
-        partitioned_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
+        partitioned_hg.doParallelForAllNodes([&](const HypernodeID& hn) {
             PartitionID block = partition[hn];
-            if(block < 0 || block >= num_blocks)
-            {
+            if(block < 0 || block >= num_blocks) {
                 WARNING("Invalid block ID for node"
                         << hn << "( block ID =" << partition[hn] << ")");
                 block = 0;
@@ -911,10 +825,9 @@ Construct a partitioned hypergraph.
         std::vector<PartitionID> partition;
         io::readPartitionFile(partition_file, partition);
         PartitionedHypergraph partitioned_hg(num_blocks, hypergraph, parallel_tag_t{});
-        partitioned_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
+        partitioned_hg.doParallelForAllNodes([&](const HypernodeID& hn) {
             PartitionID block = partition[hn];
-            if(block < 0 || block >= num_blocks)
-            {
+            if(block < 0 || block >= num_blocks) {
                 WARNING("Invalid block ID for node"
                         << hn << "( block ID =" << partition[hn] << ")");
                 block = 0;
@@ -961,8 +874,7 @@ Construct a partitioned hypergraph.
       [](PartitionedHypergraph& partitioned_hg,
          const HyperedgeID he,
          const std::function<void(const PartitionID&)>& f) {
-        for(const PartitionID &block : partitioned_hg.connectivitySet(he))
-        {
+        for(const PartitionID& block : partitioned_hg.connectivitySet(he)) {
             f(block);
         }
       }, "Executes lambda expression on blocks contained in the given hyperedge",
@@ -1012,10 +924,9 @@ Construct a partitioned hypergraph.
                        const vec<PartitionID>& partition) {
         SparsePartitionedHypergraph partitioned_hg(num_blocks, hypergraph,
                                                    parallel_tag_t{});
-        partitioned_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
+        partitioned_hg.doParallelForAllNodes([&](const HypernodeID& hn) {
             PartitionID block = partition[hn];
-            if(block < 0 || block >= num_blocks)
-            {
+            if(block < 0 || block >= num_blocks) {
                 WARNING("Invalid block ID for node"
                         << hn << "( block ID =" << partition[hn] << ")");
                 block = 0;
@@ -1039,10 +950,9 @@ Construct a partitioned hypergraph.
         io::readPartitionFile(partition_file, partition);
         SparsePartitionedHypergraph partitioned_hg(num_blocks, hypergraph,
                                                    parallel_tag_t{});
-        partitioned_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
+        partitioned_hg.doParallelForAllNodes([&](const HypernodeID& hn) {
             PartitionID block = partition[hn];
-            if(block < 0 || block >= num_blocks)
-            {
+            if(block < 0 || block >= num_blocks) {
                 WARNING("Invalid block ID for node"
                         << hn << "( block ID =" << partition[hn] << ")");
                 block = 0;
@@ -1089,8 +999,7 @@ Construct a partitioned hypergraph.
       [](SparsePartitionedHypergraph& partitioned_hg,
          const HyperedgeID he,
          const std::function<void(const PartitionID&)>& f) {
-        for(const PartitionID &block : partitioned_hg.connectivitySet(he))
-        {
+        for(const PartitionID& block : partitioned_hg.connectivitySet(he)) {
             f(block);
         }
       }, "Executes lambda expression on blocks contained in the given hyperedge",

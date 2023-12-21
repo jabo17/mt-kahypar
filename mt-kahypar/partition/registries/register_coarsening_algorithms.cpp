@@ -60,7 +60,7 @@ using NLevelCoarsenerDispatcher = kahypar::meta::StaticMultiDispatchFactory<
 
 #define REGISTER_DISPATCHED_COARSENER(id, dispatcher, ...)                               \
     static kahypar::meta::Registrar<CoarsenerFactory> register_##dispatcher(             \
-        id, [](mt_kahypar_hypergraph_t hypergraph, const Context &context,               \
+        id, [](mt_kahypar_hypergraph_t hypergraph, const Context& context,               \
                uncoarsening_data_t *uncoarseningData) {                                  \
             return dispatcher::create(                                                   \
                 std::forward_as_tuple(hypergraph, context, uncoarseningData),            \

@@ -33,46 +33,35 @@
 namespace mt_kahypar {
 
 template <typename TypeTraits>
-bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics &best_metrics,
-                                                   std::mt19937 &prng)
-{
+bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics& best_metrics,
+                                                   std::mt19937& prng) {
 
     // Activate all border nodes
     _pq.clear();
     _border_vertices.initialize(_phg);
     _nodes.clear();
-    for(HypernodeID hn : _phg.nodes())
-    {
-        if(!_phg.isFixed(hn))
-        {
+    for(HypernodeID hn : _phg.nodes()) {
+        if(!_phg.isFixed(hn)) {
             _nodes.push_back(hn);
-        }
-        else
-        {
+        } else {
             _vertex_state[hn] = VertexState::MOVED;
         }
     }
     std::shuffle(_nodes.begin(), _nodes.end(), prng);
-    for(const HypernodeID &hn : _nodes)
-    {
+    for(const HypernodeID& hn : _nodes) {
         _vertex_state[hn] = VertexState::INACTIVE;
         activate(hn);
     }
-    for(const HyperedgeID &he : _phg.edges())
-    {
+    for(const HyperedgeID& he : _phg.edges()) {
         _he_state[he] = HEState::FREE;
     }
 
-    auto border_vertex_update = [&](const SynchronizedEdgeUpdate &sync_update) {
-        if(sync_update.edge_size > 1)
-        {
-            if(sync_update.pin_count_in_from_part_after == 0)
-            {
+    auto border_vertex_update = [&](const SynchronizedEdgeUpdate& sync_update) {
+        if(sync_update.edge_size > 1) {
+            if(sync_update.pin_count_in_from_part_after == 0) {
                 _border_vertices.becameNonCutHyperedge(_phg, sync_update.he,
                                                        _vertex_state);
-            }
-            else if(sync_update.pin_count_in_to_part_after == 1)
-            {
+            } else if(sync_update.pin_count_in_to_part_after == 1) {
                 _border_vertices.becameCutHyperedge(_phg, sync_update.he, _vertex_state);
             }
         }
@@ -83,8 +72,7 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics &best_metrics,
     double current_imbalance = best_metrics.imbalance;
     size_t min_cut_idx = 0;
     StopRule stopping_rule(_phg.initialNumNodes());
-    while(!_pq.empty() && !stopping_rule.searchShouldStop())
-    {
+    while(!_pq.empty() && !stopping_rule.searchShouldStop()) {
         ASSERT(_pq.isEnabled(0) || _pq.isEnabled(1));
         HEAVY_REFINEMENT_ASSERT(verifyPQState(), "PQ corrupted!");
 
@@ -104,8 +92,7 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics &best_metrics,
         _vertex_state[hn] = VertexState::MOVED;
         if(_phg.changeNodePart(
                hn, from, to, _context.partition.max_part_weights[to], [] {},
-               border_vertex_update))
-        {
+               border_vertex_update)) {
 
             // Perform delta gain updates
             updateNeighbors(hn, from, to);
@@ -146,8 +133,7 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics &best_metrics,
             const bool move_is_feasible =
                 (_phg.partWeight(from) > 0) &&
                 (improved_cut_within_balance || improved_balance_less_equal_cut);
-            if(move_is_feasible)
-            {
+            if(move_is_feasible) {
                 DBG << GREEN << "2Way FM improved cut from" << best_metrics.quality
                     << "to" << current_cut << "(Imbalance:" << current_imbalance << ")"
                     << END;
@@ -155,9 +141,7 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics &best_metrics,
                 best_metrics.quality = current_cut;
                 best_metrics.imbalance = current_imbalance;
                 min_cut_idx = performed_moves.size();
-            }
-            else
-            {
+            } else {
                 DBG << RED << "2Way FM decreased cut to" << current_cut
                     << "(Imbalance:" << current_imbalance << ")" << END;
             }
@@ -177,10 +161,8 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics &best_metrics,
 }
 
 template <typename TypeTraits>
-void SequentialTwoWayFmRefiner<TypeTraits>::activate(const HypernodeID hn)
-{
-    if(_border_vertices.isBorderNode(hn))
-    {
+void SequentialTwoWayFmRefiner<TypeTraits>::activate(const HypernodeID hn) {
+    if(_border_vertices.isBorderNode(hn)) {
         ASSERT(_vertex_state[hn] == VertexState::INACTIVE);
         const PartitionID from = _phg.partID(hn);
         const PartitionID to = 1 - from;
@@ -188,8 +170,7 @@ void SequentialTwoWayFmRefiner<TypeTraits>::activate(const HypernodeID hn)
         ASSERT(!_pq.contains(hn, to), V(hn));
         _vertex_state[hn] = VertexState::ACTIVE;
         _pq.insert(hn, to, computeGain(hn, from, to));
-        if(_phg.partWeight(to) < _context.partition.max_part_weights[to])
-        {
+        if(_phg.partWeight(to) < _context.partition.max_part_weights[to]) {
             _pq.enablePart(to);
         }
     }
@@ -202,25 +183,19 @@ void SequentialTwoWayFmRefiner<TypeTraits>::activate(const HypernodeID hn)
 template <typename TypeTraits>
 void SequentialTwoWayFmRefiner<TypeTraits>::updateNeighbors(const HypernodeID hn,
                                                             const PartitionID from,
-                                                            const PartitionID to)
-{
+                                                            const PartitionID to) {
     ASSERT(_phg.partID(hn) == to);
 
-    for(const HyperedgeID &he : _phg.incidentEdges(hn))
-    {
+    for(const HyperedgeID& he : _phg.incidentEdges(hn)) {
         const PartitionID he_state = _he_state[he];
-        if(_phg.edgeSize(he) > 1 && he_state != HEState::LOCKED)
-        {
+        if(_phg.edgeSize(he) > 1 && he_state != HEState::LOCKED) {
             deltaGainUpdate(he, from, to);
             // State Transition of hyperedge
-            if(he_state == HEState::FREE)
-            {
+            if(he_state == HEState::FREE) {
                 // Vertex hn is the first vertex changed its block
                 // in hyperedge he => free -> loose
                 _he_state[he] = to;
-            }
-            else if(he_state == from)
-            {
+            } else if(he_state == from) {
                 // An other vertex already changed its block in opposite direction
                 // => hyperedge he can not be removed from cut any more and therefore
                 // it can not affect the gains of its pins => loose -> locked
@@ -234,8 +209,7 @@ void SequentialTwoWayFmRefiner<TypeTraits>::updateNeighbors(const HypernodeID hn
 template <typename TypeTraits>
 void SequentialTwoWayFmRefiner<TypeTraits>::deltaGainUpdate(const HyperedgeID he,
                                                             const PartitionID from,
-                                                            const PartitionID to)
-{
+                                                            const PartitionID to) {
     const HypernodeID pin_count_from_part_after_move = _phg.pinCountInPart(he, from);
     const HypernodeID pin_count_to_part_after_move = _phg.pinCountInPart(he, to);
 
@@ -245,59 +219,39 @@ void SequentialTwoWayFmRefiner<TypeTraits>::deltaGainUpdate(const HyperedgeID he
     const bool decrease_necessary = pin_count_to_part_after_move == 2;
 
     if(he_became_cut_he || he_became_internal_he || increase_necessary ||
-       decrease_necessary)
-    {
+       decrease_necessary) {
         ASSERT(_phg.edgeSize(he) != 1, V(he));
         const HyperedgeWeight he_weight = _phg.edgeWeight(he);
 
-        if(_phg.edgeSize(he) == 2)
-        {
-            for(const HypernodeID &pin : _phg.pins(he))
-            {
-                if(_vertex_state[pin] == VertexState::ACTIVE)
-                {
+        if(_phg.edgeSize(he) == 2) {
+            for(const HypernodeID& pin : _phg.pins(he)) {
+                if(_vertex_state[pin] == VertexState::ACTIVE) {
                     const char factor = (_phg.partID(pin) == from ? 2 : -2);
                     updatePin(pin, factor * he_weight);
                 }
             }
-        }
-        else if(he_became_cut_he)
-        {
-            for(const HypernodeID &pin : _phg.pins(he))
-            {
-                if(_vertex_state[pin] == VertexState::ACTIVE)
-                {
+        } else if(he_became_cut_he) {
+            for(const HypernodeID& pin : _phg.pins(he)) {
+                if(_vertex_state[pin] == VertexState::ACTIVE) {
                     updatePin(pin, he_weight);
                 }
             }
-        }
-        else if(he_became_internal_he)
-        {
-            for(const HypernodeID &pin : _phg.pins(he))
-            {
-                if(_vertex_state[pin] == VertexState::ACTIVE)
-                {
+        } else if(he_became_internal_he) {
+            for(const HypernodeID& pin : _phg.pins(he)) {
+                if(_vertex_state[pin] == VertexState::ACTIVE) {
                     updatePin(pin, -he_weight);
                 }
             }
-        }
-        else
-        {
-            if(increase_necessary || decrease_necessary)
-            {
-                for(const HypernodeID &pin : _phg.pins(he))
-                {
-                    if(_phg.partID(pin) == from)
-                    {
+        } else {
+            if(increase_necessary || decrease_necessary) {
+                for(const HypernodeID& pin : _phg.pins(he)) {
+                    if(_phg.partID(pin) == from) {
                         if(increase_necessary &&
-                           _vertex_state[pin] == VertexState::ACTIVE)
-                        {
+                           _vertex_state[pin] == VertexState::ACTIVE) {
                             updatePin(pin, he_weight);
                         }
-                    }
-                    else if(decrease_necessary &&
-                            _vertex_state[pin] == VertexState::ACTIVE)
-                    {
+                    } else if(decrease_necessary &&
+                              _vertex_state[pin] == VertexState::ACTIVE) {
                         updatePin(pin, -he_weight);
                     }
                 }
@@ -308,8 +262,7 @@ void SequentialTwoWayFmRefiner<TypeTraits>::deltaGainUpdate(const HyperedgeID he
 
 template <typename TypeTraits>
 void SequentialTwoWayFmRefiner<TypeTraits>::updatePin(const HypernodeID pin,
-                                                      const Gain delta)
-{
+                                                      const Gain delta) {
     const PartitionID to = 1 - _phg.partID(pin);
     ASSERT(_vertex_state[pin] == VertexState::ACTIVE, V(pin));
     ASSERT(_pq.contains(pin, to), V(pin) << V(to));
@@ -318,14 +271,11 @@ void SequentialTwoWayFmRefiner<TypeTraits>::updatePin(const HypernodeID pin,
 
 template <typename TypeTraits>
 void SequentialTwoWayFmRefiner<TypeTraits>::updatePQState(const PartitionID from,
-                                                          const PartitionID to)
-{
-    if(_phg.partWeight(to) >= _context.partition.max_part_weights[to])
-    {
+                                                          const PartitionID to) {
+    if(_phg.partWeight(to) >= _context.partition.max_part_weights[to]) {
         _pq.disablePart(to);
     }
-    if(_phg.partWeight(from) < _context.partition.max_part_weights[from])
-    {
+    if(_phg.partWeight(from) < _context.partition.max_part_weights[from]) {
         _pq.enablePart(from);
     }
 }
@@ -333,21 +283,16 @@ void SequentialTwoWayFmRefiner<TypeTraits>::updatePQState(const PartitionID from
 template <typename TypeTraits>
 Gain SequentialTwoWayFmRefiner<TypeTraits>::computeGain(const HypernodeID hn,
                                                         const PartitionID from,
-                                                        const PartitionID to)
-{
+                                                        const PartitionID to) {
     ASSERT(_phg.partID(hn) == from);
     ASSERT(1 - from == to);
     Gain gain = 0;
-    for(const HyperedgeID &he : _phg.incidentEdges(hn))
-    {
-        if(_phg.edgeSize(he) > 1)
-        {
-            if(_phg.pinCountInPart(he, to) == 0)
-            {
+    for(const HyperedgeID& he : _phg.incidentEdges(hn)) {
+        if(_phg.edgeSize(he) > 1) {
+            if(_phg.pinCountInPart(he, to) == 0) {
                 gain -= _phg.edgeWeight(he);
             }
-            if(_phg.pinCountInPart(he, from) == 1)
-            {
+            if(_phg.pinCountInPart(he, from) == 1) {
                 gain += _phg.edgeWeight(he);
             }
         }
@@ -357,11 +302,9 @@ Gain SequentialTwoWayFmRefiner<TypeTraits>::computeGain(const HypernodeID hn,
 
 template <typename TypeTraits>
 void SequentialTwoWayFmRefiner<TypeTraits>::rollback(
-    const parallel::scalable_vector<HypernodeID> &performed_moves,
-    const size_t min_cut_idx)
-{
-    for(size_t i = min_cut_idx; i < performed_moves.size(); ++i)
-    {
+    const parallel::scalable_vector<HypernodeID>& performed_moves,
+    const size_t min_cut_idx) {
+    for(size_t i = min_cut_idx; i < performed_moves.size(); ++i) {
         const HypernodeID hn = performed_moves[i];
         const PartitionID from = _phg.partID(hn);
         const PartitionID to = 1 - from;
@@ -370,37 +313,28 @@ void SequentialTwoWayFmRefiner<TypeTraits>::rollback(
 }
 
 template <typename TypeTraits>
-bool SequentialTwoWayFmRefiner<TypeTraits>::verifyPQState() const
-{
-    for(const HypernodeID &hn : _phg.nodes())
-    {
+bool SequentialTwoWayFmRefiner<TypeTraits>::verifyPQState() const {
+    for(const HypernodeID& hn : _phg.nodes()) {
         const PartitionID to = 1 - _phg.partID(hn);
-        if(_border_vertices.isBorderNode(hn) && _vertex_state[hn] != VertexState::MOVED)
-        {
-            if(!_pq.contains(hn, to))
-            {
+        if(_border_vertices.isBorderNode(hn) && _vertex_state[hn] != VertexState::MOVED) {
+            if(!_pq.contains(hn, to)) {
                 LOG << "Hypernode" << hn
                     << "is a border node and should be contained in the PQ";
                 return false;
             }
-            if(_vertex_state[hn] != VertexState::ACTIVE)
-            {
+            if(_vertex_state[hn] != VertexState::ACTIVE) {
                 LOG << "Hypernode" << hn
                     << "is a border node and its not moved and its state should be ACTIVE";
                 return false;
             }
-        }
-        else if(!_border_vertices.isBorderNode(hn) &&
-                _vertex_state[hn] != VertexState::MOVED)
-        {
-            if(_pq.contains(hn, to))
-            {
+        } else if(!_border_vertices.isBorderNode(hn) &&
+                  _vertex_state[hn] != VertexState::MOVED) {
+            if(_pq.contains(hn, to)) {
                 LOG << "Hypernode" << hn
                     << "is not a border node and should be not contained in PQ";
                 return false;
             }
-            if(_vertex_state[hn] != VertexState::INACTIVE)
-            {
+            if(_vertex_state[hn] != VertexState::INACTIVE) {
                 LOG << "Hypernode" << hn
                     << "is not a border node and its not moved and its state should be INACTIVE";
                 return false;

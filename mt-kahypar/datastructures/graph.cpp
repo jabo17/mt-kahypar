@@ -42,15 +42,13 @@
 namespace mt_kahypar::ds {
 
 template <typename Hypergraph>
-Graph<Hypergraph>::Graph(Hypergraph &hypergraph, const LouvainEdgeWeight edge_weight_type,
+Graph<Hypergraph>::Graph(Hypergraph& hypergraph, const LouvainEdgeWeight edge_weight_type,
                          bool is_graph) :
     _num_nodes(0),
     _num_arcs(0), _total_volume(0), _max_degree(0), _indices(), _arcs(), _node_volumes(),
-    _tmp_graph_buffer(nullptr)
-{
+    _tmp_graph_buffer(nullptr) {
 
-    switch(edge_weight_type)
-    {
+    switch(edge_weight_type) {
     case LouvainEdgeWeight::uniform:
         construct(hypergraph, is_graph,
                   [&](const HyperedgeWeight edge_weight, const HypernodeID,
@@ -80,13 +78,12 @@ Graph<Hypergraph>::Graph(Hypergraph &hypergraph, const LouvainEdgeWeight edge_we
 }
 
 template <typename Hypergraph>
-Graph<Hypergraph>::Graph(Graph<Hypergraph> &&other) :
+Graph<Hypergraph>::Graph(Graph<Hypergraph>&& other) :
     _num_nodes(other._num_nodes), _num_arcs(other._num_arcs),
     _total_volume(other._total_volume), _max_degree(other._max_degree),
     _indices(std::move(other._indices)), _arcs(std::move(other._arcs)),
     _node_volumes(std::move(other._node_volumes)),
-    _tmp_graph_buffer(other._tmp_graph_buffer)
-{
+    _tmp_graph_buffer(other._tmp_graph_buffer) {
     other._num_nodes = 0;
     other._num_arcs = 0;
     other._total_volume = 0;
@@ -95,8 +92,7 @@ Graph<Hypergraph>::Graph(Graph<Hypergraph> &&other) :
 }
 
 template <typename Hypergraph>
-Graph<Hypergraph> &Graph<Hypergraph>::operator=(Graph<Hypergraph> &&other)
-{
+Graph<Hypergraph>& Graph<Hypergraph>::operator=(Graph<Hypergraph>&& other) {
     _num_nodes = other._num_nodes;
     _num_arcs = other._num_arcs;
     _total_volume = other._total_volume;
@@ -114,17 +110,14 @@ Graph<Hypergraph> &Graph<Hypergraph>::operator=(Graph<Hypergraph> &&other)
 }
 
 template <typename Hypergraph>
-Graph<Hypergraph>::~Graph()
-{
-    if(_tmp_graph_buffer)
-    {
+Graph<Hypergraph>::~Graph() {
+    if(_tmp_graph_buffer) {
         delete (_tmp_graph_buffer);
     }
 }
 
 template <typename Hypergraph>
-Graph<Hypergraph> Graph<Hypergraph>::contract_low_memory(Clustering &communities)
-{
+Graph<Hypergraph> Graph<Hypergraph>::contract_low_memory(Clustering& communities) {
     // map cluster IDs to consecutive range
     vec<NodeID> mapping(numNodes(), 0); // TODO use memory pool?
     tbb::parallel_for(UL(0), numNodes(), [&](NodeID u) { mapping[communities[u]] = 1; });
@@ -164,17 +157,14 @@ Graph<Hypergraph> Graph<Hypergraph>::contract_low_memory(Clustering &communities
 
     // first pass generating unique coarse arcs to determine coarse node degrees
     tbb::parallel_for(0U, num_coarse_nodes, [&](NodeID cu) {
-        auto &clear_list = clear_lists.local();
+        auto& clear_list = clear_lists.local();
         ArcWeight volume_cu = 0.0;
-        for(auto i = cluster_bounds[cu]; i < cluster_bounds[cu + 1]; ++i)
-        {
+        for(auto i = cluster_bounds[cu]; i < cluster_bounds[cu + 1]; ++i) {
             NodeID fu = nodes_sorted_by_cluster[i];
             volume_cu += nodeVolume(fu);
-            for(const Arc &arc : arcsOf(fu))
-            {
+            for(const Arc& arc : arcsOf(fu)) {
                 NodeID cv = get_cluster(arc.head);
-                if(cv != cu && clear_list.values[cv] == 0.0)
-                {
+                if(cv != cu && clear_list.values[cv] == 0.0) {
                     clear_list.used.push_back(cv);
                     clear_list.values[cv] = 1.0;
                 }
@@ -183,8 +173,7 @@ Graph<Hypergraph> Graph<Hypergraph>::contract_low_memory(Clustering &communities
         coarse_graph._indices[cu + 1] = clear_list.used.size();
         local_max_degree.local() =
             std::max(local_max_degree.local(), clear_list.used.size());
-        for(const NodeID cv : clear_list.used)
-        {
+        for(const NodeID cv : clear_list.used) {
             clear_list.values[cv] = 0.0;
         }
         clear_list.used.clear();
@@ -202,16 +191,12 @@ Graph<Hypergraph> Graph<Hypergraph>::contract_low_memory(Clustering &communities
 
     // second pass generating unique coarse arcs
     tbb::parallel_for(0U, num_coarse_nodes, [&](NodeID cu) {
-        auto &clear_list = clear_lists.local();
-        for(auto i = cluster_bounds[cu]; i < cluster_bounds[cu + 1]; ++i)
-        {
-            for(const Arc &arc : arcsOf(nodes_sorted_by_cluster[i]))
-            {
+        auto& clear_list = clear_lists.local();
+        for(auto i = cluster_bounds[cu]; i < cluster_bounds[cu + 1]; ++i) {
+            for(const Arc& arc : arcsOf(nodes_sorted_by_cluster[i])) {
                 NodeID cv = get_cluster(arc.head);
-                if(cv != cu)
-                {
-                    if(clear_list.values[cv] == 0.0)
-                    {
+                if(cv != cu) {
+                    if(clear_list.values[cv] == 0.0) {
                         clear_list.used.push_back(cv);
                     }
                     clear_list.values[cv] += arc.weight;
@@ -219,8 +204,7 @@ Graph<Hypergraph> Graph<Hypergraph>::contract_low_memory(Clustering &communities
             }
         }
         size_t pos = coarse_graph._indices[cu];
-        for(const NodeID cv : clear_list.used)
-        {
+        for(const NodeID cv : clear_list.used) {
             coarse_graph._arcs[pos++] = Arc(cv, clear_list.values[cv]);
             clear_list.values[cv] = 0.0;
         }
@@ -239,16 +223,13 @@ Graph<Hypergraph> Graph<Hypergraph>::contract_low_memory(Clustering &communities
  * are aggregated and the result is written to the final contracted graph.
  */
 template <typename Hypergraph>
-Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering &communities, bool low_memory)
-{
-    if(low_memory)
-    {
+Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering& communities, bool low_memory) {
+    if(low_memory) {
         return contract_low_memory(communities);
     }
     ASSERT(canBeUsed());
     ASSERT(_num_nodes == communities.size());
-    if(!_tmp_graph_buffer)
-    {
+    if(!_tmp_graph_buffer) {
         allocateContractionBuffers();
     }
     Graph coarse_graph;
@@ -257,11 +238,11 @@ Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering &communities, bool low_
     // #################### STAGE 1 ####################
     // Compute node ids of coarse graph with a parallel prefix sum
     parallel::scalable_vector<size_t> mapping(_num_nodes, UL(0));
-    ds::Array<parallel::IntegralAtomicWrapper<size_t> > &tmp_pos =
+    ds::Array<parallel::IntegralAtomicWrapper<size_t> >& tmp_pos =
         _tmp_graph_buffer->tmp_pos;
-    ds::Array<parallel::IntegralAtomicWrapper<size_t> > &tmp_indices =
+    ds::Array<parallel::IntegralAtomicWrapper<size_t> >& tmp_indices =
         _tmp_graph_buffer->tmp_indices;
-    ds::Array<parallel::AtomicWrapper<ArcWeight> > &coarse_node_volumes =
+    ds::Array<parallel::AtomicWrapper<ArcWeight> >& coarse_node_volumes =
         _tmp_graph_buffer->tmp_node_volumes;
     tbb::parallel_for(0U, static_cast<NodeID>(_num_nodes), [&](const NodeID u) {
         ASSERT(static_cast<size_t>(communities[u]) < _num_nodes);
@@ -292,11 +273,9 @@ Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering &communities, bool low_
         const NodeID coarse_u = communities[u];
         ASSERT(static_cast<size_t>(coarse_u) < coarse_graph._num_nodes);
         coarse_node_volumes[coarse_u] += nodeVolume(u); // not deterministic!
-        for(const Arc &arc : arcsOf(u))
-        {
+        for(const Arc& arc : arcsOf(u)) {
             const NodeID coarse_v = communities[arc.head];
-            if(coarse_u != coarse_v)
-            {
+            if(coarse_u != coarse_v) {
                 ++tmp_indices[coarse_u];
             }
         }
@@ -308,16 +287,14 @@ Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering &communities, bool low_
                        tmp_indices_prefix_sum);
 
     // Write all arcs into corresponding tmp adjacence array blocks
-    ds::Array<Arc> &tmp_arcs = _tmp_graph_buffer->tmp_arcs;
-    ds::Array<size_t> &valid_arcs = _tmp_graph_buffer->valid_arcs;
+    ds::Array<Arc>& tmp_arcs = _tmp_graph_buffer->tmp_arcs;
+    ds::Array<size_t>& valid_arcs = _tmp_graph_buffer->valid_arcs;
     tbb::parallel_for(0U, static_cast<NodeID>(_num_nodes), [&](const NodeID u) {
         const NodeID coarse_u = communities[u];
         ASSERT(static_cast<size_t>(coarse_u) < coarse_graph._num_nodes);
-        for(const Arc &arc : arcsOf(u))
-        {
+        for(const Arc& arc : arcsOf(u)) {
             const NodeID coarse_v = communities[arc.head];
-            if(coarse_u != coarse_v)
-            {
+            if(coarse_u != coarse_v) {
                 const size_t tmp_arcs_pos =
                     tmp_indices_prefix_sum[coarse_u] + tmp_pos[coarse_u]++;
                 ASSERT(tmp_arcs_pos < tmp_indices_prefix_sum[coarse_u + 1]);
@@ -339,7 +316,7 @@ Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering &communities, bool low_
             // commented out comparison is needed for deterministic arc weights
             // auto comp = [](const Arc& lhs, const Arc& rhs) { return std::tie(lhs.head,
             // lhs.weight) < std::tie(rhs.head, rhs.weight); };
-            auto comp = [](const Arc &lhs, const Arc &rhs) {
+            auto comp = [](const Arc& lhs, const Arc& rhs) {
                 return lhs.head < rhs.head;
             };
             std::sort(tmp_arcs.begin() + tmp_arc_start, tmp_arcs.begin() + tmp_arc_end,
@@ -347,15 +324,11 @@ Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering &communities, bool low_
 
             size_t arc_rep = tmp_arc_start;
             size_t degree = tmp_arc_start < tmp_arc_end ? 1 : 0;
-            for(size_t pos = tmp_arc_start + 1; pos < tmp_arc_end; ++pos)
-            {
-                if(tmp_arcs[arc_rep].head == tmp_arcs[pos].head)
-                {
+            for(size_t pos = tmp_arc_start + 1; pos < tmp_arc_end; ++pos) {
+                if(tmp_arcs[arc_rep].head == tmp_arcs[pos].head) {
                     tmp_arcs[arc_rep].weight += tmp_arcs[pos].weight;
                     valid_arcs[pos] = UL(0);
-                }
-                else
-                {
+                } else {
                     arc_rep = pos;
                     ++degree;
                 }
@@ -363,7 +336,7 @@ Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering &communities, bool low_
             local_max_degree.local() = std::max(local_max_degree.local(), degree);
         });
     coarse_graph._max_degree = local_max_degree.combine(
-        [&](const size_t &lhs, const size_t &rhs) { return std::max(lhs, rhs); });
+        [&](const size_t& lhs, const size_t& rhs) { return std::max(lhs, rhs); });
 
     // Write all arcs to coarse graph
     parallel::TBBPrefixSum<size_t, ds::Array> valid_arcs_prefix_sum(valid_arcs);
@@ -381,8 +354,7 @@ Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering &communities, bool low_
         [&] {
             const size_t tmp_num_arcs = tmp_indices_prefix_sum.total_sum();
             tbb::parallel_for(UL(0), tmp_num_arcs, [&](const size_t i) {
-                if(valid_arcs_prefix_sum.value(i))
-                {
+                if(valid_arcs_prefix_sum.value(i)) {
                     const size_t pos = valid_arcs_prefix_sum[i];
                     ASSERT(pos < coarse_graph._num_arcs);
                     coarse_graph._arcs[pos] = tmp_arcs[i];
@@ -409,27 +381,21 @@ Graph<Hypergraph> Graph<Hypergraph>::contract(Clustering &communities, bool low_
 template <typename Hypergraph>
 Graph<Hypergraph>::Graph() :
     _num_nodes(0), _num_arcs(0), _total_volume(0), _max_degree(0), _indices(), _arcs(),
-    _node_volumes(), _tmp_graph_buffer(nullptr)
-{
-}
+    _node_volumes(), _tmp_graph_buffer(nullptr) {}
 
 /*!
  * Constructs a graph from a given hypergraph.
  */
 template <typename Hypergraph>
 template <typename F>
-void Graph<Hypergraph>::construct(const Hypergraph &hypergraph, const bool is_graph,
-                                  const F &edge_weight_func)
-{
-    if(is_graph)
-    {
+void Graph<Hypergraph>::construct(const Hypergraph& hypergraph, const bool is_graph,
+                                  const F& edge_weight_func) {
+    if(is_graph) {
         ASSERT(hypergraph.maxEdgeSize() == 2);
         _num_nodes = hypergraph.initialNumNodes();
         _num_arcs = hypergraph.initialNumPins();
         constructGraph(hypergraph, edge_weight_func);
-    }
-    else
-    {
+    } else {
         _num_nodes = hypergraph.initialNumNodes() + hypergraph.initialNumEdges();
         _num_arcs = 2 * hypergraph.initialNumPins();
         constructBipartiteGraph(hypergraph, edge_weight_func);
@@ -441,10 +407,9 @@ void Graph<Hypergraph>::construct(const Hypergraph &hypergraph, const bool is_gr
     // node incurs O(degree) time
     tbb::parallel_for(0U, NodeID(numNodes()), [&](NodeID u) { computeNodeVolume(u); });
 
-    auto aggregate_volume = [&](const tbb::blocked_range<NodeID> &r,
+    auto aggregate_volume = [&](const tbb::blocked_range<NodeID>& r,
                                 ArcWeight partial_volume) -> ArcWeight {
-        for(NodeID u = r.begin(); u < r.end(); ++u)
-        {
+        for(NodeID u = r.begin(); u < r.end(); ++u) {
             partial_volume += nodeVolume(u);
         }
         return partial_volume;
@@ -456,9 +421,8 @@ void Graph<Hypergraph>::construct(const Hypergraph &hypergraph, const bool is_gr
 
 template <typename Hypergraph>
 template <typename F>
-void Graph<Hypergraph>::constructBipartiteGraph(const Hypergraph &hypergraph,
-                                                F &edge_weight_func)
-{
+void Graph<Hypergraph>::constructBipartiteGraph(const Hypergraph& hypergraph,
+                                                F& edge_weight_func) {
     _indices.resize("Preprocessing", "indices", _num_nodes + 1);
     _arcs.resize("Preprocessing", "arcs", _num_arcs);
     _node_volumes.resize("Preprocessing", "node_volumes", _num_nodes);
@@ -496,8 +460,7 @@ void Graph<Hypergraph>::constructBipartiteGraph(const Hypergraph &hypergraph,
                 const HyperedgeID node_degree = hypergraph.nodeDegree(hn);
                 local_max_degree.local() =
                     std::max(local_max_degree.local(), static_cast<size_t>(node_degree));
-                for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
-                {
+                for(const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
                     const NodeID v = he + num_hypernodes;
                     const HyperedgeWeight edge_weight = hypergraph.edgeWeight(he);
                     const HypernodeID edge_size = hypergraph.edgeSize(he);
@@ -518,8 +481,7 @@ void Graph<Hypergraph>::constructBipartiteGraph(const Hypergraph &hypergraph,
                     const HypernodeID edge_size = hypergraph.edgeSize(he);
                     local_max_degree.local() = std::max(local_max_degree.local(),
                                                         static_cast<size_t>(edge_size));
-                    for(const HypernodeID &pin : hypergraph.pins(he))
-                    {
+                    for(const HypernodeID& pin : hypergraph.pins(he)) {
                         const NodeID v = pin;
                         const HyperedgeID node_degree = hypergraph.nodeDegree(pin);
                         ASSERT(pos < _indices[u + 1]);
@@ -529,14 +491,13 @@ void Graph<Hypergraph>::constructBipartiteGraph(const Hypergraph &hypergraph,
                 });
         });
     _max_degree = local_max_degree.combine(
-        [&](const size_t &lhs, const size_t &rhs) { return std::max(lhs, rhs); });
+        [&](const size_t& lhs, const size_t& rhs) { return std::max(lhs, rhs); });
 }
 
 template <typename Hypergraph>
 template <typename F>
-void Graph<Hypergraph>::constructGraph(const Hypergraph &hypergraph,
-                                       const F &edge_weight_func)
-{
+void Graph<Hypergraph>::constructGraph(const Hypergraph& hypergraph,
+                                       const F& edge_weight_func) {
     _indices.resize("Preprocessing", "indices", _num_nodes + 1);
     _arcs.resize("Preprocessing", "arcs", _num_arcs);
     _node_volumes.resize("Preprocessing", "node_volumes", _num_nodes);
@@ -560,14 +521,11 @@ void Graph<Hypergraph>::constructGraph(const Hypergraph &hypergraph,
         const HyperedgeID node_degree = hypergraph.nodeDegree(hn);
         local_max_degree.local() =
             std::max(local_max_degree.local(), static_cast<size_t>(node_degree));
-        for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
-        {
+        for(const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
             const HyperedgeWeight edge_weight = hypergraph.edgeWeight(he);
             NodeID v = std::numeric_limits<NodeID>::max();
-            for(const HypernodeID &pin : hypergraph.pins(he))
-            {
-                if(pin != hn)
-                {
+            for(const HypernodeID& pin : hypergraph.pins(he)) {
+                if(pin != hn) {
                     v = pin;
                     break;
                 }
@@ -578,16 +536,14 @@ void Graph<Hypergraph>::constructGraph(const Hypergraph &hypergraph,
         }
     });
     _max_degree = local_max_degree.combine(
-        [&](const size_t &lhs, const size_t &rhs) { return std::max(lhs, rhs); });
+        [&](const size_t& lhs, const size_t& rhs) { return std::max(lhs, rhs); });
 }
 
 template <typename Hypergraph>
-bool Graph<Hypergraph>::canBeUsed(const bool verbose) const
-{
+bool Graph<Hypergraph>::canBeUsed(const bool verbose) const {
     const bool result = _indices.size() >= numNodes() + 1 && _arcs.size() >= numArcs() &&
                         _node_volumes.size() >= numNodes();
-    if(verbose && !result)
-    {
+    if(verbose && !result) {
         LOG << "Some of the graph's members were stolen. For example the contract function "
                "does this. "
                "Make sure you're calling functions with a fresh graph or catch this "

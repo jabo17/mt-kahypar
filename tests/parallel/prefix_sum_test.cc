@@ -35,32 +35,27 @@ using ::testing::Test;
 
 namespace mt_kahypar {
 
-TEST(PrefixSumTest, AllZeroes)
-{
+TEST(PrefixSumTest, AllZeroes) {
     size_t n = 1 << 19;
     vec<size_t> in(n, 0);
     vec<size_t> out(n, 420);
 
-    for(size_t i = 0; i < n; ++i)
-    {
+    for(size_t i = 0; i < n; ++i) {
         ASSERT_EQ(in[i], 0);
         ASSERT_EQ(out[i], 420);
     }
 
     parallel_prefix_sum(in.begin(), in.end(), out.begin(), std::plus<size_t>(), 0);
 
-    for(size_t i = 0; i < n; ++i)
-    {
-        if(in[i] != out[i])
-        {
+    for(size_t i = 0; i < n; ++i) {
+        if(in[i] != out[i]) {
             LOG << V(i) << V(in[i]) << V(out[i]) << V(n);
             FAIL();
         }
     }
 }
 
-TEST(PrefixSumTest, MatchesSequential)
-{
+TEST(PrefixSumTest, MatchesSequential) {
     size_t n = 1 << 19;
     vec<size_t> in(n, 0);
 
@@ -83,8 +78,7 @@ TEST(PrefixSumTest, MatchesSequential)
     ASSERT_EQ(out_parallel, out_stl);
 }
 
-TEST(PrefixSumTest, WorksInplace)
-{
+TEST(PrefixSumTest, WorksInplace) {
     size_t n = 1 << 19;
     vec<size_t> in(n, 0);
     std::mt19937 rng(421);
@@ -97,8 +91,7 @@ TEST(PrefixSumTest, WorksInplace)
     ASSERT_EQ(in, in_stl);
 }
 
-TEST(PrefixSumTest, WorksInplaceSmall)
-{
+TEST(PrefixSumTest, WorksInplaceSmall) {
     size_t n = 1 << 12;
     vec<size_t> in(n, 0);
     std::mt19937 rng(421);

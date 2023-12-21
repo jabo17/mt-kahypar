@@ -54,22 +54,18 @@
 namespace mt_kahypar {
 
 namespace {
-void disableTimerAndStats(const Context &context)
-{
-    if(context.type == ContextType::main && context.partition.mode == Mode::direct)
-    {
-        utils::Utilities &utils = utils::Utilities::instance();
+void disableTimerAndStats(const Context& context) {
+    if(context.type == ContextType::main && context.partition.mode == Mode::direct) {
+        utils::Utilities& utils = utils::Utilities::instance();
         parallel::MemoryPool::instance().deactivate_unused_memory_allocations();
         utils.getTimer(context.utility_id).disable();
         utils.getStats(context.utility_id).disable();
     }
 }
 
-void enableTimerAndStats(const Context &context)
-{
-    if(context.type == ContextType::main && context.partition.mode == Mode::direct)
-    {
-        utils::Utilities &utils = utils::Utilities::instance();
+void enableTimerAndStats(const Context& context) {
+    if(context.type == ContextType::main && context.partition.mode == Mode::direct) {
+        utils::Utilities& utils = utils::Utilities::instance();
         parallel::MemoryPool::instance().activate_unused_memory_allocations();
         utils.getTimer(context.utility_id).enable();
         utils.getStats(context.utility_id).enable();
@@ -78,10 +74,9 @@ void enableTimerAndStats(const Context &context)
 
 template <typename TypeTraits>
 typename TypeTraits::PartitionedHypergraph
-multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
-                        const Context &context, const TargetGraph *target_graph,
-                        const bool is_vcycle)
-{
+multilevel_partitioning(typename TypeTraits::Hypergraph& hypergraph,
+                        const Context& context, const TargetGraph *target_graph,
+                        const bool is_vcycle) {
     using Hypergraph = typename TypeTraits::Hypergraph;
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
     PartitionedHypergraph partitioned_hg;
@@ -92,7 +87,7 @@ multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
     const bool nlevel = context.isNLevelPartitioning();
     UncoarseningData<TypeTraits> uncoarseningData(nlevel, hypergraph, context);
 
-    utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
     timer.start_timer("coarsening", "Coarsening");
     {
         std::unique_ptr<ICoarsener> coarsener =
@@ -101,8 +96,7 @@ multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
                 uncoarsening::to_pointer(uncoarseningData));
         coarsener->coarsen();
 
-        if(context.partition.verbose_output)
-        {
+        if(context.partition.verbose_output) {
             mt_kahypar_hypergraph_t coarsestHypergraph = coarsener->coarsestHypergraph();
             mt_kahypar::io::printHypergraphInfo(
                 utils::cast<Hypergraph>(coarsestHypergraph), context,
@@ -114,13 +108,11 @@ multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
     // ################## INITIAL PARTITIONING ##################
     io::printInitialPartitioningBanner(context);
     timer.start_timer("initial_partitioning", "Initial Partitioning");
-    PartitionedHypergraph &phg = uncoarseningData.coarsestPartitionedHypergraph();
+    PartitionedHypergraph& phg = uncoarseningData.coarsestPartitionedHypergraph();
 
-    if(!is_vcycle)
-    {
+    if(!is_vcycle) {
         DegreeZeroHypernodeRemover<TypeTraits> degree_zero_hn_remover(context);
-        if(context.initial_partitioning.remove_degree_zero_hns_before_ip)
-        {
+        if(context.initial_partitioning.remove_degree_zero_hns_before_ip) {
             degree_zero_hn_remover.removeDegreeZeroHypernodes(phg.hypergraph());
         }
 
@@ -128,36 +120,27 @@ multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
         ip_context.type = ContextType::initial_partitioning;
         ip_context.refinement = context.initial_partitioning.refinement;
         disableTimerAndStats(context);
-        if(context.initial_partitioning.mode == Mode::direct)
-        {
+        if(context.initial_partitioning.mode == Mode::direct) {
             // The pool initial partitioner consist of several flat bipartitioning
             // techniques. This case runs as a base case (k = 2) within recursive
             // bipartitioning or the deep multilevel scheme.
             ip_context.partition.verbose_output = false;
             Pool<TypeTraits>::bipartition(phg, ip_context);
-        }
-        else if(context.initial_partitioning.mode == Mode::recursive_bipartitioning)
-        {
+        } else if(context.initial_partitioning.mode == Mode::recursive_bipartitioning) {
             RecursiveBipartitioning<TypeTraits>::partition(phg, ip_context, target_graph);
-        }
-        else if(context.initial_partitioning.mode == Mode::deep_multilevel)
-        {
+        } else if(context.initial_partitioning.mode == Mode::deep_multilevel) {
             ASSERT(ip_context.partition.objective != Objective::steiner_tree);
             ip_context.partition.verbose_output = false;
             DeepMultilevel<TypeTraits>::partition(phg, ip_context);
-        }
-        else
-        {
+        } else {
             throw InvalidParameterException("Undefined initial partitioning algorithm");
         }
         enableTimerAndStats(context);
         degree_zero_hn_remover.restoreDegreeZeroHypernodes(phg);
-    }
-    else
-    {
+    } else {
         // When performing a V-cycle, we store the block IDs
         // of the input hypergraph as community IDs
-        const Hypergraph &hypergraph = phg.hypergraph();
+        const Hypergraph& hypergraph = phg.hypergraph();
         phg.doParallelForAllNodes([&](const HypernodeID hn) {
             const PartitionID part_id = hypergraph.communityID(hn);
             ASSERT(part_id != kInvalidPartition && part_id < context.partition.k);
@@ -167,8 +150,7 @@ multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
         phg.initializePartition();
 
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
-        if(context.partition.objective == Objective::steiner_tree)
-        {
+        if(context.partition.objective == Objective::steiner_tree) {
             phg.setTargetGraph(target_graph);
             timer.start_timer("one_to_one_mapping", "One-To-One Mapping");
             // Try to improve current mapping
@@ -181,12 +163,9 @@ multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
     ASSERT(
         [&] {
             bool success = true;
-            if(phg.hasFixedVertices())
-            {
-                for(const HypernodeID &hn : phg.nodes())
-                {
-                    if(phg.isFixed(hn) && phg.fixedVertexBlock(hn) != phg.partID(hn))
-                    {
+            if(phg.hasFixedVertices()) {
+                for(const HypernodeID& hn : phg.nodes()) {
+                    if(phg.isFixed(hn) && phg.fixedVertexBlock(hn) != phg.partID(hn)) {
                         LOG << "Node" << hn << "is fixed to block"
                             << phg.fixedVertexBlock(hn) << ", but is assigned to block"
                             << phg.partID(hn);
@@ -198,13 +177,11 @@ multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
         }(),
         "Some fixed vertices are not assigned to their corresponding block");
 
-    if(context.partition.objective == Objective::steiner_tree)
-    {
+    if(context.partition.objective == Objective::steiner_tree) {
         phg.setTargetGraph(target_graph);
     }
     io::printPartitioningResults(phg, context, "Initial Partitioning Results:");
-    if(context.partition.verbose_output && !is_vcycle)
-    {
+    if(context.partition.verbose_output && !is_vcycle) {
         utils::Utilities::instance()
             .getInitialPartitioningStats(context.utility_id)
             .printInitialPartitioningStats();
@@ -215,13 +192,10 @@ multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
     io::printLocalSearchBanner(context);
     timer.start_timer("refinement", "Refinement");
     std::unique_ptr<IUncoarsener<TypeTraits> > uncoarsener(nullptr);
-    if(uncoarseningData.nlevel)
-    {
+    if(uncoarseningData.nlevel) {
         uncoarsener = std::make_unique<NLevelUncoarsener<TypeTraits> >(
             hypergraph, context, uncoarseningData, target_graph);
-    }
-    else
-    {
+    } else {
         uncoarsener = std::make_unique<MultilevelUncoarsener<TypeTraits> >(
             hypergraph, context, uncoarseningData, target_graph);
     }
@@ -236,15 +210,13 @@ multilevel_partitioning(typename TypeTraits::Hypergraph &hypergraph,
 
 template <typename TypeTraits>
 typename Multilevel<TypeTraits>::PartitionedHypergraph
-Multilevel<TypeTraits>::partition(Hypergraph &hypergraph, const Context &context,
-                                  const TargetGraph *target_graph)
-{
+Multilevel<TypeTraits>::partition(Hypergraph& hypergraph, const Context& context,
+                                  const TargetGraph *target_graph) {
     PartitionedHypergraph partitioned_hg =
         multilevel_partitioning<TypeTraits>(hypergraph, context, target_graph, false);
 
     // ################## V-CYCLES ##################
-    if(context.partition.num_vcycles > 0 && context.type == ContextType::main)
-    {
+    if(context.partition.num_vcycles > 0 && context.type == ContextType::main) {
         partitionVCycle(hypergraph, partitioned_hg, context, target_graph);
     }
 
@@ -252,35 +224,31 @@ Multilevel<TypeTraits>::partition(Hypergraph &hypergraph, const Context &context
 }
 
 template <typename TypeTraits>
-void Multilevel<TypeTraits>::partition(PartitionedHypergraph &partitioned_hg,
-                                       const Context &context,
-                                       const TargetGraph *target_graph)
-{
+void Multilevel<TypeTraits>::partition(PartitionedHypergraph& partitioned_hg,
+                                       const Context& context,
+                                       const TargetGraph *target_graph) {
     PartitionedHypergraph tmp_phg =
         partition(partitioned_hg.hypergraph(), context, target_graph);
-    tmp_phg.doParallelForAllNodes([&](const HypernodeID &hn) {
+    tmp_phg.doParallelForAllNodes([&](const HypernodeID& hn) {
         partitioned_hg.setOnlyNodePart(hn, tmp_phg.partID(hn));
     });
     partitioned_hg.initializePartition();
 }
 
 template <typename TypeTraits>
-void Multilevel<TypeTraits>::partitionVCycle(Hypergraph &hypergraph,
-                                             PartitionedHypergraph &partitioned_hg,
-                                             const Context &context,
-                                             const TargetGraph *target_graph)
-{
+void Multilevel<TypeTraits>::partitionVCycle(Hypergraph& hypergraph,
+                                             PartitionedHypergraph& partitioned_hg,
+                                             const Context& context,
+                                             const TargetGraph *target_graph) {
     ASSERT(context.partition.num_vcycles > 0);
 
-    for(size_t i = 0; i < context.partition.num_vcycles; ++i)
-    {
+    for(size_t i = 0; i < context.partition.num_vcycles; ++i) {
         // Reset memory pool
         hypergraph.reset();
         parallel::MemoryPool::instance().reset();
         parallel::MemoryPool::instance().release_mem_group("Preprocessing");
 
-        if(context.isNLevelPartitioning())
-        {
+        if(context.isNLevelPartitioning()) {
             // Workaround: reset() function of hypergraph reinserts all removed hyperedges
             // again.
             LargeHyperedgeRemover<TypeTraits> large_he_remover(context);
@@ -291,7 +259,7 @@ void Multilevel<TypeTraits>::partitionVCycle(Hypergraph &hypergraph,
         // This way coarsening does not contract nodes that do not belong to same block
         // of the input partition. For initial partitioning, we use the community IDs of
         // smallest hypergraph as initial partition.
-        hypergraph.doParallelForAllNodes([&](const HypernodeID &hn) {
+        hypergraph.doParallelForAllNodes([&](const HypernodeID& hn) {
             hypergraph.setCommunityID(hn, partitioned_hg.partID(hn));
         });
 

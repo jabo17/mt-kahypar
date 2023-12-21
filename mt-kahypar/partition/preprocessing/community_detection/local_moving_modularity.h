@@ -41,7 +41,7 @@
 
 namespace mt_kahypar::metrics {
 template <typename Hypergraph>
-double modularity(const Graph<Hypergraph> &graph, const ds::Clustering &communities);
+double modularity(const Graph<Hypergraph>& graph, const ds::Clustering& communities);
 }
 
 namespace mt_kahypar::community_detection {
@@ -58,7 +58,7 @@ class ParallelLocalMovingModularity
     static constexpr bool debug = false;
     static constexpr bool enable_heavy_assert = false;
 
-    ParallelLocalMovingModularity(const Context &context, size_t numNodes,
+    ParallelLocalMovingModularity(const Context& context, size_t numNodes,
                                   const bool disable_randomization = false) :
         _context(context),
         _max_degree(numNodes),
@@ -66,20 +66,18 @@ class ParallelLocalMovingModularity
             context.preprocessing.community_detection.vertex_degree_sampling_threshold),
         _cluster_volumes(numNodes), non_sampling_incident_cluster_weights(numNodes),
         _disable_randomization(disable_randomization), prng(context.partition.seed),
-        volume_updates_to(0), volume_updates_from(0)
-    {
-    }
+        volume_updates_to(0), volume_updates_from(0) {}
 
     ~ParallelLocalMovingModularity();
 
-    bool localMoving(Graph<Hypergraph> &graph, ds::Clustering &communities);
+    bool localMoving(Graph<Hypergraph>& graph, ds::Clustering& communities);
 
   private:
-    size_t parallelNonDeterministicRound(const Graph<Hypergraph> &graph,
-                                         ds::Clustering &communities);
-    size_t synchronousParallelRound(const Graph<Hypergraph> &graph,
-                                    ds::Clustering &communities);
-    size_t sequentialRound(const Graph<Hypergraph> &graph, ds::Clustering &communities);
+    size_t parallelNonDeterministicRound(const Graph<Hypergraph>& graph,
+                                         ds::Clustering& communities);
+    size_t synchronousParallelRound(const Graph<Hypergraph>& graph,
+                                    ds::Clustering& communities);
+    size_t sequentialRound(const Graph<Hypergraph>& graph, ds::Clustering& communities);
 
     struct ClearList
     {
@@ -89,8 +87,7 @@ class ParallelLocalMovingModularity
     };
 
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE bool
-    ratingsFitIntoSmallSparseMap(const Graph<Hypergraph> &graph, const HypernodeID u)
-    {
+    ratingsFitIntoSmallSparseMap(const Graph<Hypergraph>& graph, const HypernodeID u) {
         static constexpr size_t cache_efficient_map_size =
             CacheEfficientIncidentClusterWeights::MAP_SIZE / 3UL;
         return std::min(_vertex_degree_sampling_threshold, _max_degree) >
@@ -98,35 +95,32 @@ class ParallelLocalMovingModularity
                graph.degree(u) <= cache_efficient_map_size;
     }
 
-    LargeIncidentClusterWeights construct_large_incident_cluster_weight_map()
-    {
+    LargeIncidentClusterWeights construct_large_incident_cluster_weight_map() {
         return LargeIncidentClusterWeights(
             3UL * std::min(_max_degree, _vertex_degree_sampling_threshold), 0);
     }
 
     // ! Only for testing
-    void initializeClusterVolumes(const Graph<Hypergraph> &graph,
-                                  ds::Clustering &communities);
+    void initializeClusterVolumes(const Graph<Hypergraph>& graph,
+                                  ds::Clustering& communities);
 
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE PartitionID computeMaxGainCluster(
-        const Graph<Hypergraph> &graph, const ds::Clustering &communities, const NodeID u)
-    {
+    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE PartitionID
+    computeMaxGainCluster(const Graph<Hypergraph>& graph,
+                          const ds::Clustering& communities, const NodeID u) {
         return computeMaxGainCluster(graph, communities, u,
                                      non_sampling_incident_cluster_weights.local());
     }
 
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE PartitionID computeMaxGainCluster(
-        const Graph<Hypergraph> &graph, const ds::Clustering &communities, const NodeID u,
-        ClearList &incident_cluster_weights)
-    {
+        const Graph<Hypergraph>& graph, const ds::Clustering& communities, const NodeID u,
+        ClearList& incident_cluster_weights) {
         const PartitionID from = communities[u];
         PartitionID bestCluster = communities[u];
 
-        auto &weights = incident_cluster_weights.weights;
-        auto &used = incident_cluster_weights.used;
+        auto& weights = incident_cluster_weights.weights;
+        auto& used = incident_cluster_weights.used;
 
-        for(const Arc &arc : graph.arcsOf(u, _vertex_degree_sampling_threshold))
-        {
+        for(const Arc& arc : graph.arcsOf(u, _vertex_degree_sampling_threshold)) {
             const auto cv = communities[arc.head];
             if(weights[cv] == 0.0)
                 used.push_back(cv);
@@ -141,17 +135,14 @@ class ParallelLocalMovingModularity
         const double volMultiplier = _vol_multiplier_div_by_node_vol * volU;
         double bestGain = weight_from - volMultiplier * (volume_from - volU);
         double best_weight_to = weight_from;
-        for(const auto to : used)
-        {
+        for(const auto to : used) {
             // if from == to, we would have to remove volU from volume_to as well.
             // just skip it. it has (adjusted) gain zero.
-            if(from != to)
-            {
+            if(from != to) {
                 double gain = modularityGain(
                     weights[to], _cluster_volumes[to].load(std::memory_order_relaxed),
                     volMultiplier);
-                if(gain > bestGain)
-                {
+                if(gain > bestGain) {
                     bestCluster = to;
                     bestGain = gain;
                     best_weight_to = weights[to];
@@ -172,30 +163,28 @@ class ParallelLocalMovingModularity
     }
 
     inline double modularityGain(const ArcWeight weight_to, const ArcWeight volume_to,
-                                 const double multiplier)
-    {
+                                 const double multiplier) {
         return weight_to - multiplier * volume_to;
         // missing term is - weight_from + multiplier * (volume_from - volume_node)
     }
 
     inline long double adjustAdvancedModGain(double gain, const ArcWeight weight_from,
                                              const ArcWeight volume_from,
-                                             const ArcWeight volume_node) const
-    {
+                                             const ArcWeight volume_node) const {
         return 2.0L * _reciprocal_total_volume *
                (gain - weight_from +
                 _reciprocal_total_volume * volume_node * (volume_from - volume_node));
     }
 
-    bool verifyGain(const Graph<Hypergraph> &graph, const ds::Clustering &communities,
+    bool verifyGain(const Graph<Hypergraph>& graph, const ds::Clustering& communities,
                     NodeID u, PartitionID to, double gain, double weight_from,
                     double weight_to);
 
     static std::pair<ArcWeight, ArcWeight>
-    intraClusterWeightsAndSumOfSquaredClusterVolumes(const Graph<Hypergraph> &graph,
-                                                     const ds::Clustering &communities);
+    intraClusterWeightsAndSumOfSquaredClusterVolumes(const Graph<Hypergraph>& graph,
+                                                     const ds::Clustering& communities);
 
-    const Context &_context;
+    const Context& _context;
     size_t _max_degree;
     const size_t _vertex_degree_sampling_threshold;
     double _reciprocal_total_volume = 0.0;
@@ -211,8 +200,7 @@ class ParallelLocalMovingModularity
     {
         PartitionID cluster;
         NodeID node;
-        bool operator<(const ClusterMove &o) const
-        {
+        bool operator<(const ClusterMove& o) const {
             return std::tie(cluster, node) < std::tie(o.cluster, o.node);
         }
     };

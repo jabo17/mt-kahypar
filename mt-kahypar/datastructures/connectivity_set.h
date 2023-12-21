@@ -71,27 +71,22 @@ class ConnectivitySets
 
     ConnectivitySets() :
         _k(0), _num_hyperedges(0), _num_blocks_per_hyperedge(0), _bits(),
-        _deep_copy_bitset(), _shallow_copy_bitset()
-    {
-    }
+        _deep_copy_bitset(), _shallow_copy_bitset() {}
 
     ConnectivitySets(const HyperedgeID num_hyperedges, const PartitionID k,
                      const bool assign_parallel = true) :
         _k(k),
         _num_hyperedges(num_hyperedges),
         _num_blocks_per_hyperedge(k / BITS_PER_BLOCK + (k % BITS_PER_BLOCK != 0)),
-        _bits(), _deep_copy_bitset(), _shallow_copy_bitset()
-    {
-        if(num_hyperedges > 0)
-        {
+        _bits(), _deep_copy_bitset(), _shallow_copy_bitset() {
+        if(num_hyperedges > 0) {
             _bits.resize("Refinement", "connectivity_set",
                          static_cast<size_t>(num_hyperedges) * _num_blocks_per_hyperedge,
                          true, assign_parallel);
         }
     }
 
-    IteratorRange<Iterator> connectivitySet(const HyperedgeID he) const
-    {
+    IteratorRange<Iterator> connectivitySet(const HyperedgeID he) const {
         return IteratorRange<Iterator>(
             Iterator(_num_blocks_per_hyperedge,
                      _bits.data() + he * _num_blocks_per_hyperedge, -1),
@@ -104,8 +99,7 @@ class ConnectivitySets
 
     void remove(const HyperedgeID he, const PartitionID p) { toggle(he, p); }
 
-    bool contains(const HyperedgeID he, const PartitionID p) const
-    {
+    bool contains(const HyperedgeID he, const PartitionID p) const {
         const size_t div = p / BITS_PER_BLOCK;
         const size_t rem = p % BITS_PER_BLOCK;
         const size_t pos = static_cast<size_t>(he) * _num_blocks_per_hyperedge + div;
@@ -113,58 +107,47 @@ class ConnectivitySets
     }
 
     // not threadsafe
-    void clear(const HyperedgeID he)
-    {
+    void clear(const HyperedgeID he) {
         const size_t start = static_cast<size_t>(he) * _num_blocks_per_hyperedge;
         const size_t end = (static_cast<size_t>(he) + 1) * _num_blocks_per_hyperedge;
-        for(size_t i = start; i < end; ++i)
-        {
+        for(size_t i = start; i < end; ++i) {
             __atomic_store_n(&_bits[i], 0, __ATOMIC_RELAXED);
         }
     }
 
-    void reset(const bool reset_parallel = false)
-    {
-        if(reset_parallel)
-        {
+    void reset(const bool reset_parallel = false) {
+        if(reset_parallel) {
             tbb::parallel_for(UL(0), _bits.size(), [&](const size_t i) {
                 __atomic_store_n(&_bits[i], 0, __ATOMIC_RELAXED);
             });
-        }
-        else
-        {
-            for(size_t i = 0; i < _bits.size(); ++i)
-            {
+        } else {
+            for(size_t i = 0; i < _bits.size(); ++i) {
                 __atomic_store_n(&_bits[i], 0, __ATOMIC_RELAXED);
             }
         }
     }
 
-    PartitionID connectivity(const HyperedgeID he) const
-    {
+    PartitionID connectivity(const HyperedgeID he) const {
         PartitionID conn = 0;
         const size_t start = static_cast<size_t>(he) * _num_blocks_per_hyperedge;
         const size_t end = (static_cast<size_t>(he) + 1) * _num_blocks_per_hyperedge;
-        for(size_t i = start; i < end; ++i)
-        {
+        for(size_t i = start; i < end; ++i) {
             conn += utils::popcount_64(__atomic_load_n(&_bits[i], __ATOMIC_RELAXED));
         }
         return conn;
     }
 
     // Creates a shallow copy of the connectivity set of hyperedge he
-    StaticBitset &shallowCopy(const HyperedgeID he) const
-    {
-        StaticBitset &shallow_copy = _shallow_copy_bitset.local();
+    StaticBitset& shallowCopy(const HyperedgeID he) const {
+        StaticBitset& shallow_copy = _shallow_copy_bitset.local();
         shallow_copy.set(_num_blocks_per_hyperedge,
                          &_bits[UL(he) * _num_blocks_per_hyperedge]);
         return shallow_copy;
     }
 
     // Creates a deep copy of the connectivity set of hyperedge he
-    Bitset &deepCopy(const HyperedgeID he) const
-    {
-        Bitset &deep_copy = _deep_copy_bitset.local();
+    Bitset& deepCopy(const HyperedgeID he) const {
+        Bitset& deep_copy = _deep_copy_bitset.local();
         deep_copy.copy(_num_blocks_per_hyperedge,
                        &_bits[UL(he) * _num_blocks_per_hyperedge]);
         return deep_copy;
@@ -172,21 +155,18 @@ class ConnectivitySets
 
     void freeInternalData() { parallel::free(_bits); }
 
-    void memoryConsumption(utils::MemoryTreeNode *parent) const
-    {
+    void memoryConsumption(utils::MemoryTreeNode *parent) const {
         ASSERT(parent);
         parent->addChild("Connectivity Bit Vector", sizeof(UnsafeBlock) * _bits.size());
     }
 
-    static size_t num_elements(const HyperedgeID num_hyperedges, const PartitionID k)
-    {
+    static size_t num_elements(const HyperedgeID num_hyperedges, const PartitionID k) {
         return static_cast<size_t>(num_hyperedges) *
                (k / BITS_PER_BLOCK + (k % BITS_PER_BLOCK != 0));
     }
 
   private:
-    void toggle(const HyperedgeID he, const PartitionID p)
-    {
+    void toggle(const HyperedgeID he, const PartitionID p) {
         assert(p < _k);
         assert(he < _num_hyperedges);
         const size_t div = p / BITS_PER_BLOCK, rem = p % BITS_PER_BLOCK;

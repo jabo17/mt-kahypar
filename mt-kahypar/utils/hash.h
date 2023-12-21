@@ -37,8 +37,7 @@ namespace integer {
 
 // from parlay
 
-inline uint32_t hash32(uint32_t a)
-{
+inline uint32_t hash32(uint32_t a) {
     a = (a + 0x7ed55d16) + (a << 12);
     a = (a ^ 0xc761c23c) ^ (a >> 19);
     a = (a + 0x165667b1) + (a << 5);
@@ -48,16 +47,14 @@ inline uint32_t hash32(uint32_t a)
     return a;
 }
 
-inline uint32_t hash32_2(uint32_t a)
-{
+inline uint32_t hash32_2(uint32_t a) {
     uint32_t z = (a + 0x6D2B79F5UL);
     z = (z ^ (z >> 15)) * (z | UL(1));
     z ^= z + (z ^ (z >> 7)) * (z | UL(61));
     return z ^ (z >> 14);
 }
 
-inline uint32_t hash32_3(uint32_t a)
-{
+inline uint32_t hash32_3(uint32_t a) {
     uint32_t z = a + 0x9e3779b9;
     z ^= z >> 15;
     z *= 0x85ebca6b;
@@ -66,8 +63,7 @@ inline uint32_t hash32_3(uint32_t a)
     return z ^= z >> 16;
 }
 
-inline uint64_t hash64(uint64_t u)
-{
+inline uint64_t hash64(uint64_t u) {
     uint64_t v = u * 3935559000370003845ul + UL(2691343689449507681);
     v ^= v >> 21;
     v ^= v << 37;
@@ -79,8 +75,7 @@ inline uint64_t hash64(uint64_t u)
     return v;
 }
 
-inline uint64_t hash64_2(uint64_t x)
-{
+inline uint64_t hash64_2(uint64_t x) {
     x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
     x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
     x = x ^ (x >> 31);
@@ -88,13 +83,11 @@ inline uint64_t hash64_2(uint64_t x)
 }
 
 // from boost::hash_combine
-inline uint32_t combine32(uint32_t left, uint32_t hashed_right)
-{
+inline uint32_t combine32(uint32_t left, uint32_t hashed_right) {
     return left ^ (hashed_right + 0x9e3779b9 + (left << 6) + (left >> 2));
 }
 
-inline uint32_t combine32_2(uint32_t left, uint32_t hashed_right)
-{
+inline uint32_t combine32_2(uint32_t left, uint32_t hashed_right) {
     constexpr uint32_t c1 = 0xcc9e2d51;
     constexpr uint32_t c2 = 0x1b873593;
     constexpr auto rotate_left = [](uint32_t x, uint32_t r) -> uint32_t {
@@ -111,29 +104,21 @@ inline uint32_t combine32_2(uint32_t left, uint32_t hashed_right)
     return left;
 }
 
-inline uint64_t combine64(uint64_t left, uint64_t hashed_right)
-{
+inline uint64_t combine64(uint64_t left, uint64_t hashed_right) {
     return left ^ (hashed_right + 0x9e3779b97f4a7c15 + (left << 12) + (left >> 4));
 }
 
 template <class T>
 struct dependent_false : std::false_type
-{
-};
+{};
 
 template <typename T>
-T combine(T left, T hashed_right)
-{
-    if constexpr(sizeof(T) == 4)
-    {
+T combine(T left, T hashed_right) {
+    if constexpr(sizeof(T) == 4) {
         return combine32(left, hashed_right);
-    }
-    else if constexpr(sizeof(T) == 8)
-    {
+    } else if constexpr(sizeof(T) == 8) {
         return combine64(left, hashed_right);
-    }
-    else
-    {
+    } else {
         static_assert(
             dependent_false<T>::value,
             "hashing::integer::combine not intended for other sizes than 32bit and 64bit int");
@@ -142,18 +127,12 @@ T combine(T left, T hashed_right)
 }
 
 template <typename T>
-T hash(T x)
-{
-    if constexpr(sizeof(T) == 4)
-    {
+T hash(T x) {
+    if constexpr(sizeof(T) == 4) {
         return hash32(x);
-    }
-    else if constexpr(sizeof(T) == 8)
-    {
+    } else if constexpr(sizeof(T) == 8) {
         return hash64(x);
-    }
-    else
-    {
+    } else {
         static_assert(
             dependent_false<T>::value,
             "hashing::integer::hash combine not intended for other sizes than 32bit and 64bit int");
@@ -186,13 +165,10 @@ class TabulationHashing
     explicit TabulationHashing(size_t seed = 0) { init(seed); }
 
     //! (re-)initialize the table by filling it with random values
-    void init(const size_t seed)
-    {
+    void init(const size_t seed) {
         prng_t rng{ seed };
-        for(size_t i = 0; i < size; ++i)
-        {
-            for(size_t j = 0; j < 256; ++j)
-            {
+        for(size_t i = 0; i < size; ++i) {
+            for(size_t j = 0; j < 256; ++j) {
                 table_[i][j] = rng();
             }
         }
@@ -200,14 +176,12 @@ class TabulationHashing
 
     //! Hash an element
     template <typename T>
-    hash_type operator()(const T &x) const
-    {
+    hash_type operator()(const T& x) const {
         static_assert(sizeof(T) == size, "Size mismatch with operand type");
 
         hash_t hash = 0;
         const uint8_t *ptr = reinterpret_cast<const uint8_t *>(&x);
-        for(size_t i = 0; i < size; ++i)
-        {
+        for(size_t i = 0; i < size; ++i) {
             hash ^= table_[i][*(ptr + i)];
         }
         return hash;
@@ -226,12 +200,11 @@ struct SimpleIntHash
 {
     using hash_type = T;
 
-    void init(T /* seed */)
-    {
+    void init(T /* seed */) {
         // intentionally unimplemented
     }
 
-    T operator()(const T &x) const { return integer::hash(x); }
+    T operator()(const T& x) const { return integer::hash(x); }
 };
 
 // implements the rng interface required for std::uniform_int_distribution
@@ -239,23 +212,20 @@ template <typename HashFunction>
 struct HashRNG
 {
     using result_type = typename HashFunction::hash_type;
-    explicit HashRNG(HashFunction &hash, result_type seed) :
-        hash(hash), state(hash(seed)), counter(0)
-    {
-    }
+    explicit HashRNG(HashFunction& hash, result_type seed) :
+        hash(hash), state(hash(seed)), counter(0) {}
     static constexpr result_type min() { return std::numeric_limits<result_type>::min(); }
     static constexpr result_type max() { return std::numeric_limits<result_type>::max(); }
 
     // don't do too many calls of this
-    result_type operator()()
-    {
+    result_type operator()() {
         // state = hash(state);
         state = integer::combine(state, integer::hash(counter++));
         return state;
     }
 
   private:
-    HashFunction &hash; // Hash function copy is expensive in case of tabulation hashing.
+    HashFunction& hash; // Hash function copy is expensive in case of tabulation hashing.
     result_type state;
     result_type counter;
 };

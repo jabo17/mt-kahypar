@@ -50,8 +50,7 @@ class DeterminismTest : public Test
 {
 
   public:
-    DeterminismTest() : hypergraph(), partitioned_hypergraph(), context(), metrics()
-    {
+    DeterminismTest() : hypergraph(), partitioned_hypergraph(), context(), metrics() {
         context.partition.graph_filename = "../tests/instances/powersim.mtx.hgr";
         context.partition.mode = Mode::direct;
         context.partition.preset_type = PresetType::deterministic;
@@ -99,8 +98,7 @@ class DeterminismTest : public Test
         context.setupPartWeights(hypergraph.totalWeight());
     }
 
-    void initialPartition()
-    {
+    void initialPartition() {
         Context ip_context(context);
         ip_context.refinement.label_propagation.algorithm =
             LabelPropagationAlgorithm::do_nothing;
@@ -115,21 +113,17 @@ class DeterminismTest : public Test
         metrics.imbalance = metrics::imbalance(partitioned_hypergraph, context);
     }
 
-    void performRepeatedRefinement()
-    {
+    void performRepeatedRefinement() {
         initialPartition();
         vec<PartitionID> initial_partition(hypergraph.initialNumNodes());
-        for(HypernodeID u : hypergraph.nodes())
-        {
+        for(HypernodeID u : hypergraph.nodes()) {
             initial_partition[u] = partitioned_hypergraph.partID(u);
         }
 
         vec<PartitionID> first(hypergraph.initialNumNodes());
-        for(size_t i = 0; i < num_repetitions; ++i)
-        {
+        for(size_t i = 0; i < num_repetitions; ++i) {
             partitioned_hypergraph.resetPartition();
-            for(HypernodeID u : hypergraph.nodes())
-            {
+            for(HypernodeID u : hypergraph.nodes()) {
                 partitioned_hypergraph.setNodePart(u, initial_partition[u]);
             }
 
@@ -144,17 +138,12 @@ class DeterminismTest : public Test
             Metrics my_metrics = metrics;
             refiner.refine(phg, dummy_refinement_nodes, my_metrics, 0.0);
 
-            if(i == 0)
-            {
-                for(HypernodeID u : hypergraph.nodes())
-                {
+            if(i == 0) {
+                for(HypernodeID u : hypergraph.nodes()) {
                     first[u] = partitioned_hypergraph.partID(u);
                 }
-            }
-            else
-            {
-                for(HypernodeID u : hypergraph.nodes())
-                {
+            } else {
+                for(HypernodeID u : hypergraph.nodes()) {
                     ASSERT_EQ(first[u], partitioned_hypergraph.partID(u));
                 }
             }
@@ -168,64 +157,50 @@ class DeterminismTest : public Test
     static constexpr size_t num_repetitions = 5;
 };
 
-TEST_F(DeterminismTest, Preprocessing)
-{
+TEST_F(DeterminismTest, Preprocessing) {
     context.preprocessing.community_detection.low_memory_contraction = true;
 
     LouvainEdgeWeight edge_weight_type;
     if(static_cast<double>(hypergraph.initialNumEdges()) /
            static_cast<double>(hypergraph.initialNumNodes()) <
-       0.75)
-    {
+       0.75) {
         edge_weight_type = LouvainEdgeWeight::degree;
-    }
-    else
-    {
+    } else {
         edge_weight_type = LouvainEdgeWeight::uniform;
     }
 
     Graph<Hypergraph> graph(hypergraph, edge_weight_type);
     ds::Clustering first;
-    for(size_t i = 0; i < num_repetitions; ++i)
-    {
+    for(size_t i = 0; i < num_repetitions; ++i) {
         ds::Clustering communities =
             community_detection::run_parallel_louvain(graph, context);
-        if(i == 0)
-        {
+        if(i == 0) {
             first = std::move(communities);
-        }
-        else
-        {
+        } else {
             ASSERT_EQ(first, communities);
         }
     }
 }
 
-TEST_F(DeterminismTest, Coarsening)
-{
+TEST_F(DeterminismTest, Coarsening) {
     Hypergraph first;
-    for(size_t i = 0; i < num_repetitions; ++i)
-    {
+    for(size_t i = 0; i < num_repetitions; ++i) {
         UncoarseningData<TypeTraits> uncoarseningData(false, hypergraph, context);
         uncoarsening_data_t *data_ptr = uncoarsening::to_pointer(uncoarseningData);
         mt_kahypar_hypergraph_t hg = utils::hypergraph_cast(hypergraph);
         DeterministicMultilevelCoarsener<TypeTraits> coarsener(hg, context, data_ptr);
         coarsener.coarsen();
-        if(i == 0)
-        {
+        if(i == 0) {
             mt_kahypar_hypergraph_t first_hg = coarsener.coarsestHypergraph();
             first = utils::cast<Hypergraph>(first_hg).copy();
-        }
-        else
-        {
+        } else {
             mt_kahypar_hypergraph_t other_hg = coarsener.coarsestHypergraph();
-            const Hypergraph &other = utils::cast<Hypergraph>(other_hg);
+            const Hypergraph& other = utils::cast<Hypergraph>(other_hg);
             ASSERT_EQ(other.initialNumNodes(), first.initialNumNodes());
             ASSERT_EQ(other.initialNumEdges(), first.initialNumEdges());
             ASSERT_EQ(other.initialNumPins(), first.initialNumPins());
             vec<HyperedgeID> inets_first, inets_other;
-            for(HypernodeID u : first.nodes())
-            {
+            for(HypernodeID u : first.nodes()) {
                 for(HyperedgeID e : first.incidentEdges(u))
                     inets_first.push_back(e);
                 for(HyperedgeID e : other.incidentEdges(u))
@@ -236,8 +211,7 @@ TEST_F(DeterminismTest, Coarsening)
             }
 
             vec<HypernodeID> pins_first, pins_other;
-            for(HyperedgeID e : first.edges())
-            {
+            for(HyperedgeID e : first.edges()) {
                 for(HypernodeID v : first.pins(e))
                     pins_first.push_back(v);
                 for(HypernodeID v : other.pins(e))
@@ -252,21 +226,18 @@ TEST_F(DeterminismTest, Coarsening)
 
 TEST_F(DeterminismTest, Refinement) { performRepeatedRefinement(); }
 
-TEST_F(DeterminismTest, RefinementOnSmallImbalance)
-{
+TEST_F(DeterminismTest, RefinementOnSmallImbalance) {
     context.partition.epsilon = 0.03;
     context.setupPartWeights(hypergraph.totalWeight());
     performRepeatedRefinement();
 }
 
-TEST_F(DeterminismTest, RefinementWithActiveNodeSet)
-{
+TEST_F(DeterminismTest, RefinementWithActiveNodeSet) {
     context.refinement.deterministic_refinement.use_active_node_set = true;
     performRepeatedRefinement();
 }
 
-TEST_F(DeterminismTest, RefinementK2)
-{
+TEST_F(DeterminismTest, RefinementK2) {
     context.partition.k = 2;
     partitioned_hypergraph =
         PartitionedHypergraph(context.partition.k, hypergraph, parallel_tag_t());
@@ -274,8 +245,7 @@ TEST_F(DeterminismTest, RefinementK2)
     performRepeatedRefinement();
 }
 
-TEST_F(DeterminismTest, RefinementOnCoarseHypergraph)
-{
+TEST_F(DeterminismTest, RefinementOnCoarseHypergraph) {
     UncoarseningData<TypeTraits> uncoarseningData(false, hypergraph, context);
     uncoarsening_data_t *data_ptr = uncoarsening::to_pointer(uncoarseningData);
     mt_kahypar_hypergraph_t hg = utils::hypergraph_cast(hypergraph);

@@ -29,8 +29,7 @@
 
 namespace mt_kahypar::utils {
 
-inline int popcount_64(const uint64_t x)
-{
+inline int popcount_64(const uint64_t x) {
     // this should be GCC specific
     return __builtin_popcountll(x);
 }

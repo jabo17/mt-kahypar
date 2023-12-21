@@ -37,10 +37,9 @@ namespace mt_kahypar::ds {
 
 StaticHypergraph StaticHypergraphFactory::construct(
     const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,
-    const HyperedgeVector &edge_vector, const HyperedgeWeight *hyperedge_weight,
+    const HyperedgeVector& edge_vector, const HyperedgeWeight *hyperedge_weight,
     const HypernodeWeight *hypernode_weight,
-    const bool stable_construction_of_incident_edges)
-{
+    const bool stable_construction_of_incident_edges) {
     StaticHypergraph hypergraph;
     hypergraph._num_hypernodes = num_hypernodes;
     hypergraph._num_hyperedges = num_hyperedges;
@@ -55,12 +54,11 @@ StaticHypergraph StaticHypergraphFactory::construct(
     ThreadLocalCounter local_incident_nets_per_vertex(num_hypernodes, 0);
     tbb::enumerable_thread_specific<size_t> local_max_edge_size(UL(0));
     tbb::parallel_for(ID(0), num_hyperedges, [&](const size_t pos) {
-        Counter &num_incident_nets_per_vertex = local_incident_nets_per_vertex.local();
+        Counter& num_incident_nets_per_vertex = local_incident_nets_per_vertex.local();
         num_pins_per_hyperedge[pos] = edge_vector[pos].size();
         local_max_edge_size.local() =
             std::max(local_max_edge_size.local(), edge_vector[pos].size());
-        for(const HypernodeID &pin : edge_vector[pos])
-        {
+        for(const HypernodeID& pin : edge_vector[pos]) {
             ASSERT(pin < num_hypernodes, V(pin) << V(num_hypernodes));
             ++num_incident_nets_per_vertex[pin];
         }
@@ -72,8 +70,7 @@ StaticHypergraph StaticHypergraphFactory::construct(
     // To obtain the global number of incident nets per vertex, we iterate
     // over each thread local counter and sum it up.
     Counter num_incident_nets_per_vertex(num_hypernodes, 0);
-    for(Counter &c : local_incident_nets_per_vertex)
-    {
+    for(Counter& c : local_incident_nets_per_vertex) {
         tbb::parallel_for(ID(0), num_hypernodes, [&](const size_t pos) {
             num_incident_nets_per_vertex[pos] += c[pos];
         });
@@ -106,19 +103,17 @@ StaticHypergraph StaticHypergraphFactory::construct(
 
     auto setup_hyperedges = [&] {
         tbb::parallel_for(ID(0), num_hyperedges, [&](const size_t pos) {
-            StaticHypergraph::Hyperedge &hyperedge = hypergraph._hyperedges[pos];
+            StaticHypergraph::Hyperedge& hyperedge = hypergraph._hyperedges[pos];
             hyperedge.enable();
             hyperedge.setFirstEntry(pin_prefix_sum[pos]);
             hyperedge.setSize(pin_prefix_sum.value(pos));
-            if(hyperedge_weight)
-            {
+            if(hyperedge_weight) {
                 hyperedge.setWeight(hyperedge_weight[pos]);
             }
 
             const HyperedgeID he = pos;
             size_t incidence_array_pos = hyperedge.firstEntry();
-            for(const HypernodeID &pin : edge_vector[pos])
-            {
+            for(const HypernodeID& pin : edge_vector[pos]) {
                 ASSERT(incidence_array_pos < hyperedge.firstInvalidEntry());
                 ASSERT(pin < num_hypernodes);
                 // Add pin to incidence array
@@ -134,12 +129,11 @@ StaticHypergraph StaticHypergraphFactory::construct(
 
     auto setup_hypernodes = [&] {
         tbb::parallel_for(ID(0), num_hypernodes, [&](const size_t pos) {
-            StaticHypergraph::Hypernode &hypernode = hypergraph._hypernodes[pos];
+            StaticHypergraph::Hypernode& hypernode = hypergraph._hypernodes[pos];
             hypernode.enable();
             hypernode.setFirstEntry(incident_net_prefix_sum[pos]);
             hypernode.setSize(incident_net_prefix_sum.value(pos));
-            if(hypernode_weight)
-            {
+            if(hypernode_weight) {
                 hypernode.setWeight(hypernode_weight[pos]);
             }
         });
@@ -149,8 +143,7 @@ StaticHypergraph StaticHypergraphFactory::construct(
 
     tbb::parallel_invoke(setup_hyperedges, setup_hypernodes, init_communities);
 
-    if(stable_construction_of_incident_edges)
-    {
+    if(stable_construction_of_incident_edges) {
         // sort incident hyperedges of each node, so their ordering is independent of
         // scheduling (and the same as a typical sequential implementation)
         tbb::parallel_for(ID(0), num_hypernodes, [&](HypernodeID u) {

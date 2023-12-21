@@ -46,8 +46,7 @@ class AFixedVertexSupport : public Test
     AFixedVertexSupport() :
         hypergraph(Factory::construct(
             7, 4, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } })),
-        fixed_vertices(7, 3)
-    {
+        fixed_vertices(7, 3) {
         fixed_vertices.setHypergraph(&hypergraph);
         fixed_vertices.fixToBlock(0, 0);
         fixed_vertices.fixToBlock(2, 0);
@@ -55,32 +54,27 @@ class AFixedVertexSupport : public Test
         fixed_vertices.fixToBlock(6, 2);
     }
 
-    void verifyFixedVertices(const std::string &desc, const vec<PartitionID> &expected)
-    {
+    void verifyFixedVertices(const std::string& desc, const vec<PartitionID>& expected) {
         HypernodeWeight total_weight = 0;
         vec<HypernodeWeight> block_weight(3, 0);
-        for(const HypernodeID &hn : hypergraph.nodes())
-        {
+        for(const HypernodeID& hn : hypergraph.nodes()) {
             const bool is_fixed = expected[hn] != kInvalidPartition;
             ASSERT_EQ(is_fixed, fixed_vertices.isFixed(hn)) << V(hn) << " " << V(desc);
             ASSERT_EQ(expected[hn], fixed_vertices.fixedVertexBlock(hn))
                 << V(hn) << " " << V(desc);
-            if(is_fixed)
-            {
+            if(is_fixed) {
                 total_weight += hypergraph.nodeWeight(hn);
                 block_weight[expected[hn]] += hypergraph.nodeWeight(hn);
             }
         }
         ASSERT_EQ(total_weight, fixed_vertices.totalFixedVertexWeight()) << V(desc);
-        for(PartitionID i = 0; i < 3; ++i)
-        {
+        for(PartitionID i = 0; i < 3; ++i) {
             ASSERT_EQ(block_weight[i], fixed_vertices.fixedVertexBlockWeight(i))
                 << V(i) << " " << V(desc);
         }
     }
 
-    void verifyFixedVertices(const vec<PartitionID> &expected)
-    {
+    void verifyFixedVertices(const vec<PartitionID>& expected) {
         verifyFixedVertices("", expected);
     }
 
@@ -89,23 +83,20 @@ class AFixedVertexSupport : public Test
 };
 
 template <class F, class K>
-void runParallel(F f1, K f2)
-{
+void runParallel(F f1, K f2) {
     std::atomic<int> cnt(0);
     tbb::task_group group;
 
     group.run([&] {
         cnt++;
-        while(cnt < 2)
-        {
+        while(cnt < 2) {
         }
         f1();
     });
 
     group.run([&] {
         cnt++;
-        while(cnt < 2)
-        {
+        while(cnt < 2) {
         }
         f2();
     });
@@ -113,8 +104,7 @@ void runParallel(F f1, K f2)
     group.wait();
 }
 
-TEST_F(AFixedVertexSupport, CheckIfNodesAreFixed)
-{
+TEST_F(AFixedVertexSupport, CheckIfNodesAreFixed) {
     ASSERT_TRUE(fixed_vertices.hasFixedVertices());
     ASSERT_TRUE(fixed_vertices.isFixed(0));
     ASSERT_FALSE(fixed_vertices.isFixed(1));
@@ -125,8 +115,7 @@ TEST_F(AFixedVertexSupport, CheckIfNodesAreFixed)
     ASSERT_TRUE(fixed_vertices.isFixed(6));
 }
 
-TEST_F(AFixedVertexSupport, CheckFixedVertexBlocks)
-{
+TEST_F(AFixedVertexSupport, CheckFixedVertexBlocks) {
     ASSERT_EQ(0, fixed_vertices.fixedVertexBlock(0));
     ASSERT_EQ(kInvalidPartition, fixed_vertices.fixedVertexBlock(1));
     ASSERT_EQ(0, fixed_vertices.fixedVertexBlock(2));
@@ -136,23 +125,20 @@ TEST_F(AFixedVertexSupport, CheckFixedVertexBlocks)
     ASSERT_EQ(2, fixed_vertices.fixedVertexBlock(6));
 }
 
-TEST_F(AFixedVertexSupport, CheckFixedVertexBlockWeights)
-{
+TEST_F(AFixedVertexSupport, CheckFixedVertexBlockWeights) {
     ASSERT_EQ(4, fixed_vertices.totalFixedVertexWeight());
     ASSERT_EQ(2, fixed_vertices.fixedVertexBlockWeight(0));
     ASSERT_EQ(1, fixed_vertices.fixedVertexBlockWeight(1));
     ASSERT_EQ(1, fixed_vertices.fixedVertexBlockWeight(2));
 }
 
-TEST_F(AFixedVertexSupport, ContractFreeOntoFreeVertex)
-{
+TEST_F(AFixedVertexSupport, ContractFreeOntoFreeVertex) {
     ASSERT_TRUE(fixed_vertices.contract(3, 5));
     ASSERT_FALSE(fixed_vertices.isFixed(3));
     ASSERT_FALSE(fixed_vertices.isFixed(5));
 }
 
-TEST_F(AFixedVertexSupport, ContractFreeOntoFixedVertex)
-{
+TEST_F(AFixedVertexSupport, ContractFreeOntoFixedVertex) {
     ASSERT_TRUE(fixed_vertices.contract(0, 3));
     ASSERT_TRUE(fixed_vertices.isFixed(3));
     ASSERT_EQ(0, fixed_vertices.fixedVertexBlock(3));
@@ -162,8 +148,7 @@ TEST_F(AFixedVertexSupport, ContractFreeOntoFixedVertex)
     ASSERT_EQ(5, fixed_vertices.totalFixedVertexWeight());
 }
 
-TEST_F(AFixedVertexSupport, ContractFixedOntoFixedVertex1)
-{
+TEST_F(AFixedVertexSupport, ContractFixedOntoFixedVertex1) {
     ASSERT_TRUE(fixed_vertices.contract(0, 2));
     ASSERT_TRUE(fixed_vertices.isFixed(0));
     ASSERT_EQ(0, fixed_vertices.fixedVertexBlock(0));
@@ -171,8 +156,7 @@ TEST_F(AFixedVertexSupport, ContractFixedOntoFixedVertex1)
     ASSERT_EQ(0, fixed_vertices.fixedVertexBlock(2));
 }
 
-TEST_F(AFixedVertexSupport, ContractFixedOntoFixedVertex2)
-{
+TEST_F(AFixedVertexSupport, ContractFixedOntoFixedVertex2) {
     ASSERT_FALSE(fixed_vertices.contract(0, 6));
     ASSERT_TRUE(fixed_vertices.isFixed(0));
     ASSERT_EQ(0, fixed_vertices.fixedVertexBlock(0));
@@ -180,8 +164,7 @@ TEST_F(AFixedVertexSupport, ContractFixedOntoFixedVertex2)
     ASSERT_EQ(2, fixed_vertices.fixedVertexBlock(6));
 }
 
-TEST_F(AFixedVertexSupport, ContractFixedOntoFreeVertex)
-{
+TEST_F(AFixedVertexSupport, ContractFixedOntoFreeVertex) {
     ASSERT_TRUE(fixed_vertices.contract(1, 4));
     ASSERT_TRUE(fixed_vertices.isFixed(1));
     ASSERT_EQ(1, fixed_vertices.fixedVertexBlock(1));
@@ -189,16 +172,14 @@ TEST_F(AFixedVertexSupport, ContractFixedOntoFreeVertex)
     ASSERT_EQ(5, fixed_vertices.totalFixedVertexWeight());
 }
 
-TEST_F(AFixedVertexSupport, UnontractFreeOntoFreeVertex)
-{
+TEST_F(AFixedVertexSupport, UnontractFreeOntoFreeVertex) {
     ASSERT_TRUE(fixed_vertices.contract(3, 5));
     fixed_vertices.uncontract(3, 5);
     ASSERT_FALSE(fixed_vertices.isFixed(3));
     ASSERT_FALSE(fixed_vertices.isFixed(5));
 }
 
-TEST_F(AFixedVertexSupport, UnontractFreeOntoFixedVertex)
-{
+TEST_F(AFixedVertexSupport, UnontractFreeOntoFixedVertex) {
     ASSERT_TRUE(fixed_vertices.contract(0, 3));
     fixed_vertices.uncontract(0, 3);
     ASSERT_FALSE(fixed_vertices.isFixed(3));
@@ -209,8 +190,7 @@ TEST_F(AFixedVertexSupport, UnontractFreeOntoFixedVertex)
     ASSERT_EQ(4, fixed_vertices.totalFixedVertexWeight());
 }
 
-TEST_F(AFixedVertexSupport, UncontractFixedOntoFixedVertex)
-{
+TEST_F(AFixedVertexSupport, UncontractFixedOntoFixedVertex) {
     ASSERT_TRUE(fixed_vertices.contract(0, 2));
     fixed_vertices.uncontract(0, 2);
     ASSERT_TRUE(fixed_vertices.isFixed(0));
@@ -221,8 +201,7 @@ TEST_F(AFixedVertexSupport, UncontractFixedOntoFixedVertex)
     ASSERT_EQ(4, fixed_vertices.totalFixedVertexWeight());
 }
 
-TEST_F(AFixedVertexSupport, UncontractFixedOntoFreeVertex)
-{
+TEST_F(AFixedVertexSupport, UncontractFixedOntoFreeVertex) {
     ASSERT_TRUE(fixed_vertices.contract(1, 4));
     fixed_vertices.uncontract(1, 4);
     ASSERT_FALSE(fixed_vertices.isFixed(1));
@@ -233,72 +212,63 @@ TEST_F(AFixedVertexSupport, UncontractFixedOntoFreeVertex)
     ASSERT_EQ(4, fixed_vertices.totalFixedVertexWeight());
 }
 
-TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices1)
-{
+TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices1) {
     ASSERT_TRUE(fixed_vertices.contract(1, 4));
     ASSERT_TRUE(fixed_vertices.contract(2, 3));
     ASSERT_TRUE(fixed_vertices.contract(5, 6));
     verifyFixedVertices({ 0, 1, 0, 0, 1, 2, 2 });
 }
 
-TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices2)
-{
+TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices2) {
     ASSERT_TRUE(fixed_vertices.contract(3, 5));
     ASSERT_TRUE(fixed_vertices.contract(2, 0));
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
     verifyFixedVertices({ 0, 0, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices3)
-{
+TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices3) {
     ASSERT_TRUE(fixed_vertices.contract(2, 0));
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
     ASSERT_TRUE(fixed_vertices.contract(3, 1));
     verifyFixedVertices({ 0, 0, 0, 0, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices4)
-{
+TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices4) {
     ASSERT_TRUE(fixed_vertices.contract(2, 3));
     ASSERT_TRUE(fixed_vertices.contract(2, 1));
     ASSERT_TRUE(fixed_vertices.contract(0, 2));
     verifyFixedVertices({ 0, 0, 0, 0, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices5)
-{
+TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices5) {
     ASSERT_TRUE(fixed_vertices.contract(2, 0));
     ASSERT_TRUE(fixed_vertices.contract(2, 1));
     ASSERT_TRUE(fixed_vertices.contract(3, 2));
     verifyFixedVertices({ 0, 0, 0, 0, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices6)
-{
+TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices6) {
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
     ASSERT_TRUE(fixed_vertices.contract(1, 0));
     ASSERT_TRUE(fixed_vertices.contract(3, 1));
     verifyFixedVertices({ 0, 0, 0, 0, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices7)
-{
+TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices7) {
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
     ASSERT_TRUE(fixed_vertices.contract(3, 1));
     ASSERT_TRUE(fixed_vertices.contract(0, 3));
     verifyFixedVertices({ 0, 0, 0, 0, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices8)
-{
+TEST_F(AFixedVertexSupport, ContractSeveralFixedVertices8) {
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
     ASSERT_TRUE(fixed_vertices.contract(0, 1));
     ASSERT_TRUE(fixed_vertices.contract(3, 0));
     verifyFixedVertices({ 0, 0, 0, 0, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices1)
-{
+TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices1) {
     ASSERT_TRUE(fixed_vertices.contract(1, 4));
     ASSERT_TRUE(fixed_vertices.contract(2, 3));
     ASSERT_TRUE(fixed_vertices.contract(5, 6));
@@ -317,8 +287,7 @@ TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices1)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices2)
-{
+TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices2) {
     ASSERT_TRUE(fixed_vertices.contract(3, 5));
     ASSERT_TRUE(fixed_vertices.contract(2, 0));
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
@@ -341,8 +310,7 @@ TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices2)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices3)
-{
+TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices3) {
     ASSERT_TRUE(fixed_vertices.contract(2, 0));
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
     ASSERT_TRUE(fixed_vertices.contract(3, 1));
@@ -363,8 +331,7 @@ TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices3)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices4)
-{
+TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices4) {
     ASSERT_TRUE(fixed_vertices.contract(2, 3));
     ASSERT_TRUE(fixed_vertices.contract(2, 1));
     ASSERT_TRUE(fixed_vertices.contract(0, 2));
@@ -383,8 +350,7 @@ TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices4)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices5)
-{
+TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices5) {
     ASSERT_TRUE(fixed_vertices.contract(2, 0));
     ASSERT_TRUE(fixed_vertices.contract(2, 1));
     ASSERT_TRUE(fixed_vertices.contract(3, 2));
@@ -405,8 +371,7 @@ TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices5)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, UnontractSeveralFixedVertices6)
-{
+TEST_F(AFixedVertexSupport, UnontractSeveralFixedVertices6) {
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
     ASSERT_TRUE(fixed_vertices.contract(1, 0));
     ASSERT_TRUE(fixed_vertices.contract(3, 1));
@@ -426,8 +391,7 @@ TEST_F(AFixedVertexSupport, UnontractSeveralFixedVertices6)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices7)
-{
+TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices7) {
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
     ASSERT_TRUE(fixed_vertices.contract(3, 1));
     ASSERT_TRUE(fixed_vertices.contract(0, 3));
@@ -446,8 +410,7 @@ TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices7)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices8)
-{
+TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices8) {
     ASSERT_TRUE(fixed_vertices.contract(1, 2));
     ASSERT_TRUE(fixed_vertices.contract(0, 1));
     ASSERT_TRUE(fixed_vertices.contract(3, 0));
@@ -467,8 +430,7 @@ TEST_F(AFixedVertexSupport, UncontractSeveralFixedVertices8)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, PerformsParallelContractionsAndUncontractions1)
-{
+TEST_F(AFixedVertexSupport, PerformsParallelContractionsAndUncontractions1) {
     runParallel([&] { fixed_vertices.contract(0, 2); },
                 [&] { fixed_vertices.contract(0, 1); });
     verifyFixedVertices("After contractions",
@@ -481,8 +443,7 @@ TEST_F(AFixedVertexSupport, PerformsParallelContractionsAndUncontractions1)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, PerformsParallelContractionsAndUncontractions2)
-{
+TEST_F(AFixedVertexSupport, PerformsParallelContractionsAndUncontractions2) {
     runParallel([&] { fixed_vertices.contract(1, 2); },
                 [&] { fixed_vertices.contract(1, 0); });
     verifyFixedVertices("After contractions",
@@ -495,68 +456,56 @@ TEST_F(AFixedVertexSupport, PerformsParallelContractionsAndUncontractions2)
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, PerformContractionWithMaximumAllowedBlockWeight1)
-{
+TEST_F(AFixedVertexSupport, PerformContractionWithMaximumAllowedBlockWeight1) {
     fixed_vertices.setMaxBlockWeight({ 2, 1, 1 });
     ASSERT_FALSE(fixed_vertices.contract(0, 1));
     verifyFixedVertices(
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, PerformContractionWithMaximumAllowedBlockWeight2)
-{
+TEST_F(AFixedVertexSupport, PerformContractionWithMaximumAllowedBlockWeight2) {
     fixed_vertices.setMaxBlockWeight({ 2, 1, 1 });
     ASSERT_TRUE(fixed_vertices.contract(0, 2));
     verifyFixedVertices(
         { 0, kInvalidPartition, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, PerformContractionWithMaximumAllowedBlockWeight3)
-{
+TEST_F(AFixedVertexSupport, PerformContractionWithMaximumAllowedBlockWeight3) {
     fixed_vertices.setMaxBlockWeight({ 3, 1, 1 });
     ASSERT_TRUE(fixed_vertices.contract(0, 1));
     ASSERT_FALSE(fixed_vertices.contract(0, 3));
     verifyFixedVertices({ 0, 0, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, PerformParallelContractionWithMaximumAllowedBlockWeight1)
-{
+TEST_F(AFixedVertexSupport, PerformParallelContractionWithMaximumAllowedBlockWeight1) {
     fixed_vertices.setMaxBlockWeight({ 3, 1, 1 });
     runParallel([&] { ASSERT_TRUE(fixed_vertices.contract(1, 2)); },
                 [&] { ASSERT_TRUE(fixed_vertices.contract(1, 0)); });
     verifyFixedVertices({ 0, 0, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
 }
 
-TEST_F(AFixedVertexSupport, PerformParallelContractionWithMaximumAllowedBlockWeight2)
-{
+TEST_F(AFixedVertexSupport, PerformParallelContractionWithMaximumAllowedBlockWeight2) {
     fixed_vertices.setMaxBlockWeight({ 3, 1, 1 });
     std::atomic<size_t> successful_contractions(0);
     runParallel([&] { successful_contractions += fixed_vertices.contract(0, 3); },
                 [&] { successful_contractions += fixed_vertices.contract(0, 1); });
     ASSERT_EQ(1, successful_contractions.load(std::memory_order_relaxed));
-    if(fixed_vertices.isFixed(1))
-    {
+    if(fixed_vertices.isFixed(1)) {
         verifyFixedVertices({ 0, 0, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
-    }
-    else
-    {
+    } else {
         verifyFixedVertices({ 0, kInvalidPartition, 0, 0, 1, kInvalidPartition, 2 });
     }
 }
 
-TEST_F(AFixedVertexSupport, PerformParallelContractionWithMaximumAllowedBlockWeight3)
-{
+TEST_F(AFixedVertexSupport, PerformParallelContractionWithMaximumAllowedBlockWeight3) {
     fixed_vertices.setMaxBlockWeight({ 3, 1, 1 });
     std::atomic<size_t> successful_contractions(0);
     runParallel([&] { successful_contractions += fixed_vertices.contract(0, 3); },
                 [&] { successful_contractions += fixed_vertices.contract(2, 1); });
     ASSERT_EQ(1, successful_contractions.load(std::memory_order_relaxed));
-    if(fixed_vertices.isFixed(1))
-    {
+    if(fixed_vertices.isFixed(1)) {
         verifyFixedVertices({ 0, 0, 0, kInvalidPartition, 1, kInvalidPartition, 2 });
-    }
-    else
-    {
+    } else {
         verifyFixedVertices({ 0, kInvalidPartition, 0, 0, 1, kInvalidPartition, 2 });
     }
 }

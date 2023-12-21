@@ -50,8 +50,7 @@ class AGainPolicy : public Test
     AGainPolicy() :
         hg(HypergraphFactory::construct(
             7, 4, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } })),
-        context(), gain(nullptr)
-    {
+        context(), gain(nullptr) {
         context.partition.k = K;
         context.partition.max_part_weights.assign(
             K, std::numeric_limits<HypernodeWeight>::max());
@@ -60,11 +59,9 @@ class AGainPolicy : public Test
         hypergraph = PartitionedHypergraph(K, hg, parallel_tag_t());
     }
 
-    void assignPartitionIDs(const std::vector<PartitionID> &part_ids)
-    {
+    void assignPartitionIDs(const std::vector<PartitionID>& part_ids) {
         HypernodeID hn = 0;
-        for(const PartitionID &part : part_ids)
-        {
+        for(const PartitionID& part : part_ids) {
             ASSERT(part < K);
             hypergraph.setNodePart(hn++, part);
         }
@@ -78,8 +75,7 @@ class AGainPolicy : public Test
 
 using AKm1PolicyK2 = AGainPolicy<Km1GainComputation, 2>;
 
-TEST_F(AKm1PolicyK2, ComputesCorrectMoveGainForVertex1)
-{
+TEST_F(AKm1PolicyK2, ComputesCorrectMoveGainForVertex1) {
     assignPartitionIDs({ 1, 0, 0, 0, 0, 1, 1 });
     Move move = gain->computeMaxGainMove(hypergraph, 0);
     ASSERT_EQ(1, move.from);
@@ -87,18 +83,16 @@ TEST_F(AKm1PolicyK2, ComputesCorrectMoveGainForVertex1)
     ASSERT_EQ(-2, move.gain);
 }
 
-TEST_F(AKm1PolicyK2, ComputesCorrectObjectiveDelta1)
-{
+TEST_F(AKm1PolicyK2, ComputesCorrectObjectiveDelta1) {
     assignPartitionIDs({ 1, 0, 0, 0, 0, 1, 1 });
     ASSERT_TRUE(hypergraph.changeNodePart(0, 1, 0,
-                                          [&](const SynchronizedEdgeUpdate &sync_update) {
+                                          [&](const SynchronizedEdgeUpdate& sync_update) {
                                               gain->computeDeltaForHyperedge(sync_update);
                                           }));
     ASSERT_EQ(-2, gain->delta());
 }
 
-TEST_F(AKm1PolicyK2, ComputesCorrectMoveGainForVertex2)
-{
+TEST_F(AKm1PolicyK2, ComputesCorrectMoveGainForVertex2) {
     assignPartitionIDs({ 0, 0, 0, 1, 0, 1, 1 });
     Move move = gain->computeMaxGainMove(hypergraph, 3);
     ASSERT_EQ(1, move.from);
@@ -106,18 +100,16 @@ TEST_F(AKm1PolicyK2, ComputesCorrectMoveGainForVertex2)
     ASSERT_EQ(-1, move.gain);
 }
 
-TEST_F(AKm1PolicyK2, ComputesCorrectObjectiveDelta2)
-{
+TEST_F(AKm1PolicyK2, ComputesCorrectObjectiveDelta2) {
     assignPartitionIDs({ 0, 0, 0, 1, 0, 1, 1 });
     ASSERT_TRUE(hypergraph.changeNodePart(3, 1, 0,
-                                          [&](const SynchronizedEdgeUpdate &sync_update) {
+                                          [&](const SynchronizedEdgeUpdate& sync_update) {
                                               gain->computeDeltaForHyperedge(sync_update);
                                           }));
     ASSERT_EQ(-1, gain->delta());
 }
 
-TEST_F(AKm1PolicyK2, ComputesCorrectMoveGainForVertex3)
-{
+TEST_F(AKm1PolicyK2, ComputesCorrectMoveGainForVertex3) {
     assignPartitionIDs({ 0, 0, 0, 0, 0, 1, 1 });
     Move move = gain->computeMaxGainMove(hypergraph, 4);
     ASSERT_EQ(0, move.from);
@@ -127,8 +119,7 @@ TEST_F(AKm1PolicyK2, ComputesCorrectMoveGainForVertex3)
 
 using ACutPolicyK2 = AGainPolicy<CutGainComputation, 2>;
 
-TEST_F(ACutPolicyK2, ComputesCorrectMoveGainForVertex1)
-{
+TEST_F(ACutPolicyK2, ComputesCorrectMoveGainForVertex1) {
     assignPartitionIDs({ 1, 0, 0, 0, 0, 1, 1 });
     Move move = gain->computeMaxGainMove(hypergraph, 0);
     ASSERT_EQ(1, move.from);
@@ -136,18 +127,16 @@ TEST_F(ACutPolicyK2, ComputesCorrectMoveGainForVertex1)
     ASSERT_EQ(-2, move.gain);
 }
 
-TEST_F(ACutPolicyK2, ComputesCorrectObjectiveDelta1)
-{
+TEST_F(ACutPolicyK2, ComputesCorrectObjectiveDelta1) {
     assignPartitionIDs({ 1, 0, 0, 0, 0, 1, 1 });
     ASSERT_TRUE(hypergraph.changeNodePart(0, 1, 0,
-                                          [&](const SynchronizedEdgeUpdate &sync_update) {
+                                          [&](const SynchronizedEdgeUpdate& sync_update) {
                                               gain->computeDeltaForHyperedge(sync_update);
                                           }));
     ASSERT_EQ(-2, gain->delta());
 }
 
-TEST_F(ACutPolicyK2, ComputesCorrectMoveGainForVertex2)
-{
+TEST_F(ACutPolicyK2, ComputesCorrectMoveGainForVertex2) {
     assignPartitionIDs({ 0, 0, 0, 1, 0, 1, 1 });
     Move move = gain->computeMaxGainMove(hypergraph, 3);
     ASSERT_EQ(1, move.from);
@@ -155,18 +144,16 @@ TEST_F(ACutPolicyK2, ComputesCorrectMoveGainForVertex2)
     ASSERT_EQ(-1, move.gain);
 }
 
-TEST_F(ACutPolicyK2, ComputesCorrectObjectiveDelta2)
-{
+TEST_F(ACutPolicyK2, ComputesCorrectObjectiveDelta2) {
     assignPartitionIDs({ 0, 0, 0, 1, 0, 1, 1 });
     ASSERT_TRUE(hypergraph.changeNodePart(3, 1, 0,
-                                          [&](const SynchronizedEdgeUpdate &sync_update) {
+                                          [&](const SynchronizedEdgeUpdate& sync_update) {
                                               gain->computeDeltaForHyperedge(sync_update);
                                           }));
     ASSERT_EQ(-1, gain->delta());
 }
 
-TEST_F(ACutPolicyK2, ComputesCorrectMoveGainForVertex3)
-{
+TEST_F(ACutPolicyK2, ComputesCorrectMoveGainForVertex3) {
     assignPartitionIDs({ 0, 0, 0, 0, 0, 1, 1 });
     Move move = gain->computeMaxGainMove(hypergraph, 4);
     ASSERT_EQ(0, move.from);
@@ -176,8 +163,7 @@ TEST_F(ACutPolicyK2, ComputesCorrectMoveGainForVertex3)
 
 using AKm1PolicyK4 = AGainPolicy<Km1GainComputation, 4>;
 
-TEST_F(AKm1PolicyK4, ComputesCorrectMoveGainForVertex1)
-{
+TEST_F(AKm1PolicyK4, ComputesCorrectMoveGainForVertex1) {
     assignPartitionIDs({ 0, 1, 2, 3, 3, 1, 2 });
     Move move = gain->computeMaxGainMove(hypergraph, 0);
     ASSERT_EQ(0, move.from);
@@ -185,18 +171,16 @@ TEST_F(AKm1PolicyK4, ComputesCorrectMoveGainForVertex1)
     ASSERT_EQ(-1, move.gain);
 }
 
-TEST_F(AKm1PolicyK4, ComputesCorrectObjectiveDelta1)
-{
+TEST_F(AKm1PolicyK4, ComputesCorrectObjectiveDelta1) {
     assignPartitionIDs({ 0, 1, 2, 3, 3, 1, 2 });
     ASSERT_TRUE(hypergraph.changeNodePart(0, 0, 1,
-                                          [&](const SynchronizedEdgeUpdate &sync_update) {
+                                          [&](const SynchronizedEdgeUpdate& sync_update) {
                                               gain->computeDeltaForHyperedge(sync_update);
                                           }));
     ASSERT_EQ(-1, gain->delta());
 }
 
-TEST_F(AKm1PolicyK4, ComputesCorrectMoveGainForVertex2)
-{
+TEST_F(AKm1PolicyK4, ComputesCorrectMoveGainForVertex2) {
     assignPartitionIDs({ 0, 3, 1, 2, 2, 0, 3 });
     Move move = gain->computeMaxGainMove(hypergraph, 6);
     ASSERT_EQ(3, move.from);
@@ -204,18 +188,16 @@ TEST_F(AKm1PolicyK4, ComputesCorrectMoveGainForVertex2)
     ASSERT_EQ(-1, move.gain);
 }
 
-TEST_F(AKm1PolicyK4, ComputesCorrectObjectiveDelta2)
-{
+TEST_F(AKm1PolicyK4, ComputesCorrectObjectiveDelta2) {
     assignPartitionIDs({ 0, 3, 1, 2, 2, 0, 3 });
     ASSERT_TRUE(hypergraph.changeNodePart(6, 3, 0,
-                                          [&](const SynchronizedEdgeUpdate &sync_update) {
+                                          [&](const SynchronizedEdgeUpdate& sync_update) {
                                               gain->computeDeltaForHyperedge(sync_update);
                                           }));
     ASSERT_EQ(-1, gain->delta());
 }
 
-TEST_F(AKm1PolicyK4, ComputesCorrectMoveGainForVertex3)
-{
+TEST_F(AKm1PolicyK4, ComputesCorrectMoveGainForVertex3) {
     assignPartitionIDs({ 0, 3, 1, 2, 2, 0, 3 });
     Move move = gain->computeMaxGainMove(hypergraph, 3);
     ASSERT_EQ(2, move.from);
@@ -225,8 +207,7 @@ TEST_F(AKm1PolicyK4, ComputesCorrectMoveGainForVertex3)
 
 using ACutPolicyK4 = AGainPolicy<CutGainComputation, 4>;
 
-TEST_F(ACutPolicyK4, ComputesCorrectMoveGainForVertex1)
-{
+TEST_F(ACutPolicyK4, ComputesCorrectMoveGainForVertex1) {
     assignPartitionIDs({ 0, 1, 2, 3, 3, 1, 2 });
     Move move = gain->computeMaxGainMove(hypergraph, 0);
     ASSERT_EQ(0, move.from);
@@ -234,18 +215,16 @@ TEST_F(ACutPolicyK4, ComputesCorrectMoveGainForVertex1)
     ASSERT_EQ(-1, move.gain);
 }
 
-TEST_F(ACutPolicyK4, ComputesCorrectObjectiveDelta1)
-{
+TEST_F(ACutPolicyK4, ComputesCorrectObjectiveDelta1) {
     assignPartitionIDs({ 0, 1, 2, 3, 3, 1, 2 });
     ASSERT_TRUE(hypergraph.changeNodePart(0, 0, 2,
-                                          [&](const SynchronizedEdgeUpdate &sync_update) {
+                                          [&](const SynchronizedEdgeUpdate& sync_update) {
                                               gain->computeDeltaForHyperedge(sync_update);
                                           }));
     ASSERT_EQ(-1, gain->delta());
 }
 
-TEST_F(ACutPolicyK4, ComputesCorrectMoveGainForVertex2)
-{
+TEST_F(ACutPolicyK4, ComputesCorrectMoveGainForVertex2) {
     assignPartitionIDs({ 0, 3, 1, 2, 2, 0, 3 });
     Move move = gain->computeMaxGainMove(hypergraph, 6);
     ASSERT_EQ(3, move.from);
@@ -253,18 +232,16 @@ TEST_F(ACutPolicyK4, ComputesCorrectMoveGainForVertex2)
     ASSERT_EQ(-1, move.gain);
 }
 
-TEST_F(ACutPolicyK4, ComputesCorrectObjectiveDelta2)
-{
+TEST_F(ACutPolicyK4, ComputesCorrectObjectiveDelta2) {
     assignPartitionIDs({ 0, 3, 1, 2, 2, 0, 3 });
     ASSERT_TRUE(hypergraph.changeNodePart(6, 3, 2,
-                                          [&](const SynchronizedEdgeUpdate &sync_update) {
+                                          [&](const SynchronizedEdgeUpdate& sync_update) {
                                               gain->computeDeltaForHyperedge(sync_update);
                                           }));
     ASSERT_EQ(-1, gain->delta());
 }
 
-TEST_F(ACutPolicyK4, ComputesCorrectMoveGainForVertex3)
-{
+TEST_F(ACutPolicyK4, ComputesCorrectMoveGainForVertex3) {
     assignPartitionIDs({ 0, 3, 1, 2, 2, 0, 3 });
     Move move = gain->computeMaxGainMove(hypergraph, 3);
     ASSERT_EQ(2, move.from);

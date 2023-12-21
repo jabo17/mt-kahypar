@@ -52,20 +52,18 @@ class MultilevelUncoarsener : public IUncoarsener<TypeTraits>,
     static constexpr bool enable_heavy_assert = false;
 
   public:
-    MultilevelUncoarsener(Hypergraph &hypergraph, const Context &context,
-                          UncoarseningData<TypeTraits> &uncoarseningData,
+    MultilevelUncoarsener(Hypergraph& hypergraph, const Context& context,
+                          UncoarseningData<TypeTraits>& uncoarseningData,
                           const TargetGraph *target_graph) :
         Base(hypergraph, context, uncoarseningData),
         _target_graph(target_graph), _current_level(0), _num_levels(0),
         _block_ids(hypergraph.initialNumNodes(), kInvalidPartition), _current_metrics(),
-        _progress(hypergraph.initialNumNodes(), 0, false)
-    {
-    }
+        _progress(hypergraph.initialNumNodes(), 0, false) {}
 
-    MultilevelUncoarsener(const MultilevelUncoarsener &) = delete;
-    MultilevelUncoarsener(MultilevelUncoarsener &&) = delete;
-    MultilevelUncoarsener &operator=(const MultilevelUncoarsener &) = delete;
-    MultilevelUncoarsener &operator=(MultilevelUncoarsener &&) = delete;
+    MultilevelUncoarsener(const MultilevelUncoarsener&) = delete;
+    MultilevelUncoarsener(MultilevelUncoarsener&&) = delete;
+    MultilevelUncoarsener& operator=(const MultilevelUncoarsener&) = delete;
+    MultilevelUncoarsener& operator=(MultilevelUncoarsener&&) = delete;
 
   private:
     void initializeImpl() override;
@@ -84,11 +82,11 @@ class MultilevelUncoarsener : public IUncoarsener<TypeTraits>,
 
     void updateMetricsImpl() override;
 
-    PartitionedHypergraph &currentPartitionedHypergraphImpl() override;
+    PartitionedHypergraph& currentPartitionedHypergraphImpl() override;
 
     HypernodeID currentNumberOfNodesImpl() const override;
 
-    PartitionedHypergraph &&movePartitionedHypergraphImpl() override;
+    PartitionedHypergraph&& movePartitionedHypergraphImpl() override;
 
     using Base::_context;
     using Base::_flows;

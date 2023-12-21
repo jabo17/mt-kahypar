@@ -63,42 +63,35 @@ class StreamingVector
   public:
     StreamingVector() :
         _cpu_buffer(std::thread::hardware_concurrency()),
-        _prefix_sum(std::thread::hardware_concurrency())
-    {
-    }
+        _prefix_sum(std::thread::hardware_concurrency()) {}
 
-    StreamingVector(const StreamingVector &) = delete;
-    StreamingVector &operator=(const StreamingVector &) = delete;
+    StreamingVector(const StreamingVector&) = delete;
+    StreamingVector& operator=(const StreamingVector&) = delete;
 
-    StreamingVector(StreamingVector &&other) = default;
-    StreamingVector &operator=(StreamingVector &&) = default;
+    StreamingVector(StreamingVector&& other) = default;
+    StreamingVector& operator=(StreamingVector&&) = default;
 
     template <class... Args>
-    void stream(Args &&...args)
-    {
+    void stream(Args&&...args) {
         int cpu_id = THREAD_ID;
         _cpu_buffer[cpu_id].emplace_back(std::forward<Args>(args)...);
     }
 
-    parallel::scalable_vector<Value> copy_sequential()
-    {
+    parallel::scalable_vector<Value> copy_sequential() {
         parallel::scalable_vector<Value> values;
         size_t total_size = init_prefix_sum();
         values.resize(total_size);
 
-        for(int cpu_id = 0; cpu_id < (int)_cpu_buffer.size(); ++cpu_id)
-        {
+        for(int cpu_id = 0; cpu_id < (int)_cpu_buffer.size(); ++cpu_id) {
             memcpy_from_cpu_buffer_to_destination(values, cpu_id, _prefix_sum[cpu_id]);
         }
         return values;
     }
 
-    parallel::scalable_vector<Value> copy_parallel()
-    {
+    parallel::scalable_vector<Value> copy_parallel() {
         parallel::scalable_vector<Value> values;
         size_t total_size = init_prefix_sum();
-        if(total_size == 0)
-        {
+        if(total_size == 0) {
             return values;
         }
         values.resize(total_size);
@@ -109,13 +102,11 @@ class StreamingVector
         return values;
     }
 
-    size_t copy_parallel(parallel::scalable_vector<Value> &values)
-    {
+    size_t copy_parallel(parallel::scalable_vector<Value>& values) {
         const size_t size = init_prefix_sum();
 
         // Resize if necassary
-        if(size > values.size())
-        {
+        if(size > values.size()) {
             values.resize(size);
         }
 
@@ -125,8 +116,7 @@ class StreamingVector
         return size;
     }
 
-    const Value &value(const size_t cpu_id, const size_t idx)
-    {
+    const Value& value(const size_t cpu_id, const size_t idx) {
         ASSERT(cpu_id < _cpu_buffer.size());
         ASSERT(idx < _cpu_buffer[cpu_id].size());
         return _cpu_buffer[cpu_id][idx];
@@ -134,39 +124,32 @@ class StreamingVector
 
     size_t num_buffers() const { return _cpu_buffer.size(); }
 
-    size_t size() const
-    {
+    size_t size() const {
         size_t size = 0;
-        for(size_t i = 0; i < _cpu_buffer.size(); ++i)
-        {
+        for(size_t i = 0; i < _cpu_buffer.size(); ++i) {
             size += _cpu_buffer[i].size();
         }
         return size;
     }
 
-    size_t size(const size_t cpu_id) const
-    {
+    size_t size(const size_t cpu_id) const {
         ASSERT(cpu_id < _cpu_buffer.size());
         return _cpu_buffer[cpu_id].size();
     }
 
-    size_t prefix_sum(const size_t cpu_id) const
-    {
+    size_t prefix_sum(const size_t cpu_id) const {
         ASSERT(cpu_id < _prefix_sum.size());
         return _prefix_sum[cpu_id];
     }
 
-    void clear_sequential()
-    {
-        for(int cpu_id = 0; cpu_id < static_cast<int>(_cpu_buffer.size()); ++cpu_id)
-        {
+    void clear_sequential() {
+        for(int cpu_id = 0; cpu_id < static_cast<int>(_cpu_buffer.size()); ++cpu_id) {
             _cpu_buffer[cpu_id].clear();
         }
         _prefix_sum.assign(_cpu_buffer.size(), 0);
     }
 
-    void clear_parallel()
-    {
+    void clear_parallel() {
         tbb::parallel_for(0, static_cast<int>(_cpu_buffer.size()), [&](const int cpu_id) {
             parallel::scalable_vector<Value> tmp_value;
             _cpu_buffer[cpu_id] = std::move(tmp_value);
@@ -175,11 +158,9 @@ class StreamingVector
     }
 
   private:
-    size_t init_prefix_sum()
-    {
+    size_t init_prefix_sum() {
         size_t total_size = 0;
-        for(size_t i = 0; i < _cpu_buffer.size(); ++i)
-        {
+        for(size_t i = 0; i < _cpu_buffer.size(); ++i) {
             _prefix_sum[i] = total_size;
             total_size += _cpu_buffer[i].size();
         }
@@ -187,13 +168,11 @@ class StreamingVector
     }
 
     void
-    memcpy_from_cpu_buffer_to_destination(parallel::scalable_vector<Value> &destination,
-                                          const int cpu_id, const size_t position)
-    {
+    memcpy_from_cpu_buffer_to_destination(parallel::scalable_vector<Value>& destination,
+                                          const int cpu_id, const size_t position) {
         DBG << "Copy buffer of cpu" << cpu_id << "of size" << _cpu_buffer[cpu_id].size()
             << "to position" << position << "in dest ( CPU =" << THREAD_ID << " )";
-        if(_cpu_buffer[cpu_id].empty())
-        {
+        if(_cpu_buffer[cpu_id].empty()) {
             return;
         }
         memcpy(destination.data() + position, _cpu_buffer[cpu_id].data(),

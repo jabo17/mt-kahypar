@@ -55,38 +55,33 @@ class SteinerTreeRollback
 
     struct RecalculationData
     {
-        void reset()
-        { /** Do nothing */
+        void reset() { /** Do nothing */
         }
     };
 
     // Updates the auxilliary data for a node move m with index m_id.
-    static void updateMove(const MoveID, const Move &, vec<RecalculationData> &)
-    {
+    static void updateMove(const MoveID, const Move&, vec<RecalculationData>&) {
         throw NonSupportedOperationException(
             "Parallel rollback is not supported for steiner tree metric");
     }
 
     // Updates the number of non-moved in a block.
-    static void updateNonMovedPinInBlock(const PartitionID, vec<RecalculationData> &)
-    {
+    static void updateNonMovedPinInBlock(const PartitionID, vec<RecalculationData>&) {
         throw NonSupportedOperationException(
             "Parallel rollback is not supported for steiner tree metric");
     }
 
     template <typename PartitionedHypergraph>
-    static HyperedgeWeight benefit(const PartitionedHypergraph &, const HyperedgeID,
-                                   const MoveID, const Move &, vec<RecalculationData> &)
-    {
+    static HyperedgeWeight benefit(const PartitionedHypergraph&, const HyperedgeID,
+                                   const MoveID, const Move&, vec<RecalculationData>&) {
         throw NonSupportedOperationException(
             "Parallel rollback is not supported for steiner tree metric");
         return 0;
     }
 
     template <typename PartitionedHypergraph>
-    static HyperedgeWeight penalty(const PartitionedHypergraph &, const HyperedgeID,
-                                   const MoveID, const Move &, vec<RecalculationData> &)
-    {
+    static HyperedgeWeight penalty(const PartitionedHypergraph&, const HyperedgeID,
+                                   const MoveID, const Move&, vec<RecalculationData>&) {
         throw NonSupportedOperationException(
             "Parallel rollback is not supported for steiner tree metric");
         return 0;

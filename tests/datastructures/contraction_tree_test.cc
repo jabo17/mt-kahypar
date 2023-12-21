@@ -31,12 +31,10 @@
 namespace mt_kahypar {
 namespace ds {
 
-void verifyChilds(const ContractionTree &tree, const HypernodeID u,
-                  const std::set<HypernodeID> &expected_childs)
-{
+void verifyChilds(const ContractionTree& tree, const HypernodeID u,
+                  const std::set<HypernodeID>& expected_childs) {
     size_t num_childs = 0;
-    for(const HypernodeID v : tree.childs(u))
-    {
+    for(const HypernodeID v : tree.childs(u)) {
         ASSERT_TRUE(expected_childs.find(v) != expected_childs.end())
             << "Child " << v << " not found!";
         ++num_childs;
@@ -45,19 +43,16 @@ void verifyChilds(const ContractionTree &tree, const HypernodeID u,
     ASSERT_EQ(num_childs, tree.degree(u));
 }
 
-void verifyRoots(const parallel::scalable_vector<HypernodeID> &actual_roots,
-                 const std::set<HypernodeID> expected_roots)
-{
+void verifyRoots(const parallel::scalable_vector<HypernodeID>& actual_roots,
+                 const std::set<HypernodeID> expected_roots) {
     ASSERT_EQ(expected_roots.size(), actual_roots.size());
-    for(const HypernodeID &u : actual_roots)
-    {
+    for(const HypernodeID& u : actual_roots) {
         ASSERT_TRUE(expected_roots.find(u) != expected_roots.end())
             << "Root " << u << " not found!";
     }
 }
 
-TEST(AContractionTree, IsConstructedCorrectly1)
-{
+TEST(AContractionTree, IsConstructedCorrectly1) {
     ContractionTree tree;
     tree.initialize(5);
     tree.setParent(1, 0);
@@ -82,8 +77,7 @@ TEST(AContractionTree, IsConstructedCorrectly1)
     verifyRoots(tree.roots_of_version(0), { 0 });
 }
 
-TEST(AContractionTree, IsConstructedCorrectly2)
-{
+TEST(AContractionTree, IsConstructedCorrectly2) {
     ContractionTree tree;
     tree.initialize(10);
     tree.setParent(1, 0);
@@ -122,8 +116,7 @@ TEST(AContractionTree, IsConstructedCorrectly2)
     verifyRoots(tree.roots_of_version(0), { 0, 5 });
 }
 
-TEST(AContractionTree, IsConstructedCorrectly3)
-{
+TEST(AContractionTree, IsConstructedCorrectly3) {
     ContractionTree tree;
     tree.initialize(10);
     tree.setParent(1, 0);
@@ -163,8 +156,7 @@ TEST(AContractionTree, IsConstructedCorrectly3)
     verifyRoots(tree.roots_of_version(0), { 0 });
 }
 
-TEST(AContractionTree, IsConstructedCorrectly4)
-{
+TEST(AContractionTree, IsConstructedCorrectly4) {
     ContractionTree tree;
     tree.initialize(21);
     tree.setParent(1, 0);
@@ -231,8 +223,7 @@ TEST(AContractionTree, IsConstructedCorrectly4)
     verifyRoots(tree.roots_of_version(0), { 0, 3, 6, 9, 12, 15, 18 });
 }
 
-TEST(AContractionTree, ContainsCorrectRootsInPresenceOfSingletonRoots)
-{
+TEST(AContractionTree, ContainsCorrectRootsInPresenceOfSingletonRoots) {
     ContractionTree tree;
     tree.initialize(10);
     tree.setParent(1, 0);
@@ -243,12 +234,11 @@ TEST(AContractionTree, ContainsCorrectRootsInPresenceOfSingletonRoots)
     verifyRoots(tree.roots_of_version(0), { 0 });
 }
 
-void verifyChildsOfVersion(const ContractionTree &tree, const HypernodeID u,
+void verifyChildsOfVersion(const ContractionTree& tree, const HypernodeID u,
                            const size_t version,
-                           const std::set<HypernodeID> &expected_childs)
-{
+                           const std::set<HypernodeID>& expected_childs) {
     size_t num_childs = 0;
-    tree.doForEachChildOfVersion(u, version, [&](const HypernodeID &v) {
+    tree.doForEachChildOfVersion(u, version, [&](const HypernodeID& v) {
         ASSERT_TRUE(expected_childs.find(v) != expected_childs.end())
             << "Node " << v << " not contained in expected childs of node " << u
             << " for version " << version;
@@ -257,8 +247,7 @@ void verifyChildsOfVersion(const ContractionTree &tree, const HypernodeID u,
     ASSERT_EQ(num_childs, expected_childs.size());
 }
 
-TEST(AContractionTree, ContainsCorrectVersionRoots1)
-{
+TEST(AContractionTree, ContainsCorrectVersionRoots1) {
     ContractionTree tree;
     tree.initialize(5);
     tree.setParent(1, 0, 1);
@@ -276,8 +265,7 @@ TEST(AContractionTree, ContainsCorrectVersionRoots1)
     verifyChildsOfVersion(tree, 1, 1, {});
 }
 
-TEST(AContractionTree, ContainsCorrectVersionRoots2)
-{
+TEST(AContractionTree, ContainsCorrectVersionRoots2) {
     ContractionTree tree;
     tree.initialize(7);
     tree.setParent(1, 0, 2);
@@ -300,8 +288,7 @@ TEST(AContractionTree, ContainsCorrectVersionRoots2)
     verifyChildsOfVersion(tree, 2, 1, { 6 });
 }
 
-TEST(AContractionTree, ContainsCorrectVersionRoots3)
-{
+TEST(AContractionTree, ContainsCorrectVersionRoots3) {
     ContractionTree tree;
     tree.initialize(6);
     tree.setParent(1, 0, 2);
@@ -320,8 +307,7 @@ TEST(AContractionTree, ContainsCorrectVersionRoots3)
     verifyChildsOfVersion(tree, 3, 1, { 5 });
 }
 
-TEST(AContractionTree, ContainsCorrectVersionRoots4)
-{
+TEST(AContractionTree, ContainsCorrectVersionRoots4) {
     ContractionTree tree;
     tree.initialize(10);
     tree.setParent(1, 0, 4);

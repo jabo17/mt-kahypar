@@ -67,14 +67,11 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
     {
 
       public:
-        explicit ContractionLimitTracker(const Context &context) :
+        explicit ContractionLimitTracker(const Context& context) :
             _context(context), _initial_num_nodes(0), _current_num_nodes(0),
-            _contracted_nodes(0), _num_nodes_update_threshold(0)
-        {
-        }
+            _contracted_nodes(0), _num_nodes_update_threshold(0) {}
 
-        void initialize(const HypernodeID initial_num_nodes)
-        {
+        void initialize(const HypernodeID initial_num_nodes) {
             _initial_num_nodes = initial_num_nodes;
             _current_num_nodes = initial_num_nodes;
         }
@@ -82,10 +79,8 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
         HypernodeID currentNumNodes() const { return _current_num_nodes; }
 
         void update(const HypernodeID num_contractions,
-                    const HypernodeID contraction_limit)
-        {
-            if(num_contractions > 0)
-            {
+                    const HypernodeID contraction_limit) {
+            if(num_contractions > 0) {
                 // To maintain the current number of nodes of the hypergraph each PE sums
                 // up its number of contracted nodes locally. To compute the current
                 // number of nodes, we have to sum up the number of contracted nodes of
@@ -100,10 +95,9 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
                 // update the global current number of nodes before. After update the
                 // threshold is increased by the new difference (in number of nodes) to
                 // the contraction limit divided by the number of PEs.
-                HypernodeID &local_contracted_nodes = _contracted_nodes.local();
+                HypernodeID& local_contracted_nodes = _contracted_nodes.local();
                 local_contracted_nodes += num_contractions;
-                if(local_contracted_nodes >= _num_nodes_update_threshold.local())
-                {
+                if(local_contracted_nodes >= _num_nodes_update_threshold.local()) {
                     _current_num_nodes =
                         _initial_num_nodes -
                         _contracted_nodes.combine(std::plus<HypernodeID>());
@@ -117,14 +111,13 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
             }
         }
 
-        void updateCurrentNumNodes()
-        {
+        void updateCurrentNumNodes() {
             _current_num_nodes =
                 _initial_num_nodes - _contracted_nodes.combine(std::plus<HypernodeID>());
         }
 
       private:
-        const Context &_context;
+        const Context& _context;
         HypernodeID _initial_num_nodes;
         HypernodeID _current_num_nodes;
         tbb::enumerable_thread_specific<HypernodeID> _contracted_nodes;
@@ -135,7 +128,7 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
     static constexpr bool enable_heavy_assert = false;
 
   public:
-    NLevelCoarsener(mt_kahypar_hypergraph_t hypergraph, const Context &context,
+    NLevelCoarsener(mt_kahypar_hypergraph_t hypergraph, const Context& context,
                     uncoarsening_data_t *uncoarseningData) :
         Base(utils::cast<Hypergraph>(hypergraph), context,
              uncoarsening::to_reference<TypeTraits>(uncoarseningData)),
@@ -145,8 +138,7 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
         _current_vertices(), _tmp_current_vertices(), _enabled_vertex_flag_array(),
         _cl_tracker(context), _pass_nr(0),
         _progress_bar(utils::cast<Hypergraph>(hypergraph).initialNumNodes(), 0, false),
-        _enable_randomization(true)
-    {
+        _enable_randomization(true) {
         _progress_bar += _hg.numRemovedHypernodes();
         tbb::parallel_invoke(
             [&] {
@@ -161,27 +153,24 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
             [&] { _enabled_vertex_flag_array.resize(_hg.initialNumNodes()); });
     }
 
-    NLevelCoarsener(const NLevelCoarsener &) = delete;
-    NLevelCoarsener(NLevelCoarsener &&) = delete;
-    NLevelCoarsener &operator=(const NLevelCoarsener &) = delete;
-    NLevelCoarsener &operator=(NLevelCoarsener &&) = delete;
+    NLevelCoarsener(const NLevelCoarsener&) = delete;
+    NLevelCoarsener(NLevelCoarsener&&) = delete;
+    NLevelCoarsener& operator=(const NLevelCoarsener&) = delete;
+    NLevelCoarsener& operator=(NLevelCoarsener&&) = delete;
 
     ~NLevelCoarsener() = default;
 
     void disableRandomization() { _enable_randomization = false; }
 
   private:
-    void initializeImpl() override
-    {
-        if(_context.partition.verbose_output && _context.partition.enable_progress_bar)
-        {
+    void initializeImpl() override {
+        if(_context.partition.verbose_output && _context.partition.enable_progress_bar) {
             _progress_bar.enable();
         }
         _cl_tracker.initialize(_initial_num_nodes);
     }
 
-    bool coarseningPassImpl() override
-    {
+    bool coarseningPassImpl() override {
         DBG << V(_pass_nr) << V(_cl_tracker.currentNumNodes());
         const HypernodeID num_hns_before_pass = _cl_tracker.currentNumNodes();
 
@@ -191,20 +180,16 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
             std::max(static_cast<HypernodeID>(_cl_tracker.currentNumNodes() /
                                               _context.coarsening.maximum_shrink_factor),
                      _context.coarsening.contraction_limit);
-        if(_context.coarsening.maximum_shrink_factor > 99.0)
-        {
+        if(_context.coarsening.maximum_shrink_factor > 99.0) {
             contraction_limit = _context.coarsening.contraction_limit;
         }
 
         HighResClockTimepoint round_start = std::chrono::high_resolution_clock::now();
         _timer.start_timer("clustering", "Clustering");
-        if(_hg.hasFixedVertices())
-        {
+        if(_hg.hasFixedVertices()) {
             _hg.setMaxFixedVertexBlockWeight(_context.partition.max_part_weights);
             performClustering<true>(contraction_limit);
-        }
-        else
-        {
+        } else {
             performClustering<false>(contraction_limit);
         }
         _timer.stop_timer("clustering");
@@ -224,8 +209,7 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
         const double reduction_vertices_percentage =
             static_cast<double>(num_hns_before_pass) /
             static_cast<double>(_cl_tracker.currentNumNodes());
-        if(reduction_vertices_percentage <= _context.coarsening.minimum_shrink_factor)
-        {
+        if(reduction_vertices_percentage <= _context.coarsening.minimum_shrink_factor) {
             return false;
         }
 
@@ -234,53 +218,44 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
     }
 
     template <bool has_fixed_vertices>
-    void performClustering(const HypernodeID contraction_limit)
-    {
+    void performClustering(const HypernodeID contraction_limit) {
         tbb::parallel_for(UL(0), _current_vertices.size(), [&](const size_t i) {
-            if(_cl_tracker.currentNumNodes() > contraction_limit)
-            {
-                const HypernodeID &hn = _current_vertices[i];
+            if(_cl_tracker.currentNumNodes() > contraction_limit) {
+                const HypernodeID& hn = _current_vertices[i];
                 const HypernodeID num_contractions = contract<has_fixed_vertices>(hn);
                 _cl_tracker.update(num_contractions, contraction_limit);
             }
         });
     }
 
-    bool shouldNotTerminateImpl() const override
-    {
+    bool shouldNotTerminateImpl() const override {
         return _cl_tracker.currentNumNodes() > _context.coarsening.contraction_limit;
     }
 
-    void terminateImpl() override
-    {
+    void terminateImpl() override {
         _progress_bar += (_initial_num_nodes - _progress_bar.count());
         _progress_bar.disable();
         _uncoarseningData.finalizeCoarsening();
     }
 
     template <bool has_fixed_vertices>
-    HypernodeID contract(const HypernodeID hn)
-    {
+    HypernodeID contract(const HypernodeID hn) {
         HypernodeID num_contractions = 0;
-        if(_hg.nodeIsEnabled(hn))
-        {
+        if(_hg.nodeIsEnabled(hn)) {
             const Rating rating = _rater.template rate<has_fixed_vertices>(
                 _hg, hn, _context.coarsening.max_allowed_node_weight);
-            if(rating.target != kInvalidHypernode)
-            {
+            if(rating.target != kInvalidHypernode) {
                 HypernodeID u = hn;
                 HypernodeID v = rating.target;
                 // In case v is a high degree vertex, we reverse contraction order to
                 // improve performance
                 if(_hg.nodeDegree(u) < _hg.nodeDegree(v) &&
-                   _hg.nodeDegree(v) > HIGH_DEGREE_VERTEX_THRESHOLD)
-                {
+                   _hg.nodeDegree(v) > HIGH_DEGREE_VERTEX_THRESHOLD) {
                     u = rating.target;
                     v = hn;
                 }
 
-                if(_hg.registerContraction(u, v))
-                {
+                if(_hg.registerContraction(u, v)) {
                     _rater.markAsMatched(u);
                     _rater.markAsMatched(v);
                     num_contractions =
@@ -292,20 +267,17 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
         return num_contractions;
     }
 
-    HypernodeID currentNumberOfNodesImpl() const override
-    {
+    HypernodeID currentNumberOfNodesImpl() const override {
         return _cl_tracker.currentNumNodes();
     }
 
-    mt_kahypar_hypergraph_t coarsestHypergraphImpl() override
-    {
+    mt_kahypar_hypergraph_t coarsestHypergraphImpl() override {
         return mt_kahypar_hypergraph_t{ reinterpret_cast<mt_kahypar_hypergraph_s *>(
                                             &Base::compactifiedHypergraph()),
                                         Hypergraph::TYPE };
     }
 
-    mt_kahypar_partitioned_hypergraph_t coarsestPartitionedHypergraphImpl() override
-    {
+    mt_kahypar_partitioned_hypergraph_t coarsestPartitionedHypergraphImpl() override {
         return mt_kahypar_partitioned_hypergraph_t{
             reinterpret_cast<mt_kahypar_partitioned_hypergraph_s *>(
                 &Base::compactifiedPartitionedHypergraph()),
@@ -313,8 +285,7 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
         };
     }
 
-    void compactifyVertices()
-    {
+    void compactifyVertices() {
         // Mark all vertices that are still enabled
         const HypernodeID current_num_nodes = _cl_tracker.currentNumNodes();
         tbb::parallel_for(UL(0), _current_vertices.size(), [&](const size_t i) {
@@ -336,8 +307,7 @@ class NLevelCoarsener : public ICoarsener, private NLevelCoarsenerBase<TypeTrait
         _tmp_current_vertices.resize(current_num_nodes);
         tbb::parallel_for(UL(0), _current_vertices.size(), [&](const size_t i) {
             const HypernodeID hn = _current_vertices[i];
-            if(_hg.nodeIsEnabled(hn))
-            {
+            if(_hg.nodeIsEnabled(hn)) {
                 const size_t pos = active_vertex_prefix_sum[i];
                 ASSERT(pos < _tmp_current_vertices.size());
                 _tmp_current_vertices[pos] = hn;

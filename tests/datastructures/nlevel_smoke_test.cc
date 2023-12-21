@@ -38,40 +38,33 @@ namespace mt_kahypar {
 namespace ds {
 
 template <typename Hypergraph>
-void verifyEqualityOfHypergraphs(const Hypergraph &e_hypergraph,
-                                 const Hypergraph &a_hypergraph)
-{
+void verifyEqualityOfHypergraphs(const Hypergraph& e_hypergraph,
+                                 const Hypergraph& a_hypergraph) {
     Hypergraph expected_hypergraph = e_hypergraph.copy();
     Hypergraph actual_hypergraph = a_hypergraph.copy();
-    if constexpr(Hypergraph::is_graph)
-    {
+    if constexpr(Hypergraph::is_graph) {
         expected_hypergraph.sortIncidentEdges();
         actual_hypergraph.sortIncidentEdges();
     }
 
     parallel::scalable_vector<HyperedgeID> expected_incident_edges;
     parallel::scalable_vector<HyperedgeID> actual_incident_edges;
-    for(const HypernodeID &hn : expected_hypergraph.nodes())
-    {
+    for(const HypernodeID& hn : expected_hypergraph.nodes()) {
         ASSERT_TRUE(actual_hypergraph.nodeIsEnabled(hn));
         ASSERT_EQ(expected_hypergraph.nodeWeight(hn), actual_hypergraph.nodeWeight(hn));
         ASSERT_EQ(expected_hypergraph.nodeDegree(hn), actual_hypergraph.nodeDegree(hn));
-        for(const HyperedgeID he : expected_hypergraph.incidentEdges(hn))
-        {
+        for(const HyperedgeID he : expected_hypergraph.incidentEdges(hn)) {
             expected_incident_edges.push_back(he);
         }
-        for(const HyperedgeID he : actual_hypergraph.incidentEdges(hn))
-        {
+        for(const HyperedgeID he : actual_hypergraph.incidentEdges(hn)) {
             actual_incident_edges.push_back(he);
         }
         std::sort(expected_incident_edges.begin(), expected_incident_edges.end());
         std::sort(actual_incident_edges.begin(), actual_incident_edges.end());
         ASSERT_EQ(expected_incident_edges.size(), actual_incident_edges.size());
 
-        if constexpr(Hypergraph::is_graph)
-        {
-            for(size_t i = 0; i < expected_incident_edges.size(); ++i)
-            {
+        if constexpr(Hypergraph::is_graph) {
+            for(size_t i = 0; i < expected_incident_edges.size(); ++i) {
                 HyperedgeID exp = expected_incident_edges[i];
                 HyperedgeID act = actual_incident_edges[i];
                 ASSERT_EQ(expected_hypergraph.edgeSource(exp),
@@ -81,11 +74,8 @@ void verifyEqualityOfHypergraphs(const Hypergraph &e_hypergraph,
                 ASSERT_EQ(expected_hypergraph.edgeWeight(exp),
                           actual_hypergraph.edgeWeight(act));
             }
-        }
-        else
-        {
-            for(size_t i = 0; i < expected_incident_edges.size(); ++i)
-            {
+        } else {
+            for(size_t i = 0; i < expected_incident_edges.size(); ++i) {
                 ASSERT_EQ(expected_incident_edges[i], actual_incident_edges[i]);
             }
         }
@@ -93,25 +83,20 @@ void verifyEqualityOfHypergraphs(const Hypergraph &e_hypergraph,
         actual_incident_edges.clear();
     }
 
-    if constexpr(!Hypergraph::is_graph)
-    {
+    if constexpr(!Hypergraph::is_graph) {
         parallel::scalable_vector<HypernodeID> expected_pins;
         parallel::scalable_vector<HypernodeID> actual_pins;
-        for(const HyperedgeID &he : expected_hypergraph.edges())
-        {
-            for(const HyperedgeID he : expected_hypergraph.pins(he))
-            {
+        for(const HyperedgeID& he : expected_hypergraph.edges()) {
+            for(const HyperedgeID he : expected_hypergraph.pins(he)) {
                 expected_pins.push_back(he);
             }
-            for(const HyperedgeID he : actual_hypergraph.pins(he))
-            {
+            for(const HyperedgeID he : actual_hypergraph.pins(he)) {
                 actual_pins.push_back(he);
             }
             std::sort(expected_pins.begin(), expected_pins.end());
             std::sort(actual_pins.begin(), actual_pins.end());
             ASSERT_EQ(expected_pins.size(), actual_pins.size());
-            for(size_t i = 0; i < expected_pins.size(); ++i)
-            {
+            for(size_t i = 0; i < expected_pins.size(); ++i) {
                 ASSERT_EQ(expected_pins[i], actual_pins[i]);
             }
             expected_pins.clear();
@@ -121,11 +106,9 @@ void verifyEqualityOfHypergraphs(const Hypergraph &e_hypergraph,
 }
 
 template <typename PartitionedHypergraph>
-HyperedgeWeight compute_km1(PartitionedHypergraph &partitioned_hypergraph)
-{
+HyperedgeWeight compute_km1(PartitionedHypergraph& partitioned_hypergraph) {
     HyperedgeWeight km1 = 0;
-    for(const HyperedgeID &he : partitioned_hypergraph.edges())
-    {
+    for(const HyperedgeID& he : partitioned_hypergraph.edges()) {
         km1 += std::max(partitioned_hypergraph.connectivity(he) - 1, 0) *
                partitioned_hypergraph.edgeWeight(he);
     }
@@ -133,14 +116,13 @@ HyperedgeWeight compute_km1(PartitionedHypergraph &partitioned_hypergraph)
 }
 
 template <typename PartitionedHypergraph, typename GainCache>
-void verifyGainCache(PartitionedHypergraph &partitioned_hypergraph, GainCache &gain_cache)
-{
+void verifyGainCache(PartitionedHypergraph& partitioned_hypergraph,
+                     GainCache& gain_cache) {
     const PartitionID k = partitioned_hypergraph.k();
-    utils::Randomize &rand = utils::Randomize::instance();
+    utils::Randomize& rand = utils::Randomize::instance();
     HyperedgeWeight km1_before = compute_km1(partitioned_hypergraph);
     HyperedgeWeight expected_gain = 0;
-    for(const HypernodeID &hn : partitioned_hypergraph.nodes())
-    {
+    for(const HypernodeID& hn : partitioned_hypergraph.nodes()) {
         const PartitionID from = partitioned_hypergraph.partID(hn);
         PartitionID to = rand.getRandomInt(0, k - 1, THREAD_ID);
         if(from == to)
@@ -154,14 +136,11 @@ void verifyGainCache(PartitionedHypergraph &partitioned_hypergraph, GainCache &g
 }
 
 template <typename PartitionedHypergraph>
-void verifyNumIncidentCutHyperedges(const PartitionedHypergraph &partitioned_hypergraph)
-{
-    partitioned_hypergraph.doParallelForAllNodes([&](const HypernodeID &hn) {
+void verifyNumIncidentCutHyperedges(const PartitionedHypergraph& partitioned_hypergraph) {
+    partitioned_hypergraph.doParallelForAllNodes([&](const HypernodeID& hn) {
         HypernodeID expected_num_cut_hyperedges = 0;
-        for(const HyperedgeID &he : partitioned_hypergraph.incidentEdges(hn))
-        {
-            if(partitioned_hypergraph.connectivity(he) > 1)
-            {
+        for(const HyperedgeID& he : partitioned_hypergraph.incidentEdges(hn)) {
+            if(partitioned_hypergraph.connectivity(he) > 1) {
                 ++expected_num_cut_hyperedges;
             }
         }
@@ -172,17 +151,15 @@ void verifyNumIncidentCutHyperedges(const PartitionedHypergraph &partitioned_hyp
 
 template <typename Hypergraph>
 void verifyFixedVertices(
-    const Hypergraph &hypergraph,
-    const ds::FixedVertexSupport<Hypergraph> &expected_fixed_vertices,
-    const ds::FixedVertexSupport<Hypergraph> &actual_fixed_vertices)
-{
-    hypergraph.doParallelForAllNodes([&](const HypernodeID &hn) {
+    const Hypergraph& hypergraph,
+    const ds::FixedVertexSupport<Hypergraph>& expected_fixed_vertices,
+    const ds::FixedVertexSupport<Hypergraph>& actual_fixed_vertices) {
+    hypergraph.doParallelForAllNodes([&](const HypernodeID& hn) {
         ASSERT_EQ(expected_fixed_vertices.fixedVertexBlock(hn),
                   actual_fixed_vertices.fixedVertexBlock(hn));
     });
 
-    for(PartitionID block = 0; block < expected_fixed_vertices.numBlocks(); ++block)
-    {
+    for(PartitionID block = 0; block < expected_fixed_vertices.numBlocks(); ++block) {
         ASSERT_EQ(expected_fixed_vertices.fixedVertexBlockWeight(block),
                   actual_fixed_vertices.fixedVertexBlockWeight(block));
     }
@@ -191,26 +168,21 @@ void verifyFixedVertices(
 template <typename Hypergraph>
 Hypergraph generateRandomHypergraph(const HypernodeID num_hypernodes,
                                     const HyperedgeID num_hyperedges,
-                                    const HypernodeID max_edge_size)
-{
+                                    const HypernodeID max_edge_size) {
     using Factory = typename Hypergraph::Factory;
     parallel::scalable_vector<parallel::scalable_vector<HypernodeID> > hyperedges;
-    utils::Randomize &rand = utils::Randomize::instance();
+    utils::Randomize& rand = utils::Randomize::instance();
 
     std::set<std::pair<HypernodeID, HypernodeID> > graph_edges;
-    if constexpr(Hypergraph::is_graph)
-    {
-        for(size_t i = 0; i < num_hypernodes; ++i)
-        {
+    if constexpr(Hypergraph::is_graph) {
+        for(size_t i = 0; i < num_hypernodes; ++i) {
             graph_edges.insert({ i, i });
         }
     }
 
-    for(size_t i = 0; i < num_hyperedges; ++i)
-    {
+    for(size_t i = 0; i < num_hyperedges; ++i) {
         parallel::scalable_vector<HypernodeID> net;
-        if constexpr(Hypergraph::is_graph)
-        {
+        if constexpr(Hypergraph::is_graph) {
             unused(max_edge_size);
             std::pair<HypernodeID, HypernodeID> edge{
                 rand.getRandomInt(0, num_hypernodes - 1, THREAD_ID),
@@ -220,16 +192,12 @@ Hypergraph generateRandomHypergraph(const HypernodeID num_hypernodes,
             graph_edges.insert({ edge.first, edge.second });
             net.push_back(edge.first);
             net.push_back(edge.second);
-        }
-        else
-        {
+        } else {
             const size_t edge_size = rand.getRandomInt(2, max_edge_size, THREAD_ID);
-            for(size_t i = 0; i < edge_size; ++i)
-            {
+            for(size_t i = 0; i < edge_size; ++i) {
                 const HypernodeID pin =
                     rand.getRandomInt(0, num_hypernodes - 1, THREAD_ID);
-                if(std::find(net.begin(), net.end(), pin) == net.end())
-                {
+                if(std::find(net.begin(), net.end(), pin) == net.end()) {
                     net.push_back(pin);
                 }
             }
@@ -240,18 +208,15 @@ Hypergraph generateRandomHypergraph(const HypernodeID num_hypernodes,
 }
 
 template <typename Hypergraph>
-void addRandomFixedVertices(Hypergraph &hypergraph, const PartitionID k,
-                            const double percentage_fixed_vertices)
-{
+void addRandomFixedVertices(Hypergraph& hypergraph, const PartitionID k,
+                            const double percentage_fixed_vertices) {
     ds::FixedVertexSupport<Hypergraph> fixed_vertices(hypergraph.initialNumNodes(), k);
     fixed_vertices.setHypergraph(&hypergraph);
-    utils::Randomize &rand = utils::Randomize::instance();
+    utils::Randomize& rand = utils::Randomize::instance();
     const int threshold = percentage_fixed_vertices * 1000;
-    for(const HypernodeID &hn : hypergraph.nodes())
-    {
+    for(const HypernodeID& hn : hypergraph.nodes()) {
         const bool is_fixed = rand.getRandomInt(0, 1000, THREAD_ID) <= threshold;
-        if(is_fixed)
-        {
+        if(is_fixed) {
             fixed_vertices.fixToBlock(hn, rand.getRandomInt(0, k - 1, THREAD_ID));
         }
     }
@@ -260,30 +225,26 @@ void addRandomFixedVertices(Hypergraph &hypergraph, const PartitionID k,
 
 BatchVector generateRandomContractions(const HypernodeID num_hypernodes,
                                        const HypernodeID num_contractions,
-                                       const bool multi_versioned = true)
-{
+                                       const bool multi_versioned = true) {
     ASSERT(num_contractions < num_hypernodes);
     HypernodeID tmp_num_contractions = num_contractions;
     BatchVector contractions;
     parallel::scalable_vector<HypernodeID> active_hns(num_hypernodes);
     std::iota(active_hns.begin(), active_hns.end(), 0);
-    utils::Randomize &rand = utils::Randomize::instance();
+    utils::Randomize& rand = utils::Randomize::instance();
     const int cpu_id = THREAD_ID;
-    while(tmp_num_contractions > 0)
-    {
+    while(tmp_num_contractions > 0) {
         HypernodeID current_num_contractions = tmp_num_contractions;
         if(multi_versioned && current_num_contractions > 25)
             current_num_contractions /= 2;
         contractions.emplace_back();
-        for(size_t i = 0; i < current_num_contractions; ++i)
-        {
+        for(size_t i = 0; i < current_num_contractions; ++i) {
             ASSERT(active_hns.size() >= 2UL);
             int idx_1 =
                 rand.getRandomInt(0, static_cast<int>(active_hns.size() - 1), cpu_id);
             int idx_2 =
                 rand.getRandomInt(0, static_cast<int>(active_hns.size() - 1), cpu_id);
-            if(idx_1 == idx_2)
-            {
+            if(idx_1 == idx_2) {
                 idx_2 = (idx_2 + 1) % active_hns.size();
             }
             contractions.back().push_back(
@@ -297,18 +258,14 @@ BatchVector generateRandomContractions(const HypernodeID num_hypernodes,
 }
 
 template <typename PartitionedHypergraph>
-void generateRandomPartition(PartitionedHypergraph &partitioned_hypergraph)
-{
+void generateRandomPartition(PartitionedHypergraph& partitioned_hypergraph) {
     const PartitionID k = partitioned_hypergraph.k();
-    utils::Randomize &rand = utils::Randomize::instance();
-    partitioned_hypergraph.doParallelForAllNodes([&](const HypernodeID &hn) {
-        if(partitioned_hypergraph.isFixed(hn))
-        {
+    utils::Randomize& rand = utils::Randomize::instance();
+    partitioned_hypergraph.doParallelForAllNodes([&](const HypernodeID& hn) {
+        if(partitioned_hypergraph.isFixed(hn)) {
             partitioned_hypergraph.setOnlyNodePart(
                 hn, partitioned_hypergraph.fixedVertexBlock(hn));
-        }
-        else
-        {
+        } else {
             partitioned_hypergraph.setOnlyNodePart(
                 hn, rand.getRandomInt(0, k - 1, THREAD_ID));
         }
@@ -317,43 +274,34 @@ void generateRandomPartition(PartitionedHypergraph &partitioned_hypergraph)
 
 template <typename Hypergraph, typename PartitionedHypergraph, typename GainCache>
 Hypergraph
-simulateNLevel(Hypergraph &hypergraph, PartitionedHypergraph &partitioned_hypergraph,
-               GainCache &gain_cache, const BatchVector &contraction_batches,
-               const size_t batch_size, const bool parallel, utils::Timer &timer)
-{
+simulateNLevel(Hypergraph& hypergraph, PartitionedHypergraph& partitioned_hypergraph,
+               GainCache& gain_cache, const BatchVector& contraction_batches,
+               const size_t batch_size, const bool parallel, utils::Timer& timer) {
     using ParallelHyperedge = typename Hypergraph::ParallelHyperedge;
     using Factory = typename Hypergraph::Factory;
 
-    auto timer_key = [&](const std::string &key) {
-        if(parallel)
-        {
+    auto timer_key = [&](const std::string& key) {
+        if(parallel) {
             return key + "_parallel";
-        }
-        else
-        {
+        } else {
             return key;
         }
     };
 
     parallel::scalable_vector<parallel::scalable_vector<ParallelHyperedge> >
         removed_hyperedges;
-    for(size_t i = 0; i < contraction_batches.size(); ++i)
-    {
+    for(size_t i = 0; i < contraction_batches.size(); ++i) {
         timer.start_timer(timer_key("contractions"), "Contractions");
-        const parallel::scalable_vector<Memento> &contractions = contraction_batches[i];
-        if(parallel)
-        {
+        const parallel::scalable_vector<Memento>& contractions = contraction_batches[i];
+        if(parallel) {
             tbb::parallel_for(UL(0), contractions.size(), [&](const size_t j) {
-                const Memento &memento = contractions[j];
+                const Memento& memento = contractions[j];
                 hypergraph.registerContraction(memento.u, memento.v);
                 hypergraph.contract(memento.v);
             });
-        }
-        else
-        {
-            for(size_t j = 0; j < contractions.size(); ++j)
-            {
-                const Memento &memento = contractions[j];
+        } else {
+            for(size_t j = 0; j < contractions.size(); ++j) {
+                const Memento& memento = contractions[j];
                 hypergraph.registerContraction(memento.u, memento.v);
                 hypergraph.contract(memento.v);
             }
@@ -368,12 +316,9 @@ simulateNLevel(Hypergraph &hypergraph, PartitionedHypergraph &partitioned_hyperg
 
     timer.start_timer(timer_key("copy_coarsest_hypergraph"), "Copy Coarsest Hypergraph");
     Hypergraph coarsest_hypergraph;
-    if(parallel)
-    {
+    if(parallel) {
         coarsest_hypergraph = hypergraph.copy(parallel_tag_t());
-    }
-    else
-    {
+    } else {
         coarsest_hypergraph = hypergraph.copy();
     }
     timer.stop_timer(timer_key("copy_coarsest_hypergraph"));
@@ -383,8 +328,8 @@ simulateNLevel(Hypergraph &hypergraph, PartitionedHypergraph &partitioned_hyperg
     {
         timer.start_timer(timer_key("compactify_hypergraph"), "Compactify Hypergraph");
         auto res = Factory::compactify(hypergraph);
-        Hypergraph &compactified_hg = res.first;
-        auto &hn_mapping = res.second;
+        Hypergraph& compactified_hg = res.first;
+        auto& hn_mapping = res.second;
         PartitionedHypergraph compactified_phg(partitioned_hypergraph.k(),
                                                compactified_hg, parallel_tag_t());
         timer.stop_timer(timer_key("compactify_hypergraph"));
@@ -420,22 +365,18 @@ simulateNLevel(Hypergraph &hypergraph, PartitionedHypergraph &partitioned_hyperg
     timer.stop_timer(timer_key("create_batch_uncontraction_hierarchy"));
 
     timer.start_timer(timer_key("batch_uncontractions"), "Batch Uncontractions");
-    while(!versioned_batches.empty())
-    {
-        BatchVector &batches = versioned_batches.back();
-        while(!batches.empty())
-        {
-            const Batch &batch = batches.back();
-            if(!batch.empty())
-            {
+    while(!versioned_batches.empty()) {
+        BatchVector& batches = versioned_batches.back();
+        while(!batches.empty()) {
+            const Batch& batch = batches.back();
+            if(!batch.empty()) {
                 partitioned_hypergraph.uncontract(batch, gain_cache);
             }
             batches.pop_back();
         }
         versioned_batches.pop_back();
 
-        if(!removed_hyperedges.empty())
-        {
+        if(!removed_hyperedges.empty()) {
             timer.start_timer(timer_key("restore_parallel_nets"),
                               "Restore Parallel Nets");
             partitioned_hypergraph.restoreSinglePinAndParallelNets(
@@ -451,8 +392,7 @@ simulateNLevel(Hypergraph &hypergraph, PartitionedHypergraph &partitioned_hyperg
 }
 
 #ifdef KAHYPAR_ENABLE_HIGHEST_QUALITY_FEATURES
-TEST(ANlevelHypergraph, SimulatesContractionsAndBatchUncontractions)
-{
+TEST(ANlevelHypergraph, SimulatesContractionsAndBatchUncontractions) {
     using Hypergraph = typename DynamicHypergraphTypeTraits::Hypergraph;
     using PartitionedHypergraph =
         typename DynamicHypergraphTypeTraits::PartitionedHypergraph;
@@ -512,14 +452,12 @@ TEST(ANlevelHypergraph, SimulatesContractionsAndBatchUncontractions)
     verifyNumIncidentCutHyperedges(sequential_phg);
     verifyNumIncidentCutHyperedges(parallel_phg);
 
-    if(show_timings)
-    {
+    if(show_timings) {
         LOG << timer;
     }
 }
 
-TEST(ANlevelHypergraph, SimulatesContractionsAndBatchUncontractionsWithFixedVertices)
-{
+TEST(ANlevelHypergraph, SimulatesContractionsAndBatchUncontractionsWithFixedVertices) {
     using Hypergraph = typename DynamicHypergraphTypeTraits::Hypergraph;
     using PartitionedHypergraph =
         typename DynamicHypergraphTypeTraits::PartitionedHypergraph;
@@ -581,14 +519,12 @@ TEST(ANlevelHypergraph, SimulatesContractionsAndBatchUncontractionsWithFixedVert
     verifyFixedVertices(original_hypergraph, original_fixed_vertices,
                         parallel_fixed_vertices);
 
-    if(show_timings)
-    {
+    if(show_timings) {
         LOG << timer;
     }
 }
 
-TEST(ANlevelHypergraph, SimulatesParallelContractionsAndAccessToHypergraph)
-{
+TEST(ANlevelHypergraph, SimulatesParallelContractionsAndAccessToHypergraph) {
     using Hypergraph = typename DynamicHypergraphTypeTraits::Hypergraph;
     const HypernodeID num_hypernodes = 10000;
     const HypernodeID num_hyperedges = Hypergraph::is_graph ? 40000 : 10000;
@@ -616,21 +552,18 @@ TEST(ANlevelHypergraph, SimulatesParallelContractionsAndAccessToHypergraph)
     timer.start_timer("contractions_with_access", "Contractions With Access");
     tbb::parallel_invoke(
         [&] {
-            while(!terminate)
-            {
+            while(!terminate) {
                 // Iterate over all vertices of the hypergraph in parallel
                 hypergraph.doParallelForAllNodes([&](const HypernodeID hn) {
                     RatingType rating = 0;
-                    for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
-                    {
+                    for(const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
                         const HyperedgeWeight edge_weight = hypergraph.edgeWeight(he);
-                        for(const HypernodeID &pin : hypergraph.pins(he))
-                        {
+                        for(const HypernodeID& pin : hypergraph.pins(he)) {
                             const HyperedgeID node_degree = hypergraph.nodeDegree(pin);
                             const HypernodeWeight node_weight =
                                 hypergraph.nodeWeight(pin);
-                            if(hypergraph.communityID(hn) == hypergraph.communityID(pin))
-                            {
+                            if(hypergraph.communityID(hn) ==
+                               hypergraph.communityID(pin)) {
                                 rating +=
                                     static_cast<RatingType>(edge_weight * node_degree) /
                                     node_weight;
@@ -643,7 +576,7 @@ TEST(ANlevelHypergraph, SimulatesParallelContractionsAndAccessToHypergraph)
         [&] {
             // Perform contractions in parallel
             tbb::parallel_for(UL(0), contractions.back().size(), [&](const size_t i) {
-                const Memento &memento = contractions.back()[i];
+                const Memento& memento = contractions.back()[i];
                 hypergraph.registerContraction(memento.u, memento.v);
                 hypergraph.contract(memento.v);
             });
@@ -655,21 +588,19 @@ TEST(ANlevelHypergraph, SimulatesParallelContractionsAndAccessToHypergraph)
         LOG << "Perform Parallel Contractions Without Parallel Access";
     timer.start_timer("contractions_without_access", "Contractions Without Access");
     tbb::parallel_for(UL(0), contractions.back().size(), [&](const size_t i) {
-        const Memento &memento = contractions.back()[i];
+        const Memento& memento = contractions.back()[i];
         tmp_hypergraph.registerContraction(memento.u, memento.v);
         tmp_hypergraph.contract(memento.v);
     });
     timer.stop_timer("contractions_without_access");
 
-    if(show_timings)
-    {
+    if(show_timings) {
         LOG << timer;
     }
 }
 
 #ifdef KAHYPAR_ENABLE_GRAPH_PARTITIONING_FEATURES
-TEST(ANlevelGraph, SimulatesContractionsAndBatchUncontractions)
-{
+TEST(ANlevelGraph, SimulatesContractionsAndBatchUncontractions) {
     using Hypergraph = typename DynamicGraphTypeTraits::Hypergraph;
     using PartitionedHypergraph = typename DynamicGraphTypeTraits::PartitionedHypergraph;
     const HypernodeID num_hypernodes = 10000;
@@ -728,14 +659,12 @@ TEST(ANlevelGraph, SimulatesContractionsAndBatchUncontractions)
     verifyNumIncidentCutHyperedges(sequential_phg);
     verifyNumIncidentCutHyperedges(parallel_phg);
 
-    if(show_timings)
-    {
+    if(show_timings) {
         LOG << timer;
     }
 }
 
-TEST(ANlevelGraph, SimulatesContractionsAndBatchUncontractionsWithFixedVertices)
-{
+TEST(ANlevelGraph, SimulatesContractionsAndBatchUncontractionsWithFixedVertices) {
     using Hypergraph = typename DynamicHypergraphTypeTraits::Hypergraph;
     using PartitionedHypergraph =
         typename DynamicHypergraphTypeTraits::PartitionedHypergraph;
@@ -797,14 +726,12 @@ TEST(ANlevelGraph, SimulatesContractionsAndBatchUncontractionsWithFixedVertices)
     verifyFixedVertices(original_hypergraph, original_fixed_vertices,
                         parallel_fixed_vertices);
 
-    if(show_timings)
-    {
+    if(show_timings) {
         LOG << timer;
     }
 }
 
-TEST(ANlevelGraph, SimulatesParallelContractionsAndAccessToHypergraph)
-{
+TEST(ANlevelGraph, SimulatesParallelContractionsAndAccessToHypergraph) {
     using Hypergraph = typename DynamicGraphTypeTraits::Hypergraph;
     const HypernodeID num_hypernodes = 10000;
     const HypernodeID num_hyperedges = Hypergraph::is_graph ? 40000 : 10000;
@@ -832,21 +759,18 @@ TEST(ANlevelGraph, SimulatesParallelContractionsAndAccessToHypergraph)
     timer.start_timer("contractions_with_access", "Contractions With Access");
     tbb::parallel_invoke(
         [&] {
-            while(!terminate)
-            {
+            while(!terminate) {
                 // Iterate over all vertices of the hypergraph in parallel
                 hypergraph.doParallelForAllNodes([&](const HypernodeID hn) {
                     RatingType rating = 0;
-                    for(const HyperedgeID &he : hypergraph.incidentEdges(hn))
-                    {
+                    for(const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
                         const HyperedgeWeight edge_weight = hypergraph.edgeWeight(he);
-                        for(const HypernodeID &pin : hypergraph.pins(he))
-                        {
+                        for(const HypernodeID& pin : hypergraph.pins(he)) {
                             const HyperedgeID node_degree = hypergraph.nodeDegree(pin);
                             const HypernodeWeight node_weight =
                                 hypergraph.nodeWeight(pin);
-                            if(hypergraph.communityID(hn) == hypergraph.communityID(pin))
-                            {
+                            if(hypergraph.communityID(hn) ==
+                               hypergraph.communityID(pin)) {
                                 rating +=
                                     static_cast<RatingType>(edge_weight * node_degree) /
                                     node_weight;
@@ -859,7 +783,7 @@ TEST(ANlevelGraph, SimulatesParallelContractionsAndAccessToHypergraph)
         [&] {
             // Perform contractions in parallel
             tbb::parallel_for(UL(0), contractions.back().size(), [&](const size_t i) {
-                const Memento &memento = contractions.back()[i];
+                const Memento& memento = contractions.back()[i];
                 hypergraph.registerContraction(memento.u, memento.v);
                 hypergraph.contract(memento.v);
             });
@@ -871,14 +795,13 @@ TEST(ANlevelGraph, SimulatesParallelContractionsAndAccessToHypergraph)
         LOG << "Perform Parallel Contractions Without Parallel Access";
     timer.start_timer("contractions_without_access", "Contractions Without Access");
     tbb::parallel_for(UL(0), contractions.back().size(), [&](const size_t i) {
-        const Memento &memento = contractions.back()[i];
+        const Memento& memento = contractions.back()[i];
         tmp_hypergraph.registerContraction(memento.u, memento.v);
         tmp_hypergraph.contract(memento.v);
     });
     timer.stop_timer("contractions_without_access");
 
-    if(show_timings)
-    {
+    if(show_timings) {
         LOG << timer;
     }
 }

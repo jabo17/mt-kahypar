@@ -51,37 +51,32 @@ class NLevelCoarsenerBase
     using ParallelHyperedgeVector = vec<vec<ParallelHyperedge> >;
 
   public:
-    NLevelCoarsenerBase(Hypergraph &hypergraph, const Context &context,
-                        UncoarseningData<TypeTraits> &uncoarseningData) :
+    NLevelCoarsenerBase(Hypergraph& hypergraph, const Context& context,
+                        UncoarseningData<TypeTraits>& uncoarseningData) :
         _hg(hypergraph),
         _context(context),
         _timer(utils::Utilities::instance().getTimer(context.utility_id)),
-        _uncoarseningData(uncoarseningData)
-    {
-    }
+        _uncoarseningData(uncoarseningData) {}
 
-    NLevelCoarsenerBase(const NLevelCoarsenerBase &) = delete;
-    NLevelCoarsenerBase(NLevelCoarsenerBase &&) = delete;
-    NLevelCoarsenerBase &operator=(const NLevelCoarsenerBase &) = delete;
-    NLevelCoarsenerBase &operator=(NLevelCoarsenerBase &&) = delete;
+    NLevelCoarsenerBase(const NLevelCoarsenerBase&) = delete;
+    NLevelCoarsenerBase(NLevelCoarsenerBase&&) = delete;
+    NLevelCoarsenerBase& operator=(const NLevelCoarsenerBase&) = delete;
+    NLevelCoarsenerBase& operator=(NLevelCoarsenerBase&&) = delete;
 
     virtual ~NLevelCoarsenerBase() = default;
 
   protected:
-    Hypergraph &compactifiedHypergraph()
-    {
+    Hypergraph& compactifiedHypergraph() {
         ASSERT(_uncoarseningData.is_finalized);
         return *_uncoarseningData.compactified_hg;
     }
 
-    PartitionedHypergraph &compactifiedPartitionedHypergraph()
-    {
+    PartitionedHypergraph& compactifiedPartitionedHypergraph() {
         ASSERT(_uncoarseningData.is_finalized);
         return *_uncoarseningData.compactified_phg;
     }
 
-    void removeSinglePinAndParallelNets(const HighResClockTimepoint &round_start)
-    {
+    void removeSinglePinAndParallelNets(const HighResClockTimepoint& round_start) {
         _timer.start_timer("remove_single_pin_and_parallel_nets",
                            "Remove Single Pin and Parallel Nets");
         _uncoarseningData.removed_hyperedges_batches.emplace_back(
@@ -95,9 +90,9 @@ class NLevelCoarsenerBase
 
   protected:
     // ! Original hypergraph
-    Hypergraph &_hg;
-    const Context &_context;
-    utils::Timer &_timer;
-    UncoarseningData<TypeTraits> &_uncoarseningData;
+    Hypergraph& _hg;
+    const Context& _context;
+    utils::Timer& _timer;
+    UncoarseningData<TypeTraits>& _uncoarseningData;
 };
 } // namespace mt_kahypar

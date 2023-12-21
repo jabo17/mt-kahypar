@@ -51,8 +51,7 @@ using Graph = ds::StaticGraph;
 using Hypergraph = ds::StaticHypergraph;
 using PartitionedHypergraph = ds::PartitionedHypergraph<Hypergraph, ds::ConnectivityInfo>;
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     Context context;
     po::options_description options("Options");
     options.add_options()("hypergraph,h",
@@ -105,14 +104,13 @@ int main(int argc, char *argv[])
     std::vector<PartitionID> partition;
     io::readPartitionFile(context.partition.graph_partition_filename, partition);
     PartitionedHypergraph partitioned_hg(context.partition.k, hg, parallel_tag_t{});
-    partitioned_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
+    partitioned_hg.doParallelForAllNodes([&](const HypernodeID& hn) {
         partitioned_hg.setOnlyNodePart(hn, partition[hn]);
     });
     partitioned_hg.initializePartition();
 
     // Read Target Graph
-    if(context.mapping.target_graph_file == "")
-    {
+    if(context.mapping.target_graph_file == "") {
         context.mapping.target_graph_file =
             context.partition.graph_filename + ".k" + std::to_string(context.partition.k);
     }
@@ -121,15 +119,14 @@ int main(int argc, char *argv[])
     partitioned_hg.setTargetGraph(&target_graph);
 
     // Precompute Steiner Trees
-    utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
     HighResClockTimepoint start_1 = std::chrono::high_resolution_clock::now();
     timer.start_timer("precompute_steiner_trees", "Precompute Steiner Trees");
     target_graph.precomputeDistances(context.mapping.max_steiner_tree_size);
     timer.stop_timer("precompute_steiner_trees");
     HighResClockTimepoint end_1 = std::chrono::high_resolution_clock::now();
 
-    if(context.partition.verbose_output)
-    {
+    if(context.partition.verbose_output) {
         io::printHypergraphInfo(hg, context, "Input Hypergraph", false);
         io::printPartitioningResults(partitioned_hg, context, "Input Partition");
     }
@@ -141,8 +138,7 @@ int main(int argc, char *argv[])
     HighResClockTimepoint end_2 = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> elapsed_seconds((end_2 - start_2) + (end_1 - start_1));
-    if(context.partition.verbose_output)
-    {
+    if(context.partition.verbose_output) {
         io::printPartitioningResults(partitioned_hg, context, elapsed_seconds);
     }
 

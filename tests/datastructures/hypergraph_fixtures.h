@@ -38,7 +38,7 @@ using ::testing::Test;
 namespace mt_kahypar {
 namespace ds {
 
-static auto identity = [](const HypernodeID &id) { return id; };
+static auto identity = [](const HypernodeID& id) { return id; };
 
 template <typename Hypergraph, bool useGraphStructure = false>
 class HypergraphFixture : public Test
@@ -55,18 +55,14 @@ class HypergraphFixture : public Test
                            nullptr, nullptr, true) :
                        HypergraphFactory::construct(
                            7, 4, { { 0, 2 }, { 0, 1, 3, 4 }, { 3, 4, 6 }, { 2, 5, 6 } },
-                           nullptr, nullptr, true))
-    {
-    }
+                           nullptr, nullptr, true)) {}
 
     template <typename K = decltype(identity)>
-    void verifyIncidentNets(const Hypergraph &hg, const HypernodeID hn,
-                            const std::set<HypernodeID> &reference, K map_func = identity,
-                            bool log = false)
-    {
+    void verifyIncidentNets(const Hypergraph& hg, const HypernodeID hn,
+                            const std::set<HypernodeID>& reference, K map_func = identity,
+                            bool log = false) {
         size_t count = 0;
-        for(const HyperedgeID &he : hg.incidentEdges(hn))
-        {
+        for(const HyperedgeID& he : hg.incidentEdges(hn)) {
             if(log)
                 LOG << V(he) << V(map_func(he));
             ASSERT_TRUE(reference.find(map_func(he)) != reference.end())
@@ -77,24 +73,20 @@ class HypergraphFixture : public Test
     }
 
     template <typename K = decltype(identity)>
-    void verifyIncidentNets(const HypernodeID hn, const std::set<HypernodeID> &reference,
-                            K map_func = identity, bool log = false)
-    {
+    void verifyIncidentNets(const HypernodeID hn, const std::set<HypernodeID>& reference,
+                            K map_func = identity, bool log = false) {
         verifyIncidentNets(hypergraph, hn, reference, map_func, log);
     }
 
-    void verifyPins(const Hypergraph &hg, const std::vector<HyperedgeID> hyperedges,
-                    const std::vector<std::set<HypernodeID> > &references,
-                    bool log = false)
-    {
+    void verifyPins(const Hypergraph& hg, const std::vector<HyperedgeID> hyperedges,
+                    const std::vector<std::set<HypernodeID> >& references,
+                    bool log = false) {
         ASSERT(hyperedges.size() == references.size());
-        for(size_t i = 0; i < hyperedges.size(); ++i)
-        {
+        for(size_t i = 0; i < hyperedges.size(); ++i) {
             const HyperedgeID he = hyperedges[i];
-            const std::set<HypernodeID> &reference = references[i];
+            const std::set<HypernodeID>& reference = references[i];
             size_t count = 0;
-            for(const HypernodeID &pin : hg.pins(he))
-            {
+            for(const HypernodeID& pin : hg.pins(he)) {
                 if(log)
                     LOG << V(he) << V(pin);
                 ASSERT_TRUE(reference.find(pin) != reference.end()) << V(he) << V(pin);
@@ -105,14 +97,12 @@ class HypergraphFixture : public Test
     }
 
     void verifyPins(const std::vector<HyperedgeID> hyperedges,
-                    const std::vector<std::set<HypernodeID> > &references,
-                    bool log = false)
-    {
+                    const std::vector<std::set<HypernodeID> >& references,
+                    bool log = false) {
         verifyPins(hypergraph, hyperedges, references, log);
     }
 
-    void assignCommunityIds()
-    {
+    void assignCommunityIds() {
         hypergraph.setCommunityID(0, 0);
         hypergraph.setCommunityID(1, 0);
         hypergraph.setCommunityID(2, 0);

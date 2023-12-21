@@ -215,8 +215,7 @@ using GraphAndGainTypesList = kahypar::meta::Typelist<
 
 #define SWITCH_HYPERGRAPH_GAIN_TYPES(TYPE_TRAITS, gain_policy)                           \
     {                                                                                    \
-        switch(gain_policy)                                                              \
-        {                                                                                \
+        switch(gain_policy) {                                                            \
         case GainPolicy::km1:                                                            \
             _RETURN_COMBINED_POLICY(TYPE_TRAITS, Km1GainTypes)                           \
         case GainPolicy::cut:                                                            \
@@ -234,8 +233,7 @@ using GraphAndGainTypesList = kahypar::meta::Typelist<
 
 #define SWITCH_GRAPH_GAIN_TYPES(TYPE_TRAITS, gain_policy)                                \
     {                                                                                    \
-        switch(gain_policy)                                                              \
-        {                                                                                \
+        switch(gain_policy) {                                                            \
         case GainPolicy::cut_for_graphs:                                                 \
             ENABLE_GRAPHS(_RETURN_COMBINED_POLICY(TYPE_TRAITS, CutGainForGraphsTypes))   \
         case GainPolicy::steiner_tree_for_graphs:                                        \

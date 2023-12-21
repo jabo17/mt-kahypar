@@ -44,10 +44,8 @@ class SoedGainComputation
     static constexpr bool enable_heavy_assert = false;
 
   public:
-    SoedGainComputation(const Context &context, bool disable_randomization = false) :
-        Base(context, disable_randomization)
-    {
-    }
+    SoedGainComputation(const Context& context, bool disable_randomization = false) :
+        Base(context, disable_randomization) {}
 
     // ! Precomputes the gain to all adjacent blocks.
     // ! Conceptually, we compute the gain of moving the node to an non-adjacent block
@@ -55,17 +53,14 @@ class SoedGainComputation
     // ! The gain of that node to a block to can then be computed by
     // ! 'isolated_block_gain - tmp_scores[to]' (see gain(...))
     template <typename PartitionedHypergraph>
-    void precomputeGains(const PartitionedHypergraph &phg, const HypernodeID hn,
-                         RatingMap &tmp_scores, Gain &isolated_block_gain, const bool)
-    {
+    void precomputeGains(const PartitionedHypergraph& phg, const HypernodeID hn,
+                         RatingMap& tmp_scores, Gain& isolated_block_gain, const bool) {
         ASSERT(tmp_scores.size() == 0, "Rating map not empty");
         PartitionID from = phg.partID(hn);
-        for(const HyperedgeID &he : phg.incidentEdges(hn))
-        {
+        for(const HyperedgeID& he : phg.incidentEdges(hn)) {
             const HypernodeID edge_size = phg.edgeSize(he);
 
-            if(edge_size > 1)
-            {
+            if(edge_size > 1) {
                 HypernodeID pin_count_in_from_part = phg.pinCountInPart(he, from);
                 HyperedgeWeight he_weight = phg.edgeWeight(he);
 
@@ -77,8 +72,7 @@ class SoedGainComputation
                 // to all other blocks. There is one percularity. If the hyperedge is not
                 // a cut edge, we would increase the soed metric by 2 * w(e) where w(e)
                 // is the weight of the hyperedge.
-                if(pin_count_in_from_part > 1)
-                {
+                if(pin_count_in_from_part > 1) {
                     isolated_block_gain +=
                         (pin_count_in_from_part == edge_size ? 2 : 1) * he_weight;
                 }
@@ -88,10 +82,8 @@ class SoedGainComputation
                 // the objective function by 2 * w(e) where w(e) is the weight of the
                 // hyperedge. Note, in case the pin count in from part is greater than one
                 // we will later add that edge weight to the gain (see internal_weight).
-                for(const PartitionID &to : phg.connectivitySet(he))
-                {
-                    if(from != to)
-                    {
+                for(const PartitionID& to : phg.connectivitySet(he)) {
+                    if(from != to) {
                         tmp_scores[to] +=
                             (phg.pinCountInPart(he, to) == edge_size - 1 ? 2 : 1) *
                             he_weight;
@@ -101,13 +93,11 @@ class SoedGainComputation
         }
     }
 
-    HyperedgeWeight gain(const Gain to_score, const Gain isolated_block_gain)
-    {
+    HyperedgeWeight gain(const Gain to_score, const Gain isolated_block_gain) {
         return isolated_block_gain - to_score;
     }
 
-    void changeNumberOfBlocksImpl(const PartitionID)
-    {
+    void changeNumberOfBlocksImpl(const PartitionID) {
         // Do nothing
     }
 };

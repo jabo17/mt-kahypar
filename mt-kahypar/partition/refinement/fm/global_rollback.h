@@ -44,82 +44,72 @@ class GlobalRollback
     using RecalculationData = typename Rollback::RecalculationData;
 
   public:
-    explicit GlobalRollback(const HyperedgeID num_hyperedges, const Context &context,
-                            GainCache &gainCache) :
+    explicit GlobalRollback(const HyperedgeID num_hyperedges, const Context& context,
+                            GainCache& gainCache) :
         context(context),
         gain_cache(gainCache),
         max_part_weight_scaling(context.refinement.fm.rollback_balance_violation_factor),
         ets_recalc_data([&] { return vec<RecalculationData>(context.partition.k); }),
-        last_recalc_round(), round(1)
-    {
+        last_recalc_round(), round(1) {
         if(context.refinement.fm.iter_moves_on_recalc &&
-           context.refinement.fm.rollback_parallel)
-        {
+           context.refinement.fm.rollback_parallel) {
             last_recalc_round.resize(num_hyperedges, CAtomic<uint32_t>(0));
         }
     }
 
-    HyperedgeWeight revertToBestPrefix(PartitionedHypergraph &phg,
-                                       FMSharedData &sharedData,
-                                       const vec<HypernodeWeight> &partWeights,
-                                       const std::vector<HypernodeWeight> &maxPartWeights)
-    {
-        if(context.refinement.fm.rollback_parallel)
-        {
+    HyperedgeWeight
+    revertToBestPrefix(PartitionedHypergraph& phg, FMSharedData& sharedData,
+                       const vec<HypernodeWeight>& partWeights,
+                       const std::vector<HypernodeWeight>& maxPartWeights) {
+        if(context.refinement.fm.rollback_parallel) {
             return revertToBestPrefixParallel(phg, sharedData, partWeights,
                                               maxPartWeights);
-        }
-        else
-        {
+        } else {
             return revertToBestPrefixSequential(phg, sharedData, partWeights,
                                                 maxPartWeights);
         }
     }
 
     HyperedgeWeight
-    revertToBestPrefixParallel(PartitionedHypergraph &phg, FMSharedData &sharedData,
-                               const vec<HypernodeWeight> &partWeights,
-                               const std::vector<HypernodeWeight> &maxPartWeights);
+    revertToBestPrefixParallel(PartitionedHypergraph& phg, FMSharedData& sharedData,
+                               const vec<HypernodeWeight>& partWeights,
+                               const std::vector<HypernodeWeight>& maxPartWeights);
 
-    void recalculateGainForHyperedge(PartitionedHypergraph &phg, FMSharedData &sharedData,
-                                     const HyperedgeID &he);
-    void recalculateGainForHyperedgeViaAttributedGains(PartitionedHypergraph &phg,
-                                                       FMSharedData &sharedData,
-                                                       const HyperedgeID &he);
-    void recalculateGainForGraphEdgeViaAttributedGains(PartitionedHypergraph &phg,
-                                                       FMSharedData &sharedData,
-                                                       const HyperedgeID &he);
-    void recalculateGains(PartitionedHypergraph &phg, FMSharedData &sharedData);
+    void recalculateGainForHyperedge(PartitionedHypergraph& phg, FMSharedData& sharedData,
+                                     const HyperedgeID& he);
+    void recalculateGainForHyperedgeViaAttributedGains(PartitionedHypergraph& phg,
+                                                       FMSharedData& sharedData,
+                                                       const HyperedgeID& he);
+    void recalculateGainForGraphEdgeViaAttributedGains(PartitionedHypergraph& phg,
+                                                       FMSharedData& sharedData,
+                                                       const HyperedgeID& he);
+    void recalculateGains(PartitionedHypergraph& phg, FMSharedData& sharedData);
 
     HyperedgeWeight
-    revertToBestPrefixSequential(PartitionedHypergraph &phg, FMSharedData &sharedData,
-                                 const vec<HypernodeWeight> &,
-                                 const std::vector<HypernodeWeight> &maxPartWeights);
+    revertToBestPrefixSequential(PartitionedHypergraph& phg, FMSharedData& sharedData,
+                                 const vec<HypernodeWeight>&,
+                                 const std::vector<HypernodeWeight>& maxPartWeights);
 
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-    void moveVertex(PartitionedHypergraph &phg, HypernodeID u, PartitionID from,
-                    PartitionID to)
-    {
+    void moveVertex(PartitionedHypergraph& phg, HypernodeID u, PartitionID from,
+                    PartitionID to) {
         phg.changeNodePart(gain_cache, u, from, to);
     }
 
-    void changeNumberOfBlocks(const PartitionID new_k)
-    {
-        for(auto &recalc_data : ets_recalc_data)
-        {
-            if(static_cast<size_t>(new_k) > recalc_data.size())
-            {
+    void changeNumberOfBlocks(const PartitionID new_k) {
+        for(auto& recalc_data : ets_recalc_data) {
+            if(static_cast<size_t>(new_k) > recalc_data.size()) {
                 recalc_data.resize(new_k);
             }
         }
     }
 
-    bool verifyGains(PartitionedHypergraph &phg, FMSharedData &sharedData);
+    bool verifyGains(PartitionedHypergraph& phg, FMSharedData& sharedData);
 
   private:
-    const Context &context;
+    const Context& context;
 
-    GainCache &gain_cache;
+    GainCache& gain_cache;
 
     // ! Factor to multiply max part weight with, in order to relax or disable the balance
     // criterion. Set to zero for disabling

@@ -62,8 +62,7 @@ class RebalancerTest : public Test
 
     RebalancerTest() :
         hypergraph(), partitioned_hypergraph(), context(), gain_cache(),
-        rebalancer(nullptr)
-    {
+        rebalancer(nullptr) {
         TBBInitializer::instance(std::thread::hardware_concurrency());
         context.partition.mode = Mode::direct;
         context.partition.epsilon = 0.05;
@@ -84,15 +83,11 @@ class RebalancerTest : public Test
             Hypergraph::is_graph ? GainPolicy::cut_for_graphs : GainPolicy::km1;
     }
 
-    void constructFromFile()
-    {
-        if constexpr(Hypergraph::is_graph)
-        {
+    void constructFromFile() {
+        if constexpr(Hypergraph::is_graph) {
             hypergraph = io::readInputFile<Hypergraph>(
                 "../tests/instances/delaunay_n10.graph", FileFormat::Metis, true);
-        }
-        else
-        {
+        } else {
             hypergraph = io::readInputFile<Hypergraph>(
                 "../tests/instances/contracted_unweighted_ibm01.hgr", FileFormat::hMetis,
                 true);
@@ -101,16 +96,14 @@ class RebalancerTest : public Test
 
     void constructFromValues(const HypernodeID num_hypernodes,
                              const HyperedgeID num_hyperedges,
-                             const vec<vec<HypernodeID> > &edge_vector,
-                             const vec<HypernodeWeight> hypernode_weight)
-    {
+                             const vec<vec<HypernodeID> >& edge_vector,
+                             const vec<HypernodeWeight> hypernode_weight) {
         hypergraph =
             HypergraphFactory::construct(num_hypernodes, num_hyperedges, edge_vector,
                                          nullptr, hypernode_weight.data());
     }
 
-    void setup()
-    {
+    void setup() {
         partitioned_hypergraph =
             PartitionedHypergraph(context.partition.k, hypergraph, parallel_tag_t());
         context.setupPartWeights(hypergraph.totalWeight());
@@ -136,8 +129,7 @@ typedef ::testing::Types<
 
 TYPED_TEST_CASE(RebalancerTest, TestConfigs);
 
-TYPED_TEST(RebalancerTest, CanNotBeRebalanced)
-{
+TYPED_TEST(RebalancerTest, CanNotBeRebalanced) {
     this->constructFromValues(3, 1, { { 0, 1 } }, { 6, 5, 4 });
     this->setup();
 
@@ -158,17 +150,14 @@ TYPED_TEST(RebalancerTest, CanNotBeRebalanced)
                      metrics.imbalance);
 }
 
-TYPED_TEST(RebalancerTest, ProducesBalancedResult)
-{
+TYPED_TEST(RebalancerTest, ProducesBalancedResult) {
     this->constructFromFile();
     this->setup();
 
     this->partitioned_hypergraph.doParallelForAllNodes([&](const HypernodeID hn) {
         PartitionID block = 0;
-        for(PartitionID p = 1; p < this->context.partition.k; ++p)
-        {
-            if(utils::Randomize::instance().flipCoin(THREAD_ID))
-            {
+        for(PartitionID p = 1; p < this->context.partition.k; ++p) {
+            if(utils::Randomize::instance().flipCoin(THREAD_ID)) {
                 block++;
             }
         }
@@ -187,8 +176,7 @@ TYPED_TEST(RebalancerTest, ProducesBalancedResult)
 
     ASSERT_DOUBLE_EQ(metrics::imbalance(this->partitioned_hypergraph, this->context),
                      metrics.imbalance);
-    for(PartitionID part = 0; part < this->context.partition.k; ++part)
-    {
+    for(PartitionID part = 0; part < this->context.partition.k; ++part) {
         ASSERT_LE(this->partitioned_hypergraph.partWeight(part),
                   this->context.partition.max_part_weights[part]);
     }

@@ -39,8 +39,7 @@
 using namespace mt_kahypar;
 namespace po = boost::program_options;
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     std::string graph_filename;
     std::string hgr_filename;
 
@@ -75,51 +74,41 @@ int main(int argc, char *argv[])
 
     // Write header
     out_stream << num_nodes << " " << num_edges << " ";
-    if(hyperedges_weight.empty() && hypernodes_weight.empty())
-    {
+    if(hyperedges_weight.empty() && hypernodes_weight.empty()) {
         out_stream << "0" /* Unweighted */ << std::endl;
-    }
-    else
-    {
+    } else {
         out_stream << (hypernodes_weight.empty() ? "0" : "1");
         out_stream << (hyperedges_weight.empty() ? "0" : "1") << std::endl;
     }
 
     // insert backward edges
     hyperedges.reserve(2 * num_edges);
-    for(size_t he = 0; he < num_edges; ++he)
-    {
-        const auto &pins = hyperedges[he];
+    for(size_t he = 0; he < num_edges; ++he) {
+        const auto& pins = hyperedges[he];
         ALWAYS_ASSERT(pins.size() == 2, "Input hypergraph is not a graph!");
         hyperedges.push_back({ pins[1], pins[0] });
     }
 
-    std::sort(hyperedges.begin(), hyperedges.end(), [](const auto &l, const auto &r) {
+    std::sort(hyperedges.begin(), hyperedges.end(), [](const auto& l, const auto& r) {
         return l[0] < r[0] || (l[0] == r[0] && l[1] < r[1]);
     });
 
     // Write edges
     size_t i = 0;
     bool at_start_of_line = true;
-    for(size_t he = 0; he < hyperedges.size();)
-    {
-        const auto &pins = hyperedges[he];
-        if(!hypernodes_weight.empty() && at_start_of_line)
-        {
+    for(size_t he = 0; he < hyperedges.size();) {
+        const auto& pins = hyperedges[he];
+        if(!hypernodes_weight.empty() && at_start_of_line) {
             out_stream << hypernodes_weight[i] << " ";
         }
-        if(pins[0] == i)
-        {
+        if(pins[0] == i) {
             out_stream << (pins[1] + 1) << " ";
-            if(!hyperedges_weight.empty())
-            {
+            if(!hyperedges_weight.empty()) {
                 out_stream << hyperedges_weight[he] << " ";
             }
             ++he;
             at_start_of_line = false;
-        }
-        else
-        {
+        } else {
             out_stream << std::endl;
             ++i;
             ALWAYS_ASSERT(i < num_nodes);

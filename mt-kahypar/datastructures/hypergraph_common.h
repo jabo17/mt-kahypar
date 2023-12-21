@@ -46,8 +46,7 @@ using TBBInitializer = mt_kahypar::parallel::TBBInitializer<HardwareTopology, fa
 #define UI64(X) static_cast<uint64_t>(X)
 
 struct parallel_tag_t
-{
-};
+{};
 using RatingType = double;
 #if KAHYPAR_USE_64_BIT_IDS
 #define ID(X) static_cast<uint64_t>(X)
@@ -155,7 +154,7 @@ struct SynchronizedEdgeUpdate
 
 struct NoOpDeltaFunc
 {
-    void operator()(const SynchronizedEdgeUpdate &) {}
+    void operator()(const SynchronizedEdgeUpdate&) {}
 };
 
 template <typename Hypergraph, typename ConInfo>

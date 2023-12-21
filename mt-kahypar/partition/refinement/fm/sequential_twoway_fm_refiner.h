@@ -60,8 +60,7 @@ class SequentialTwoWayFmRefiner
      * the hyperedge becomes LOCKED. LOCKED hyperedges have the property that they can not
      * be removed from cut and we can therefore skip delta gain updates.
      */
-    enum HEState
-    {
+    enum HEState {
         FREE = std::numeric_limits<PartitionID>::max() - 1,
         LOCKED = std::numeric_limits<PartitionID>::max(),
     };
@@ -71,12 +70,7 @@ class SequentialTwoWayFmRefiner
      * ACTIVE = Vertex is a border node and inserted into the PQ
      * MOVED = Vertex was moved during local search
      */
-    enum class VertexState
-    {
-        INACTIVE,
-        ACTIVE,
-        MOVED
-    };
+    enum class VertexState { INACTIVE, ACTIVE, MOVED };
 
     /**
      * Our partitioned hypergraph data structures does not track to how many cut
@@ -89,61 +83,49 @@ class SequentialTwoWayFmRefiner
     {
 
       public:
-        explicit BorderVertexTracker(const HypernodeID &num_hypernodes) :
+        explicit BorderVertexTracker(const HypernodeID& num_hypernodes) :
             _num_hypernodes(num_hypernodes), _num_incident_cut_hes(num_hypernodes, 0),
-            _hns_to_activate(), _hns_to_remove_from_pq()
-        {
-        }
+            _hns_to_activate(), _hns_to_remove_from_pq() {}
 
-        void initialize(const PartitionedHypergraph &phg)
-        {
+        void initialize(const PartitionedHypergraph& phg) {
             reset();
-            for(const HypernodeID &hn : phg.nodes())
-            {
+            for(const HypernodeID& hn : phg.nodes()) {
                 ASSERT(hn < _num_hypernodes);
-                for(const HyperedgeID &he : phg.incidentEdges(hn))
-                {
-                    if(phg.connectivity(he) > 1)
-                    {
+                for(const HyperedgeID& he : phg.incidentEdges(hn)) {
+                    if(phg.connectivity(he) > 1) {
                         ++_num_incident_cut_hes[hn];
                     }
                 }
             }
         }
 
-        bool isBorderNode(const HypernodeID hn) const
-        {
+        bool isBorderNode(const HypernodeID hn) const {
             ASSERT(hn < _num_hypernodes);
             return _num_incident_cut_hes[hn] > 0;
         }
 
         void
-        becameCutHyperedge(const PartitionedHypergraph &phg, const HyperedgeID he,
-                           const parallel::scalable_vector<VertexState> &vertex_state)
-        {
+        becameCutHyperedge(const PartitionedHypergraph& phg, const HyperedgeID he,
+                           const parallel::scalable_vector<VertexState>& vertex_state) {
             // assertion doesn't hold for graph structure, because edge pin counts
             // are not updated until the move is completed
-            for(const HypernodeID &pin : phg.pins(he))
-            {
+            for(const HypernodeID& pin : phg.pins(he)) {
                 ASSERT(pin < _num_hypernodes);
                 ASSERT(_num_incident_cut_hes[pin] <= phg.nodeDegree(pin));
                 ++_num_incident_cut_hes[pin];
                 if(_num_incident_cut_hes[pin] == 1 &&
-                   vertex_state[pin] == VertexState::INACTIVE)
-                {
+                   vertex_state[pin] == VertexState::INACTIVE) {
                     _hns_to_activate.push_back(pin);
                 }
             }
         }
 
-        void
-        becameNonCutHyperedge(const PartitionedHypergraph &phg, const HyperedgeID he,
-                              const parallel::scalable_vector<VertexState> &vertex_state)
-        {
+        void becameNonCutHyperedge(
+            const PartitionedHypergraph& phg, const HyperedgeID he,
+            const parallel::scalable_vector<VertexState>& vertex_state) {
             // assertion doesn't hold for graph structure, because edge pin counts
             // are not updated until the move is completed
-            for(const HypernodeID &pin : phg.pins(he))
-            {
+            for(const HypernodeID& pin : phg.pins(he)) {
                 ASSERT(pin < _num_hypernodes);
                 ASSERT(_num_incident_cut_hes[pin] > 0);
                 --_num_incident_cut_hes[pin];
@@ -152,8 +134,7 @@ class SequentialTwoWayFmRefiner
                 // this later by an explicit check if the vertex is still an internal
                 // vertex (see doForAllVerticesThatBecameInternalVertices(...)).
                 if(_num_incident_cut_hes[pin] == 0 &&
-                   vertex_state[pin] == VertexState::ACTIVE)
-                {
+                   vertex_state[pin] == VertexState::ACTIVE) {
                     _hns_to_remove_from_pq.push_back(pin);
                 }
             }
@@ -161,10 +142,8 @@ class SequentialTwoWayFmRefiner
 
         // ! Iterates over all vertices that became border vertices after the last move
         template <typename F>
-        void doForAllVerticesThatBecameBorderVertices(const F &f)
-        {
-            for(const HypernodeID &hn : _hns_to_activate)
-            {
+        void doForAllVerticesThatBecameBorderVertices(const F& f) {
+            for(const HypernodeID& hn : _hns_to_activate) {
                 f(hn);
             }
             _hns_to_activate.clear();
@@ -172,14 +151,11 @@ class SequentialTwoWayFmRefiner
 
         // ! Iterates over all vertices that became internal vertices after the last move
         template <typename F>
-        void doForAllVerticesThatBecameInternalVertices(const F &f)
-        {
-            for(const HypernodeID &hn : _hns_to_remove_from_pq)
-            {
+        void doForAllVerticesThatBecameInternalVertices(const F& f) {
+            for(const HypernodeID& hn : _hns_to_remove_from_pq) {
                 // Explicit border vertex check, because vector can contain fales
                 // positives (see becameNonCutHyperedge(...))
-                if(!isBorderNode(hn))
-                {
+                if(!isBorderNode(hn)) {
                     f(hn);
                 }
             }
@@ -187,10 +163,8 @@ class SequentialTwoWayFmRefiner
         }
 
       private:
-        void reset()
-        {
-            for(HypernodeID hn = 0; hn < _num_hypernodes; ++hn)
-            {
+        void reset() {
+            for(HypernodeID hn = 0; hn < _num_hypernodes; ++hn) {
                 _num_incident_cut_hes[hn] = 0;
             }
             _hns_to_activate.clear();
@@ -204,17 +178,16 @@ class SequentialTwoWayFmRefiner
     };
 
   public:
-    SequentialTwoWayFmRefiner(PartitionedHypergraph &phg, const Context &context) :
+    SequentialTwoWayFmRefiner(PartitionedHypergraph& phg, const Context& context) :
         _phg(phg), _context(context), _nodes(), _pq(context.partition.k),
         _border_vertices(phg.initialNumNodes()),
         _vertex_state(phg.initialNumNodes(), VertexState::INACTIVE),
-        _he_state(phg.initialNumEdges(), HEState::FREE)
-    {
+        _he_state(phg.initialNumEdges(), HEState::FREE) {
         ASSERT(_context.partition.k == 2);
         _pq.initialize(_phg.initialNumNodes());
     }
 
-    bool refine(Metrics &best_metrics, std::mt19937 &prng);
+    bool refine(Metrics& best_metrics, std::mt19937& prng);
 
   private:
     void activate(const HypernodeID hn);
@@ -238,13 +211,13 @@ class SequentialTwoWayFmRefiner
 
     Gain computeGain(const HypernodeID hn, const PartitionID from, const PartitionID to);
 
-    void rollback(const parallel::scalable_vector<HypernodeID> &performed_moves,
+    void rollback(const parallel::scalable_vector<HypernodeID>& performed_moves,
                   const size_t min_cut_idx);
 
     bool verifyPQState() const;
 
-    PartitionedHypergraph &_phg;
-    const Context &_context;
+    PartitionedHypergraph& _phg;
+    const Context& _context;
 
     parallel::scalable_vector<HypernodeID> _nodes;
     KWayRefinementPQ _pq;

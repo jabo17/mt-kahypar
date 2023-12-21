@@ -38,8 +38,7 @@
 namespace po = boost::program_options;
 using namespace mt_kahypar;
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     std::string partition_file;
     double percentage = 0;
     PartitionID k;
@@ -69,15 +68,11 @@ int main(int argc, char *argv[])
                         std::to_string(threshold / 10) + ".fix";
     std::ofstream out_stream(fixed_vertex_file.c_str());
     utils::Randomize rand = utils::Randomize::instance();
-    for(size_t i = 0; i < partition.size(); ++i)
-    {
+    for(size_t i = 0; i < partition.size(); ++i) {
         int num = rand.getRandomInt(0, 1000, THREAD_ID);
-        if(num < threshold)
-        {
+        if(num < threshold) {
             out_stream << partition[i] << std::endl;
-        }
-        else
-        {
+        } else {
             out_stream << kInvalidPartition << std::endl;
         }
     }

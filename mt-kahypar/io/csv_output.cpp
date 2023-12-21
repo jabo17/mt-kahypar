@@ -37,8 +37,7 @@
 
 namespace mt_kahypar::io::csv {
 
-std::string header()
-{
+std::string header() {
     return "algorithm,threads,graph,k,seed,epsilon,imbalance,"
            "objective,km1,cut,initial_km1,partitionTime,fmTime,lpTime,coarseningTime,"
            "ipTime,preprocessingTime"
@@ -46,21 +45,16 @@ std::string header()
 }
 
 template <typename PartitionedHypergraph>
-std::string serialize(const PartitionedHypergraph &phg, const Context &context,
-                      const std::chrono::duration<double> &elapsed_seconds)
-{
+std::string serialize(const PartitionedHypergraph& phg, const Context& context,
+                      const std::chrono::duration<double>& elapsed_seconds) {
     const char sep = ',';
     std::stringstream s;
 
     s << context.algorithm_name;
-    if(context.algorithm_name == "MT-KaHyPar")
-    {
-        if(context.partition.preset_file.find("fast") != std::string::npos)
-        {
+    if(context.algorithm_name == "MT-KaHyPar") {
+        if(context.partition.preset_file.find("fast") != std::string::npos) {
             s << "-Fast";
-        }
-        else if(context.partition.preset_file.find("quality") != std::string::npos)
-        {
+        } else if(context.partition.preset_file.find("quality") != std::string::npos) {
             s << "-Eco";
         }
     }
@@ -82,7 +76,7 @@ std::string serialize(const PartitionedHypergraph &phg, const Context &context,
     s << context.initial_km1 << sep;
     s << elapsed_seconds.count() << sep;
 
-    utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
     timer.showDetailedTimings(context.partition.show_detailed_timings);
     s << (timer.get("fm") + timer.get("initialize_fm_refiner")) << sep;
     s << (timer.get("label_propagation") + timer.get("initialize_lp_refiner")) << sep;
@@ -95,8 +89,8 @@ std::string serialize(const PartitionedHypergraph &phg, const Context &context,
 
 namespace {
 #define SERIALIZE(X)                                                                     \
-    std::string serialize(const X &phg, const Context &context,                          \
-                          const std::chrono::duration<double> &elapsed_seconds)
+    std::string serialize(const X& phg, const Context& context,                          \
+                          const std::chrono::duration<double>& elapsed_seconds)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(SERIALIZE)

@@ -44,8 +44,7 @@ using HyperedgeVector = vec<vec<HypernodeID> >;
 
 template <typename PartitionedHypergraph>
 std::pair<ds::StaticHypergraph, StaticPartitionedHypergraph>
-convert_to_static_hypergraph(const PartitionedHypergraph &phg)
-{
+convert_to_static_hypergraph(const PartitionedHypergraph& phg) {
     using Hypergraph = ds::StaticHypergraph;
     using TargetPartitionedHypergraph = StaticPartitionedHypergraph;
     using Factory = typename Hypergraph::Factory;
@@ -65,14 +64,12 @@ convert_to_static_hypergraph(const PartitionedHypergraph &phg)
     // Write hypergraph into temporary data structure
     tbb::parallel_invoke(
         [&] {
-            if constexpr(PartitionedHypergraph::is_graph)
-            {
+            if constexpr(PartitionedHypergraph::is_graph) {
                 CAtomic<size_t> cnt(0);
-                phg.doParallelForAllEdges([&](const HyperedgeID &he) {
+                phg.doParallelForAllEdges([&](const HyperedgeID& he) {
                     const HypernodeID u = phg.edgeSource(he);
                     const HypernodeID v = phg.edgeTarget(he);
-                    if(u < v)
-                    {
+                    if(u < v) {
                         // insert each edge only once
                         const size_t id = cnt.fetch_add(1, std::memory_order_relaxed);
                         hyperedge_weight[id] = phg.edgeWeight(he);
@@ -80,20 +77,17 @@ convert_to_static_hypergraph(const PartitionedHypergraph &phg)
                         edge_vector[id].push_back(v);
                     }
                 });
-            }
-            else
-            {
-                phg.doParallelForAllEdges([&](const HyperedgeID &he) {
+            } else {
+                phg.doParallelForAllEdges([&](const HyperedgeID& he) {
                     hyperedge_weight[he] = phg.edgeWeight(he);
-                    for(const HypernodeID &pin : phg.pins(he))
-                    {
+                    for(const HypernodeID& pin : phg.pins(he)) {
                         edge_vector[he].push_back(pin);
                     }
                 });
             }
         },
         [&] {
-            phg.doParallelForAllNodes([&](const HypernodeID &hn) {
+            phg.doParallelForAllNodes([&](const HypernodeID& hn) {
                 hypernode_weight[hn] = phg.nodeWeight(hn);
             });
         });
@@ -102,16 +96,15 @@ convert_to_static_hypergraph(const PartitionedHypergraph &phg)
     Hypergraph converted_hg =
         Factory::construct(num_hypernodes, num_hyperedges, edge_vector,
                            hyperedge_weight.data(), hypernode_weight.data());
-    converted_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
-        if(!phg.nodeIsEnabled(hn))
-        {
+    converted_hg.doParallelForAllNodes([&](const HypernodeID& hn) {
+        if(!phg.nodeIsEnabled(hn)) {
             ASSERT(converted_hg.nodeDegree(hn) == 0);
             converted_hg.disableHypernode(hn);
         }
     });
 
     TargetPartitionedHypergraph converted_phg(phg.k(), converted_hg, parallel_tag_t{});
-    phg.doParallelForAllNodes([&](const HypernodeID &hn) {
+    phg.doParallelForAllNodes([&](const HypernodeID& hn) {
         converted_phg.setOnlyNodePart(hn, phg.partID(hn));
     });
     converted_phg.initializePartition();
@@ -123,32 +116,27 @@ convert_to_static_hypergraph(const PartitionedHypergraph &phg)
 }
 
 template <typename PartitionedHypergraph, typename TargetPartitionedHypergraph>
-void applyPartition(PartitionedHypergraph &phg, TargetPartitionedHypergraph &target_phg)
-{
-    target_phg.doParallelForAllNodes([&](const HypernodeID &hn) {
+void applyPartition(PartitionedHypergraph& phg, TargetPartitionedHypergraph& target_phg) {
+    target_phg.doParallelForAllNodes([&](const HypernodeID& hn) {
         const PartitionID from = target_phg.partID(hn);
         const PartitionID to = phg.partID(hn);
-        if(from != to)
-        {
+        if(from != to) {
             target_phg.changeNodePart(hn, from, to);
         }
     });
 }
 
 template <typename Hypergraph, typename PartitionedHypergraph>
-Hypergraph repairEmptyBlocks(const Hypergraph &contracted_hg,
-                             const PartitionedHypergraph &communication_hg,
-                             vec<HypernodeID> &mapping)
-{
+Hypergraph repairEmptyBlocks(const Hypergraph& contracted_hg,
+                             const PartitionedHypergraph& communication_hg,
+                             vec<HypernodeID>& mapping) {
     using Factory = typename Hypergraph::Factory;
     const PartitionID k = communication_hg.k();
     vec<HypernodeID> block_mapping(contracted_hg.initialNumNodes(), kInvalidHypernode);
     HypernodeID cur_id = 0;
     vec<HypernodeWeight> hypernode_weight(k, 0);
-    for(PartitionID block = 0; block < k; ++block)
-    {
-        if(communication_hg.partWeight(block) > 0)
-        {
+    for(PartitionID block = 0; block < k; ++block) {
+        if(communication_hg.partWeight(block) > 0) {
             ASSERT(UL(cur_id) < block_mapping.size());
             block_mapping[cur_id++] = block;
         }
@@ -159,9 +147,8 @@ Hypergraph repairEmptyBlocks(const Hypergraph &contracted_hg,
     const HyperedgeID num_hyperedges = contracted_hg.initialNumEdges();
     HyperedgeVector edge_vector(num_hyperedges, vec<HypernodeID>());
     vec<HyperedgeWeight> hyperedge_weight(num_hyperedges, 0);
-    contracted_hg.doParallelForAllEdges([&](const HyperedgeID &he) {
-        for(const HypernodeID &pin : contracted_hg.pins(he))
-        {
+    contracted_hg.doParallelForAllEdges([&](const HyperedgeID& he) {
+        for(const HypernodeID& pin : contracted_hg.pins(he)) {
             edge_vector[he].push_back(block_mapping[pin]);
         }
         hyperedge_weight[he] = contracted_hg.edgeWeight(he);
@@ -169,18 +156,17 @@ Hypergraph repairEmptyBlocks(const Hypergraph &contracted_hg,
 
     // Adapt mapping
     communication_hg.doParallelForAllNodes(
-        [&](const HypernodeID &hn) { mapping[hn] = block_mapping[mapping[hn]]; });
+        [&](const HypernodeID& hn) { mapping[hn] = block_mapping[mapping[hn]]; });
 
     return Factory::construct(num_hypernodes, num_hyperedges, edge_vector,
                               hyperedge_weight.data(), hypernode_weight.data());
 }
 
 template <typename PartitionedHypergraph>
-void map_to_target_graph(PartitionedHypergraph &communication_hg,
-                         const TargetGraph &target_graph, const Context &context)
-{
+void map_to_target_graph(PartitionedHypergraph& communication_hg,
+                         const TargetGraph& target_graph, const Context& context) {
     using Hypergraph = typename PartitionedHypergraph::UnderlyingHypergraph;
-    utils::Timer &timer = utils::Utilities::instance().getTimer(context.utility_id);
+    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
     const bool was_unused_memory_allocations_enabled =
         parallel::MemoryPoolT::instance().is_unused_memory_allocations_activated();
     parallel::MemoryPoolT::instance().deactivate_unused_memory_allocations();
@@ -195,15 +181,13 @@ void map_to_target_graph(PartitionedHypergraph &communication_hg,
     // contracted hypergraph node i corresponds to block i of the input
     // communication hypergraph.
     Hypergraph contracted_hg = communication_hg.hypergraph().contract(mapping);
-    if(contracted_hg.initialNumNodes() < static_cast<HypernodeID>(communication_hg.k()))
-    {
+    if(contracted_hg.initialNumNodes() < static_cast<HypernodeID>(communication_hg.k())) {
         // If the contracted hypergraph has less than k nodes then there must be some
         // empty blocks which we have to fix in the following
         contracted_hg = repairEmptyBlocks(contracted_hg, communication_hg, mapping);
     }
     PartitionedHypergraph contracted_phg(communication_hg.k(), contracted_hg);
-    for(const HypernodeID &hn : contracted_phg.nodes())
-    {
+    for(const HypernodeID& hn : contracted_phg.nodes()) {
         contracted_phg.setOnlyNodePart(hn, hn);
     }
     contracted_phg.initializePartition();
@@ -216,18 +200,15 @@ void map_to_target_graph(PartitionedHypergraph &communication_hg,
            objective_before);
 
     // Solve one-to-one mapping problem
-    if(context.mapping.strategy == OneToOneMappingStrategy::greedy_mapping)
-    {
+    if(context.mapping.strategy == OneToOneMappingStrategy::greedy_mapping) {
         GreedyMapping<PartitionedHypergraph>::mapToTargetGraph(contracted_phg,
                                                                target_graph, context);
     }
 
     const HyperedgeWeight objective_after =
         metrics::quality(contracted_phg, Objective::steiner_tree);
-    if(objective_after < objective_before)
-    {
-        if(context.partition.verbose_output)
-        {
+    if(objective_after < objective_before) {
+        if(context.partition.verbose_output) {
             LOG << GREEN
                 << "Initial one-to-one mapping algorithm has improved objective by"
                 << (objective_before - objective_after)
@@ -236,17 +217,14 @@ void map_to_target_graph(PartitionedHypergraph &communication_hg,
         }
         // Initial mapping algorithm has improved solution quality
         // => apply improved mapping to input communication hypergraph
-        communication_hg.doParallelForAllNodes([&](const HypernodeID &hn) {
+        communication_hg.doParallelForAllNodes([&](const HypernodeID& hn) {
             const PartitionID from = communication_hg.partID(hn);
             const PartitionID to = contracted_phg.partID(mapping[hn]);
-            if(from != to)
-            {
+            if(from != to) {
                 communication_hg.changeNodePart(hn, from, to);
             }
         });
-    }
-    else if(context.partition.verbose_output && objective_before < objective_after)
-    {
+    } else if(context.partition.verbose_output && objective_before < objective_after) {
         // Initial mapping algorithm has worsen solution quality
         // => use input partition of communication hypergraph
         LOG << RED << "Initial one-to-one mapping algorithm has worsen objective by"
@@ -255,20 +233,17 @@ void map_to_target_graph(PartitionedHypergraph &communication_hg,
             << "Use mapping from initial partitiong!" << END;
     }
 
-    if(was_unused_memory_allocations_enabled)
-    {
+    if(was_unused_memory_allocations_enabled) {
         parallel::MemoryPoolT::instance().activate_unused_memory_allocations();
     }
 }
 }
 
 template <typename TypeTraits>
-void InitialMapping<TypeTraits>::mapToTargetGraph(PartitionedHypergraph &communication_hg,
-                                                  const TargetGraph &target_graph,
-                                                  const Context &context)
-{
-    if constexpr(!PartitionedHypergraph::is_static_hypergraph)
-    {
+void InitialMapping<TypeTraits>::mapToTargetGraph(PartitionedHypergraph& communication_hg,
+                                                  const TargetGraph& target_graph,
+                                                  const Context& context) {
+    if constexpr(!PartitionedHypergraph::is_static_hypergraph) {
         // The mapping algorithm collapses each block of the communication hypergraph
         // partition into a single node. Thereby, it uses the contract(...) function of
         // the hypergraph data structure which is only implemented for static graphs and
@@ -277,13 +252,11 @@ void InitialMapping<TypeTraits>::mapToTargetGraph(PartitionedHypergraph &communi
         // structure, we convert it to static data structure and then compute the initial
         // mapping.
         auto static_hypergraph = convert_to_static_hypergraph(communication_hg);
-        StaticPartitionedHypergraph &tmp_communication_hg = static_hypergraph.second;
+        StaticPartitionedHypergraph& tmp_communication_hg = static_hypergraph.second;
         tmp_communication_hg.setHypergraph(static_hypergraph.first);
         map_to_target_graph(tmp_communication_hg, target_graph, context);
         applyPartition(tmp_communication_hg, communication_hg);
-    }
-    else
-    {
+    } else {
         map_to_target_graph(communication_hg, target_graph, context);
     }
 }

@@ -49,8 +49,7 @@ using Hypergraph = typename TypeTraits::Hypergraph;
 using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 }
 
-TEST(RollbackTests, GainRecalculationAndRollsbackCorrectly)
-{
+TEST(RollbackTests, GainRecalculationAndRollsbackCorrectly) {
     Hypergraph hg = io::readInputFile<Hypergraph>("../tests/instances/twocenters.hgr",
                                                   FileFormat::hMetis, true);
     PartitionID k = 2;
@@ -58,14 +57,12 @@ TEST(RollbackTests, GainRecalculationAndRollsbackCorrectly)
     PartitionedHypergraph phg(k, hg);
     phg.setNodePart(0, 1);
     phg.setNodePart(1, 1);
-    for(HypernodeID u = 4; u < 12; ++u)
-    {
+    for(HypernodeID u = 4; u < 12; ++u) {
         phg.setNodePart(u, 0);
     }
     phg.setNodePart(2, 0);
     phg.setNodePart(3, 0);
-    for(HypernodeID u = 12; u < 20; ++u)
-    {
+    for(HypernodeID u = 12; u < 20; ++u) {
         phg.setNodePart(u, 1);
     }
     Km1GainCache gain_cache;
@@ -83,8 +80,7 @@ TEST(RollbackTests, GainRecalculationAndRollsbackCorrectly)
     GlobalRollback<GraphAndGainTypes<TypeTraits, Km1GainTypes> > grb(hg.initialNumEdges(),
                                                                      context, gain_cache);
     auto performMove = [&](Move m) {
-        if(phg.changeNodePart(gain_cache, m.node, m.from, m.to))
-        {
+        if(phg.changeNodePart(gain_cache, m.node, m.from, m.to)) {
             sharedData.moveTracker.insertMove(m);
         }
     };
@@ -112,22 +108,19 @@ TEST(RollbackTests, GainRecalculationAndRollsbackCorrectly)
     ASSERT_EQ(metrics::quality(phg, Objective::km1, false), 2);
 }
 
-TEST(RollbackTests, GainRecalculation2)
-{
+TEST(RollbackTests, GainRecalculation2) {
     Hypergraph hg = io::readInputFile<Hypergraph>("../tests/instances/twocenters.hgr",
                                                   FileFormat::hMetis, true);
     PartitionID k = 2;
     PartitionedHypergraph phg(k, hg);
     phg.setNodePart(0, 1);
     phg.setNodePart(1, 1);
-    for(HypernodeID u = 4; u < 12; ++u)
-    {
+    for(HypernodeID u = 4; u < 12; ++u) {
         phg.setNodePart(u, 0);
     }
     phg.setNodePart(2, 0);
     phg.setNodePart(3, 0);
-    for(HypernodeID u = 12; u < 20; ++u)
-    {
+    for(HypernodeID u = 12; u < 20; ++u) {
         phg.setNodePart(u, 1);
     }
     Km1GainCache gain_cache;
@@ -145,7 +138,7 @@ TEST(RollbackTests, GainRecalculation2)
     GlobalRollback<GraphAndGainTypes<TypeTraits, Km1GainTypes> > grb(hg.initialNumEdges(),
                                                                      context, gain_cache);
 
-    auto performUpdates = [&](Move &m) { sharedData.moveTracker.insertMove(m); };
+    auto performUpdates = [&](Move& m) { sharedData.moveTracker.insertMove(m); };
 
     vec<Gain> expected_gains = { 3, 1 };
 

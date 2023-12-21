@@ -56,9 +56,7 @@ class Graph
             tmp_pos("Preprocessing", "tmp_pos", num_nodes),
             tmp_node_volumes("Preprocessing", "tmp_node_volumes", num_nodes),
             tmp_arcs("Preprocessing", "tmp_arcs", num_arcs),
-            valid_arcs("Preprocessing", "valid_arcs", num_arcs)
-        {
-        }
+            valid_arcs("Preprocessing", "valid_arcs", num_arcs) {}
 
         ds::Array<parallel::IntegralAtomicWrapper<size_t> > tmp_indices;
         ds::Array<parallel::IntegralAtomicWrapper<size_t> > tmp_pos;
@@ -71,10 +69,10 @@ class Graph
     using AdjacenceIterator = typename ds::Array<Arc>::const_iterator;
 
   public:
-    Graph(Hypergraph &hypergraph, const LouvainEdgeWeight edge_weight_type,
+    Graph(Hypergraph& hypergraph, const LouvainEdgeWeight edge_weight_type,
           bool is_graph = false);
-    Graph(Graph &&other);
-    Graph &operator=(Graph &&other);
+    Graph(Graph&& other);
+    Graph& operator=(Graph&& other);
     ~Graph();
 
     // ! Number of nodes in the graph
@@ -84,21 +82,18 @@ class Graph
     size_t numArcs() const { return _num_arcs; }
 
     // ! Iterator over all nodes of the graph
-    auto nodes() const
-    {
+    auto nodes() const {
         return boost::irange<NodeID>(0, static_cast<NodeID>(numNodes()));
     }
 
     // ! Iterator over all adjacent vertices of u
     // ! If 'n' is set, then only an iterator over the first n elements is returned
     IteratorRange<AdjacenceIterator>
-    arcsOf(const NodeID u, const size_t n = std::numeric_limits<size_t>::max()) const
-    {
+    arcsOf(const NodeID u, const size_t n = std::numeric_limits<size_t>::max()) const {
         ASSERT(u < _num_nodes);
         const size_t start = _indices[u];
         size_t end = _indices[u + 1];
-        if(n < (end - start))
-        {
+        if(n < (end - start)) {
             end = start + n;
         }
         return IteratorRange<AdjacenceIterator>(_arcs.cbegin() + start,
@@ -106,8 +101,7 @@ class Graph
     }
 
     // ! Degree of vertex u
-    size_t degree(const NodeID u) const
-    {
+    size_t degree(const NodeID u) const {
         ASSERT(u < _num_nodes);
         return _indices[u + 1] - _indices[u];
     }
@@ -119,16 +113,14 @@ class Graph
     ArcWeight totalVolume() const { return _total_volume; }
 
     // ! Node volume of vertex u
-    ArcWeight nodeVolume(const NodeID u) const
-    {
+    ArcWeight nodeVolume(const NodeID u) const {
         ASSERT(u < _num_nodes);
         return _node_volumes[u];
     }
 
     // ! Projects the clustering of the (likely bipartite star-expansion) graph to the
     // hypergraph
-    void restrictClusteringToHypernodes(const Hypergraph &hg, ds::Clustering &C) const
-    {
+    void restrictClusteringToHypernodes(const Hypergraph& hg, ds::Clustering& C) const {
         C.resize(hg.initialNumNodes());
     }
 
@@ -142,12 +134,11 @@ class Graph
      * coarse graph. Finally, the weights of each multiedge in that temporary graph
      * are aggregated and the result is written to the final contracted graph.
      */
-    Graph contract(Clustering &communities, bool low_memory);
+    Graph contract(Clustering& communities, bool low_memory);
 
-    Graph contract_low_memory(Clustering &communities);
+    Graph contract_low_memory(Clustering& communities);
 
-    void allocateContractionBuffers()
-    {
+    void allocateContractionBuffers() {
         _tmp_graph_buffer = new TmpGraphBuffer(_num_nodes, _num_arcs);
     }
 
@@ -158,21 +149,19 @@ class Graph
      * Constructs a graph from a given hypergraph.
      */
     template <typename F>
-    void construct(const Hypergraph &hypergraph, const bool is_graph,
-                   const F &edge_weight_func);
+    void construct(const Hypergraph& hypergraph, const bool is_graph,
+                   const F& edge_weight_func);
 
     template <typename F>
-    void constructBipartiteGraph(const Hypergraph &hypergraph, F &edge_weight_func);
+    void constructBipartiteGraph(const Hypergraph& hypergraph, F& edge_weight_func);
 
     template <typename F>
-    void constructGraph(const Hypergraph &hypergraph, const F &edge_weight_func);
+    void constructGraph(const Hypergraph& hypergraph, const F& edge_weight_func);
 
-    ArcWeight computeNodeVolume(const NodeID u)
-    {
+    ArcWeight computeNodeVolume(const NodeID u) {
         ASSERT(u < _num_nodes);
         ArcWeight x = 0.0;
-        for(const Arc &arc : arcsOf(u))
-        {
+        for(const Arc& arc : arcsOf(u)) {
             x += arc.weight;
         }
         _node_volumes[u] = x;

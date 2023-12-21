@@ -33,10 +33,8 @@
 
 namespace mt_kahypar {
 
-std::ostream &operator<<(std::ostream &os, const Type &type)
-{
-    switch(type)
-    {
+std::ostream& operator<<(std::ostream& os, const Type& type) {
+    switch(type) {
     case Type::Unweighted:
         return os << "unweighted";
     case Type::EdgeWeights:
@@ -50,10 +48,8 @@ std::ostream &operator<<(std::ostream &os, const Type &type)
     return os << static_cast<uint8_t>(type);
 }
 
-std::ostream &operator<<(std::ostream &os, const FileFormat &format)
-{
-    switch(format)
-    {
+std::ostream& operator<<(std::ostream& os, const FileFormat& format) {
+    switch(format) {
     case FileFormat::hMetis:
         return os << "hMetis";
     case FileFormat::Metis:
@@ -63,10 +59,8 @@ std::ostream &operator<<(std::ostream &os, const FileFormat &format)
     return os << static_cast<uint8_t>(format);
 }
 
-std::ostream &operator<<(std::ostream &os, const InstanceType &type)
-{
-    switch(type)
-    {
+std::ostream& operator<<(std::ostream& os, const InstanceType& type) {
+    switch(type) {
     case InstanceType::graph:
         return os << "graph";
     case InstanceType::hypergraph:
@@ -78,10 +72,8 @@ std::ostream &operator<<(std::ostream &os, const InstanceType &type)
     return os << static_cast<uint8_t>(type);
 }
 
-std::ostream &operator<<(std::ostream &os, const PresetType &type)
-{
-    switch(type)
-    {
+std::ostream& operator<<(std::ostream& os, const PresetType& type) {
+    switch(type) {
     case PresetType::deterministic:
         return os << "deterministic";
     case PresetType::large_k:
@@ -99,10 +91,8 @@ std::ostream &operator<<(std::ostream &os, const PresetType &type)
     return os << static_cast<uint8_t>(type);
 }
 
-std::ostream &operator<<(std::ostream &os, const mt_kahypar_partition_type_t &type)
-{
-    switch(type)
-    {
+std::ostream& operator<<(std::ostream& os, const mt_kahypar_partition_type_t& type) {
+    switch(type) {
     case MULTILEVEL_GRAPH_PARTITIONING:
         return os << "multilevel_graph_partitioning";
     case N_LEVEL_GRAPH_PARTITIONING:
@@ -120,23 +110,17 @@ std::ostream &operator<<(std::ostream &os, const mt_kahypar_partition_type_t &ty
     return os << static_cast<uint8_t>(type);
 }
 
-std::ostream &operator<<(std::ostream &os, const ContextType &type)
-{
-    if(type == ContextType::main)
-    {
+std::ostream& operator<<(std::ostream& os, const ContextType& type) {
+    if(type == ContextType::main) {
         return os << "main";
-    }
-    else
-    {
+    } else {
         return os << "ip";
     }
     return os << static_cast<uint8_t>(type);
 }
 
-std::ostream &operator<<(std::ostream &os, const Mode &mode)
-{
-    switch(mode)
-    {
+std::ostream& operator<<(std::ostream& os, const Mode& mode) {
+    switch(mode) {
     case Mode::recursive_bipartitioning:
         return os << "recursive_bipartitioning";
     case Mode::direct:
@@ -150,10 +134,8 @@ std::ostream &operator<<(std::ostream &os, const Mode &mode)
     return os << static_cast<uint8_t>(mode);
 }
 
-std::ostream &operator<<(std::ostream &os, const Objective &objective)
-{
-    switch(objective)
-    {
+std::ostream& operator<<(std::ostream& os, const Objective& objective) {
+    switch(objective) {
     case Objective::cut:
         return os << "cut";
     case Objective::km1:
@@ -169,10 +151,8 @@ std::ostream &operator<<(std::ostream &os, const Objective &objective)
     return os << static_cast<uint8_t>(objective);
 }
 
-std::ostream &operator<<(std::ostream &os, const GainPolicy &type)
-{
-    switch(type)
-    {
+std::ostream& operator<<(std::ostream& os, const GainPolicy& type) {
+    switch(type) {
     case GainPolicy::km1:
         return os << "km1";
     case GainPolicy::cut:
@@ -192,10 +172,8 @@ std::ostream &operator<<(std::ostream &os, const GainPolicy &type)
     return os << static_cast<uint8_t>(type);
 }
 
-std::ostream &operator<<(std::ostream &os, const LouvainEdgeWeight &type)
-{
-    switch(type)
-    {
+std::ostream& operator<<(std::ostream& os, const LouvainEdgeWeight& type) {
+    switch(type) {
     case LouvainEdgeWeight::hybrid:
         return os << "hybrid";
     case LouvainEdgeWeight::uniform:
@@ -211,10 +189,8 @@ std::ostream &operator<<(std::ostream &os, const LouvainEdgeWeight &type)
     return os << static_cast<uint8_t>(type);
 }
 
-std::ostream &operator<<(std::ostream &os, const SimiliarNetCombinerStrategy &strategy)
-{
-    switch(strategy)
-    {
+std::ostream& operator<<(std::ostream& os, const SimiliarNetCombinerStrategy& strategy) {
+    switch(strategy) {
     case SimiliarNetCombinerStrategy::union_nets:
         return os << "union";
     case SimiliarNetCombinerStrategy::max_size:
@@ -228,10 +204,8 @@ std::ostream &operator<<(std::ostream &os, const SimiliarNetCombinerStrategy &st
     return os << static_cast<uint8_t>(strategy);
 }
 
-std::ostream &operator<<(std::ostream &os, const CoarseningAlgorithm &algo)
-{
-    switch(algo)
-    {
+std::ostream& operator<<(std::ostream& os, const CoarseningAlgorithm& algo) {
+    switch(algo) {
     case CoarseningAlgorithm::multilevel_coarsener:
         return os << "multilevel_coarsener";
     case CoarseningAlgorithm::deterministic_multilevel_coarsener:
@@ -245,10 +219,9 @@ std::ostream &operator<<(std::ostream &os, const CoarseningAlgorithm &algo)
     return os << static_cast<uint8_t>(algo);
 }
 
-std::ostream &operator<<(std::ostream &os, const HeavyNodePenaltyPolicy &heavy_hn_policy)
-{
-    switch(heavy_hn_policy)
-    {
+std::ostream& operator<<(std::ostream& os,
+                         const HeavyNodePenaltyPolicy& heavy_hn_policy) {
+    switch(heavy_hn_policy) {
     case HeavyNodePenaltyPolicy::no_penalty:
         return os << "no_penalty";
         ENABLE_EXPERIMENTAL_FEATURES(case HeavyNodePenaltyPolicy::additive
@@ -261,10 +234,8 @@ std::ostream &operator<<(std::ostream &os, const HeavyNodePenaltyPolicy &heavy_h
     return os << static_cast<uint8_t>(heavy_hn_policy);
 }
 
-std::ostream &operator<<(std::ostream &os, const AcceptancePolicy &acceptance_policy)
-{
-    switch(acceptance_policy)
-    {
+std::ostream& operator<<(std::ostream& os, const AcceptancePolicy& acceptance_policy) {
+    switch(acceptance_policy) {
         ENABLE_EXPERIMENTAL_FEATURES(case AcceptancePolicy::best : return os << "best";)
     case AcceptancePolicy::best_prefer_unmatched:
         return os << "best_prefer_unmatched";
@@ -275,10 +246,8 @@ std::ostream &operator<<(std::ostream &os, const AcceptancePolicy &acceptance_po
     return os << static_cast<uint8_t>(acceptance_policy);
 }
 
-std::ostream &operator<<(std::ostream &os, const RatingFunction &func)
-{
-    switch(func)
-    {
+std::ostream& operator<<(std::ostream& os, const RatingFunction& func) {
+    switch(func) {
     case RatingFunction::heavy_edge:
         return os << "heavy_edge";
         ENABLE_EXPERIMENTAL_FEATURES(case RatingFunction::sameness
@@ -290,10 +259,8 @@ std::ostream &operator<<(std::ostream &os, const RatingFunction &func)
     return os << static_cast<uint8_t>(func);
 }
 
-std::ostream &operator<<(std::ostream &os, const InitialPartitioningAlgorithm &algo)
-{
-    switch(algo)
-    {
+std::ostream& operator<<(std::ostream& os, const InitialPartitioningAlgorithm& algo) {
+    switch(algo) {
     case InitialPartitioningAlgorithm::random:
         return os << "random";
     case InitialPartitioningAlgorithm::bfs:
@@ -319,10 +286,8 @@ std::ostream &operator<<(std::ostream &os, const InitialPartitioningAlgorithm &a
     return os << static_cast<uint8_t>(algo);
 }
 
-std::ostream &operator<<(std::ostream &os, const LabelPropagationAlgorithm &algo)
-{
-    switch(algo)
-    {
+std::ostream& operator<<(std::ostream& os, const LabelPropagationAlgorithm& algo) {
+    switch(algo) {
     case LabelPropagationAlgorithm::label_propagation:
         return os << "label_propagation";
     case LabelPropagationAlgorithm::deterministic:
@@ -334,10 +299,8 @@ std::ostream &operator<<(std::ostream &os, const LabelPropagationAlgorithm &algo
     return os << static_cast<uint8_t>(algo);
 }
 
-std::ostream &operator<<(std::ostream &os, const FMAlgorithm &algo)
-{
-    switch(algo)
-    {
+std::ostream& operator<<(std::ostream& os, const FMAlgorithm& algo) {
+    switch(algo) {
     case FMAlgorithm::kway_fm:
         return os << "kway_fm";
     case FMAlgorithm::unconstrained_fm:
@@ -349,10 +312,8 @@ std::ostream &operator<<(std::ostream &os, const FMAlgorithm &algo)
     return os << static_cast<uint8_t>(algo);
 }
 
-std::ostream &operator<<(std::ostream &os, const FlowAlgorithm &algo)
-{
-    switch(algo)
-    {
+std::ostream& operator<<(std::ostream& os, const FlowAlgorithm& algo) {
+    switch(algo) {
     case FlowAlgorithm::flow_cutter:
         return os << "flow_cutter";
     case FlowAlgorithm::mock:
@@ -364,10 +325,8 @@ std::ostream &operator<<(std::ostream &os, const FlowAlgorithm &algo)
     return os << static_cast<uint8_t>(algo);
 }
 
-std::ostream &operator<<(std::ostream &os, const RebalancingAlgorithm &algo)
-{
-    switch(algo)
-    {
+std::ostream& operator<<(std::ostream& os, const RebalancingAlgorithm& algo) {
+    switch(algo) {
     case RebalancingAlgorithm::simple_rebalancer:
         return os << "simple_rebalancer";
     case RebalancingAlgorithm::advanced_rebalancer:
@@ -379,10 +338,8 @@ std::ostream &operator<<(std::ostream &os, const RebalancingAlgorithm &algo)
     return os << static_cast<uint8_t>(algo);
 }
 
-std::ostream &operator<<(std::ostream &os, const OneToOneMappingStrategy &algo)
-{
-    switch(algo)
-    {
+std::ostream& operator<<(std::ostream& os, const OneToOneMappingStrategy& algo) {
+    switch(algo) {
     case OneToOneMappingStrategy::greedy_mapping:
         return os << "greedy_mapping";
     case OneToOneMappingStrategy::identity:
@@ -392,10 +349,8 @@ std::ostream &operator<<(std::ostream &os, const OneToOneMappingStrategy &algo)
     return os << static_cast<uint8_t>(algo);
 }
 
-std::ostream &operator<<(std::ostream &os, const SteinerTreeFlowValuePolicy &policy)
-{
-    switch(policy)
-    {
+std::ostream& operator<<(std::ostream& os, const SteinerTreeFlowValuePolicy& policy) {
+    switch(policy) {
     case SteinerTreeFlowValuePolicy::lower_bound:
         return os << "lower_bound";
     case SteinerTreeFlowValuePolicy::upper_bound:
@@ -407,157 +362,105 @@ std::ostream &operator<<(std::ostream &os, const SteinerTreeFlowValuePolicy &pol
     return os << static_cast<uint8_t>(policy);
 }
 
-Mode modeFromString(const std::string &mode)
-{
-    if(mode == "rb")
-    {
+Mode modeFromString(const std::string& mode) {
+    if(mode == "rb") {
         return Mode::recursive_bipartitioning;
-    }
-    else if(mode == "direct")
-    {
+    } else if(mode == "direct") {
         return Mode::direct;
-    }
-    else if(mode == "deep")
-    {
+    } else if(mode == "deep") {
         return Mode::deep_multilevel;
     }
     throw InvalidParameterException("Illegal option: " + mode);
     return Mode::UNDEFINED;
 }
 
-InstanceType instanceTypeFromString(const std::string &type)
-{
-    if(type == "graph")
-    {
+InstanceType instanceTypeFromString(const std::string& type) {
+    if(type == "graph") {
         return InstanceType::graph;
-    }
-    else if(type == "hypergraph")
-    {
+    } else if(type == "hypergraph") {
         return InstanceType::hypergraph;
     }
     throw InvalidParameterException("Illegal option: " + type);
     return InstanceType::UNDEFINED;
 }
 
-PresetType presetTypeFromString(const std::string &type)
-{
-    if(type == "deterministic")
-    {
+PresetType presetTypeFromString(const std::string& type) {
+    if(type == "deterministic") {
         return PresetType::deterministic;
-    }
-    else if(type == "large_k")
-    {
+    } else if(type == "large_k") {
         return PresetType::large_k;
-    }
-    else if(type == "default")
-    {
+    } else if(type == "default") {
         return PresetType::default_preset;
-    }
-    else if(type == "quality")
-    {
+    } else if(type == "quality") {
         return PresetType::quality;
-    }
-    else if(type == "highest_quality")
-    {
+    } else if(type == "highest_quality") {
         return PresetType::highest_quality;
     }
     throw InvalidParameterException("Illegal option: " + type);
     return PresetType::UNDEFINED;
 }
 
-Objective objectiveFromString(const std::string &obj)
-{
-    if(obj == "cut")
-    {
+Objective objectiveFromString(const std::string& obj) {
+    if(obj == "cut") {
         return Objective::cut;
-    }
-    else if(obj == "km1")
-    {
+    } else if(obj == "km1") {
         return Objective::km1;
-    }
-    else if(obj == "soed")
-    {
+    } else if(obj == "soed") {
         return Objective::soed;
-    }
-    else if(obj == "steiner_tree")
-    {
+    } else if(obj == "steiner_tree") {
         return Objective::steiner_tree;
     }
     throw InvalidParameterException("No valid objective function.");
     return Objective::UNDEFINED;
 }
 
-LouvainEdgeWeight louvainEdgeWeightFromString(const std::string &type)
-{
-    if(type == "hybrid")
-    {
+LouvainEdgeWeight louvainEdgeWeightFromString(const std::string& type) {
+    if(type == "hybrid") {
         return LouvainEdgeWeight::hybrid;
-    }
-    else if(type == "uniform")
-    {
+    } else if(type == "uniform") {
         return LouvainEdgeWeight::uniform;
-    }
-    else if(type == "non_uniform")
-    {
+    } else if(type == "non_uniform") {
         return LouvainEdgeWeight::non_uniform;
-    }
-    else if(type == "degree")
-    {
+    } else if(type == "degree") {
         return LouvainEdgeWeight::degree;
     }
     throw InvalidParameterException("No valid louvain edge weight.");
     return LouvainEdgeWeight::UNDEFINED;
 }
 
-SimiliarNetCombinerStrategy similiarNetCombinerStrategyFromString(const std::string &type)
-{
-    if(type == "union")
-    {
+SimiliarNetCombinerStrategy
+similiarNetCombinerStrategyFromString(const std::string& type) {
+    if(type == "union") {
         return SimiliarNetCombinerStrategy::union_nets;
-    }
-    else if(type == "max_size")
-    {
+    } else if(type == "max_size") {
         return SimiliarNetCombinerStrategy::max_size;
-    }
-    else if(type == "importance")
-    {
+    } else if(type == "importance") {
         return SimiliarNetCombinerStrategy::importance;
     }
     throw InvalidParameterException("No valid similiar net unifier strategy.");
     return SimiliarNetCombinerStrategy::UNDEFINED;
 }
 
-CoarseningAlgorithm coarseningAlgorithmFromString(const std::string &type)
-{
-    if(type == "multilevel_coarsener")
-    {
+CoarseningAlgorithm coarseningAlgorithmFromString(const std::string& type) {
+    if(type == "multilevel_coarsener") {
         return CoarseningAlgorithm::multilevel_coarsener;
-    }
-    else if(type == "nlevel_coarsener")
-    {
+    } else if(type == "nlevel_coarsener") {
         return CoarseningAlgorithm::nlevel_coarsener;
-    }
-    else if(type == "deterministic_multilevel_coarsener")
-    {
+    } else if(type == "deterministic_multilevel_coarsener") {
         return CoarseningAlgorithm::deterministic_multilevel_coarsener;
     }
     throw InvalidParameterException("Illegal option: " + type);
     return CoarseningAlgorithm::UNDEFINED;
 }
 
-HeavyNodePenaltyPolicy heavyNodePenaltyFromString(const std::string &penalty)
-{
-    if(penalty == "no_penalty")
-    {
+HeavyNodePenaltyPolicy heavyNodePenaltyFromString(const std::string& penalty) {
+    if(penalty == "no_penalty") {
         return HeavyNodePenaltyPolicy::no_penalty;
     }
 #ifdef KAHYPAR_ENABLE_EXPERIMENTAL_FEATURES
-    else if(penalty == "multiplicative")
-    {
+    else if(penalty == "multiplicative") {
         return HeavyNodePenaltyPolicy::multiplicative_penalty;
-    }
-    else if(penalty == "additive")
-    {
+    } else if(penalty == "additive") {
         return HeavyNodePenaltyPolicy::additive;
         // omit default case to trigger compiler warning for missing cases
     }
@@ -566,30 +469,24 @@ HeavyNodePenaltyPolicy heavyNodePenaltyFromString(const std::string &penalty)
     return HeavyNodePenaltyPolicy::UNDEFINED;
 }
 
-AcceptancePolicy acceptanceCriterionFromString(const std::string &crit)
-{
-    if(crit == "best_prefer_unmatched")
-    {
+AcceptancePolicy acceptanceCriterionFromString(const std::string& crit) {
+    if(crit == "best_prefer_unmatched") {
         return AcceptancePolicy::best_prefer_unmatched;
     }
 #ifdef KAHYPAR_ENABLE_EXPERIMENTAL_FEATURES
-    else if(crit == "best")
-    {
+    else if(crit == "best") {
         return AcceptancePolicy::best;
     }
 #endif
     throw InvalidParameterException("No valid acceptance criterion for rating.");
 }
 
-RatingFunction ratingFunctionFromString(const std::string &function)
-{
-    if(function == "heavy_edge")
-    {
+RatingFunction ratingFunctionFromString(const std::string& function) {
+    if(function == "heavy_edge") {
         return RatingFunction::heavy_edge;
     }
 #ifdef KAHYPAR_ENABLE_EXPERIMENTAL_FEATURES
-    else if(function == "sameness")
-    {
+    else if(function == "sameness") {
         return RatingFunction::sameness;
     }
 #endif
@@ -598,138 +495,91 @@ RatingFunction ratingFunctionFromString(const std::string &function)
 }
 
 InitialPartitioningAlgorithm
-initialPartitioningAlgorithmFromString(const std::string &algo)
-{
-    if(algo == "random")
-    {
+initialPartitioningAlgorithmFromString(const std::string& algo) {
+    if(algo == "random") {
         return InitialPartitioningAlgorithm::random;
-    }
-    else if(algo == "bfs")
-    {
+    } else if(algo == "bfs") {
         return InitialPartitioningAlgorithm::bfs;
-    }
-    else if(algo == "greedy_round_robin_fm")
-    {
+    } else if(algo == "greedy_round_robin_fm") {
         return InitialPartitioningAlgorithm::greedy_round_robin_fm;
-    }
-    else if(algo == "greedy_global_fm")
-    {
+    } else if(algo == "greedy_global_fm") {
         return InitialPartitioningAlgorithm::greedy_global_fm;
-    }
-    else if(algo == "greedy_sequential_fm")
-    {
+    } else if(algo == "greedy_sequential_fm") {
         return InitialPartitioningAlgorithm::greedy_sequential_fm;
-    }
-    else if(algo == "greedy_round_robin_max_net")
-    {
+    } else if(algo == "greedy_round_robin_max_net") {
         return InitialPartitioningAlgorithm::greedy_round_robin_max_net;
-    }
-    else if(algo == "greedy_global_max_net")
-    {
+    } else if(algo == "greedy_global_max_net") {
         return InitialPartitioningAlgorithm::greedy_global_max_net;
-    }
-    else if(algo == "greedy_sequential_max_net")
-    {
+    } else if(algo == "greedy_sequential_max_net") {
         return InitialPartitioningAlgorithm::greedy_sequential_max_net;
-    }
-    else if(algo == "label_propagation")
-    {
+    } else if(algo == "label_propagation") {
         return InitialPartitioningAlgorithm::label_propagation;
     }
     throw InvalidParameterException("Illegal option: " + algo);
     return InitialPartitioningAlgorithm::UNDEFINED;
 }
 
-LabelPropagationAlgorithm labelPropagationAlgorithmFromString(const std::string &type)
-{
-    if(type == "label_propagation")
-    {
+LabelPropagationAlgorithm labelPropagationAlgorithmFromString(const std::string& type) {
+    if(type == "label_propagation") {
         return LabelPropagationAlgorithm::label_propagation;
-    }
-    else if(type == "deterministic")
-    {
+    } else if(type == "deterministic") {
         return LabelPropagationAlgorithm::deterministic;
-    }
-    else if(type == "do_nothing")
-    {
+    } else if(type == "do_nothing") {
         return LabelPropagationAlgorithm::do_nothing;
     }
     throw InvalidParameterException("Illegal option: " + type);
     return LabelPropagationAlgorithm::do_nothing;
 }
 
-FMAlgorithm fmAlgorithmFromString(const std::string &type)
-{
-    if(type == "kway_fm")
-    {
+FMAlgorithm fmAlgorithmFromString(const std::string& type) {
+    if(type == "kway_fm") {
         return FMAlgorithm::kway_fm;
-    }
-    else if(type == "unconstrained_fm")
-    {
+    } else if(type == "unconstrained_fm") {
         return FMAlgorithm::unconstrained_fm;
-    }
-    else if(type == "do_nothing")
-    {
+    } else if(type == "do_nothing") {
         return FMAlgorithm::do_nothing;
     }
     throw InvalidParameterException("Illegal option: " + type);
     return FMAlgorithm::do_nothing;
 }
 
-FlowAlgorithm flowAlgorithmFromString(const std::string &type)
-{
-    if(type == "flow_cutter")
-    {
+FlowAlgorithm flowAlgorithmFromString(const std::string& type) {
+    if(type == "flow_cutter") {
         return FlowAlgorithm::flow_cutter;
-    }
-    else if(type == "do_nothing")
-    {
+    } else if(type == "do_nothing") {
         return FlowAlgorithm::do_nothing;
     }
     throw InvalidParameterException("Illegal option: " + type);
     return FlowAlgorithm::do_nothing;
 }
 
-RebalancingAlgorithm rebalancingAlgorithmFromString(const std::string &type)
-{
-    if(type == "simple_rebalancer")
-    {
+RebalancingAlgorithm rebalancingAlgorithmFromString(const std::string& type) {
+    if(type == "simple_rebalancer") {
         return RebalancingAlgorithm::simple_rebalancer;
-    }
-    else if(type == "advanced_rebalancer")
-    {
+    } else if(type == "advanced_rebalancer") {
         return RebalancingAlgorithm::advanced_rebalancer;
-    }
-    else if(type == "do_nothing")
-    {
+    } else if(type == "do_nothing") {
         return RebalancingAlgorithm::do_nothing;
     }
     throw InvalidParameterException("Illegal option: " + type);
     return RebalancingAlgorithm::do_nothing;
 }
 
-OneToOneMappingStrategy oneToOneMappingStrategyFromString(const std::string &type)
-{
-    if(type == "greedy_mapping")
-    {
+OneToOneMappingStrategy oneToOneMappingStrategyFromString(const std::string& type) {
+    if(type == "greedy_mapping") {
         return OneToOneMappingStrategy::greedy_mapping;
-    }
-    else if(type == "identity")
-    {
+    } else if(type == "identity") {
         return OneToOneMappingStrategy::identity;
     }
     throw InvalidParameterException("Illegal option: " + type);
     return OneToOneMappingStrategy::identity;
 }
 
-SteinerTreeFlowValuePolicy steinerTreeFlowValuePolicyFromString(const std::string &policy)
-{
-    if(policy == "lower_bound")
-    {
+SteinerTreeFlowValuePolicy
+steinerTreeFlowValuePolicyFromString(const std::string& policy) {
+    if(policy == "lower_bound") {
         return SteinerTreeFlowValuePolicy::lower_bound;
-    }
-    else if(policy == "upper_bound")
-    {
+    } else if(policy == "upper_bound") {
         return SteinerTreeFlowValuePolicy::upper_bound;
     }
     throw InvalidParameterException("Illegal option: " + policy);

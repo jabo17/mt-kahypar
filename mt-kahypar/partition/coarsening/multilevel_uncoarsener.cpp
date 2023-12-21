@@ -38,21 +38,18 @@
 namespace mt_kahypar {
 
 template <typename TypeTraits>
-void MultilevelUncoarsener<TypeTraits>::initializeImpl()
-{
-    PartitionedHypergraph &partitioned_hg = *_uncoarseningData.partitioned_hg;
+void MultilevelUncoarsener<TypeTraits>::initializeImpl() {
+    PartitionedHypergraph& partitioned_hg = *_uncoarseningData.partitioned_hg;
     _current_metrics = Base::initializeMetrics(partitioned_hg);
     Base::initializeRefinementAlgorithms();
 
-    if(_context.type == ContextType::main)
-    {
+    if(_context.type == ContextType::main) {
         _context.initial_km1 = _current_metrics.quality;
     }
 
     // Enable progress bar if verbose output is enabled
     if(_context.partition.verbose_output && _context.partition.enable_progress_bar &&
-       !debug)
-    {
+       !debug) {
         _progress.enable();
         _progress.setObjective(_current_metrics.quality);
     }
@@ -65,36 +62,28 @@ void MultilevelUncoarsener<TypeTraits>::initializeImpl()
 }
 
 template <typename TypeTraits>
-bool MultilevelUncoarsener<TypeTraits>::isTopLevelImpl() const
-{
+bool MultilevelUncoarsener<TypeTraits>::isTopLevelImpl() const {
     return _current_level < 0;
 }
 
 template <typename TypeTraits>
-void MultilevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl()
-{
-    PartitionedHypergraph &partitioned_hg = *_uncoarseningData.partitioned_hg;
-    if(_current_level == _num_levels)
-    {
+void MultilevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl() {
+    PartitionedHypergraph& partitioned_hg = *_uncoarseningData.partitioned_hg;
+    if(_current_level == _num_levels) {
         // We always start with a refinement pass on the smallest hypergraph.
         // The next calls to this function will then project the partition to the next
         // level and perform refinement until we reach the input hypergraph.
         IUncoarsener<TypeTraits>::refine();
         _progress.setObjective(_current_metrics.quality);
         _progress += partitioned_hg.initialNumNodes();
-    }
-    else
-    {
+    } else {
         ASSERT(_current_level >= 0);
         // Project partition to the hypergraph on the next level of the hierarchy
         _timer.start_timer("projecting_partition", "Projecting Partition");
         const size_t num_nodes_on_previous_level = partitioned_hg.initialNumNodes();
-        if(_current_level == 0)
-        {
+        if(_current_level == 0) {
             partitioned_hg.setHypergraph(_hg);
-        }
-        else
-        {
+        } else {
             partitioned_hg.setHypergraph(
                 (_uncoarseningData.hierarchy)[_current_level - 1].contractedHypergraph());
         }
@@ -135,16 +124,13 @@ void MultilevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl()
 }
 
 template <typename TypeTraits>
-void MultilevelUncoarsener<TypeTraits>::rebalancingImpl()
-{
+void MultilevelUncoarsener<TypeTraits>::rebalancingImpl() {
     // If we reach the top-level hypergraph and the partition is still imbalanced,
     // we use a rebalancing algorithm to restore balance.
     if(_context.type == ContextType::main &&
-       !metrics::isBalanced(*_uncoarseningData.partitioned_hg, _context))
-    {
+       !metrics::isBalanced(*_uncoarseningData.partitioned_hg, _context)) {
         const HyperedgeWeight quality_before = _current_metrics.quality;
-        if(_context.partition.verbose_output)
-        {
+        if(_context.partition.verbose_output) {
             LOG << RED << "Partition is imbalanced (Current Imbalance:"
                 << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context) << ")"
                 << END;
@@ -153,10 +139,8 @@ void MultilevelUncoarsener<TypeTraits>::rebalancingImpl()
             io::printPartWeightsAndSizes(*_uncoarseningData.partitioned_hg, _context);
         }
 
-        if(!_context.partition.deterministic)
-        {
-            if(_context.partition.verbose_output)
-            {
+        if(!_context.partition.deterministic) {
+            if(_context.partition.verbose_output) {
                 LOG << RED << "Start rebalancing!" << END;
             }
 
@@ -168,29 +152,22 @@ void MultilevelUncoarsener<TypeTraits>::rebalancingImpl()
             _timer.stop_timer("rebalance");
 
             const HyperedgeWeight quality_after = _current_metrics.quality;
-            if(_context.partition.verbose_output)
-            {
+            if(_context.partition.verbose_output) {
                 const HyperedgeWeight quality_delta = quality_after - quality_before;
-                if(quality_delta > 0)
-                {
+                if(quality_delta > 0) {
                     LOG << RED << "Rebalancer decreased solution quality by"
                         << quality_delta << "(Current Imbalance:"
                         << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context)
                         << ")" << END;
-                }
-                else
-                {
+                } else {
                     LOG << GREEN << "Rebalancer improves solution quality by"
                         << abs(quality_delta) << "(Current Imbalance:"
                         << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context)
                         << ")" << END;
                 }
             }
-        }
-        else
-        {
-            if(_context.partition.verbose_output)
-            {
+        } else {
+            if(_context.partition.verbose_output) {
                 LOG << RED << "Skip rebalancing since deterministic mode is activated"
                     << END;
             }
@@ -204,48 +181,41 @@ void MultilevelUncoarsener<TypeTraits>::rebalancingImpl()
 }
 
 template <typename TypeTraits>
-HyperedgeWeight MultilevelUncoarsener<TypeTraits>::getObjectiveImpl() const
-{
+HyperedgeWeight MultilevelUncoarsener<TypeTraits>::getObjectiveImpl() const {
     return _current_metrics.quality;
 }
 
 template <typename TypeTraits>
-void MultilevelUncoarsener<TypeTraits>::updateMetricsImpl()
-{
+void MultilevelUncoarsener<TypeTraits>::updateMetricsImpl() {
     _current_metrics = Base::initializeMetrics(*_uncoarseningData.partitioned_hg);
     _progress.setObjective(_current_metrics.quality);
 }
 
 template <typename TypeTraits>
-typename TypeTraits::PartitionedHypergraph &
-MultilevelUncoarsener<TypeTraits>::currentPartitionedHypergraphImpl()
-{
+typename TypeTraits::PartitionedHypergraph&
+MultilevelUncoarsener<TypeTraits>::currentPartitionedHypergraphImpl() {
     return *_uncoarseningData.partitioned_hg;
 }
 
 template <typename TypeTraits>
-HypernodeID MultilevelUncoarsener<TypeTraits>::currentNumberOfNodesImpl() const
-{
+HypernodeID MultilevelUncoarsener<TypeTraits>::currentNumberOfNodesImpl() const {
     return _uncoarseningData.partitioned_hg->initialNumNodes();
 }
 
 template <typename TypeTraits>
-typename TypeTraits::PartitionedHypergraph &&
-MultilevelUncoarsener<TypeTraits>::movePartitionedHypergraphImpl()
-{
+typename TypeTraits::PartitionedHypergraph&&
+MultilevelUncoarsener<TypeTraits>::movePartitionedHypergraphImpl() {
     ASSERT(isTopLevelImpl());
     return std::move(*_uncoarseningData.partitioned_hg);
 }
 
 template <typename TypeTraits>
-void MultilevelUncoarsener<TypeTraits>::refineImpl()
-{
-    PartitionedHypergraph &partitioned_hypergraph = *_uncoarseningData.partitioned_hg;
+void MultilevelUncoarsener<TypeTraits>::refineImpl() {
+    PartitionedHypergraph& partitioned_hypergraph = *_uncoarseningData.partitioned_hg;
     const double time_limit = Base::refinementTimeLimit(
         _context, (_uncoarseningData.hierarchy)[_current_level].coarseningTime());
 
-    if(debug && _context.type == ContextType::main)
-    {
+    if(debug && _context.type == ContextType::main) {
         io::printHypergraphInfo(partitioned_hypergraph.hypergraph(), _context,
                                 "Refinement Hypergraph", false);
         DBG << "Start Refinement -" << _context.partition.objective << "="
@@ -256,20 +226,17 @@ void MultilevelUncoarsener<TypeTraits>::refineImpl()
     bool improvement_found = true;
     mt_kahypar_partitioned_hypergraph_t phg =
         utils::partitioned_hg_cast(partitioned_hypergraph);
-    while(improvement_found)
-    {
+    while(improvement_found) {
         improvement_found = false;
         const HyperedgeWeight metric_before = _current_metrics.quality;
 
         if(_rebalancer &&
-           _context.refinement.rebalancer != RebalancingAlgorithm::do_nothing)
-        {
+           _context.refinement.rebalancer != RebalancingAlgorithm::do_nothing) {
             _rebalancer->initialize(phg);
         }
 
         if(_label_propagation && _context.refinement.label_propagation.algorithm !=
-                                     LabelPropagationAlgorithm::do_nothing)
-        {
+                                     LabelPropagationAlgorithm::do_nothing) {
             _timer.start_timer("initialize_lp_refiner", "Initialize LP Refiner");
             _label_propagation->initialize(phg);
             _timer.stop_timer("initialize_lp_refiner");
@@ -280,8 +247,7 @@ void MultilevelUncoarsener<TypeTraits>::refineImpl()
             _timer.stop_timer("label_propagation");
         }
 
-        if(_fm && _context.refinement.fm.algorithm != FMAlgorithm::do_nothing)
-        {
+        if(_fm && _context.refinement.fm.algorithm != FMAlgorithm::do_nothing) {
             _timer.start_timer("initialize_fm_refiner", "Initialize FM Refiner");
             _fm->initialize(phg);
             _timer.stop_timer("initialize_fm_refiner");
@@ -291,8 +257,7 @@ void MultilevelUncoarsener<TypeTraits>::refineImpl()
             _timer.stop_timer("fm");
         }
 
-        if(_flows && _context.refinement.flows.algorithm != FlowAlgorithm::do_nothing)
-        {
+        if(_flows && _context.refinement.flows.algorithm != FlowAlgorithm::do_nothing) {
             _timer.start_timer("initialize_flow_scheduler", "Initialize Flow Scheduler");
             _flows->initialize(phg);
             _timer.stop_timer("initialize_flow_scheduler");
@@ -302,8 +267,7 @@ void MultilevelUncoarsener<TypeTraits>::refineImpl()
             _timer.stop_timer("flow_refinement_scheduler");
         }
 
-        if(_context.type == ContextType::main)
-        {
+        if(_context.type == ContextType::main) {
             ASSERT(_current_metrics.quality ==
                        metrics::quality(partitioned_hypergraph, _context),
                    "Actual metric"
@@ -316,14 +280,12 @@ void MultilevelUncoarsener<TypeTraits>::refineImpl()
         const double relative_improvement =
             1.0 - static_cast<double>(metric_after) / metric_before;
         if(!_context.refinement.refine_until_no_improvement ||
-           relative_improvement <= _context.refinement.relative_improvement_threshold)
-        {
+           relative_improvement <= _context.refinement.relative_improvement_threshold) {
             break;
         }
     }
 
-    if(_context.type == ContextType::main)
-    {
+    if(_context.type == ContextType::main) {
         DBG << "--------------------------------------------------\n";
     }
 }

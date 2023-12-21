@@ -58,24 +58,21 @@ class ConcurrentFlatMap
     static_assert(MAP_SIZE && ((MAP_SIZE & (MAP_SIZE - 1)) == UL(0)),
                   "Size of map is not a power of two!");
 
-    explicit ConcurrentFlatMap() : _map_size(0), _data(nullptr), _threshold(2), _map()
-    {
+    explicit ConcurrentFlatMap() : _map_size(0), _data(nullptr), _threshold(2), _map() {
         allocate(MAP_SIZE);
     }
 
     explicit ConcurrentFlatMap(const size_t max_size) :
-        _map_size(0), _data(nullptr), _threshold(2), _map(nullptr)
-    {
+        _map_size(0), _data(nullptr), _threshold(2), _map(nullptr) {
         allocate(max_size);
     }
 
-    ConcurrentFlatMap(const ConcurrentFlatMap &) = delete;
-    ConcurrentFlatMap &operator=(const ConcurrentFlatMap &other) = delete;
+    ConcurrentFlatMap(const ConcurrentFlatMap&) = delete;
+    ConcurrentFlatMap& operator=(const ConcurrentFlatMap& other) = delete;
 
-    ConcurrentFlatMap(ConcurrentFlatMap &&other) :
+    ConcurrentFlatMap(ConcurrentFlatMap&& other) :
         _map_size(other._map_size), _data(std::move(other._data)),
-        _threshold(other._threshold), _map(std::move(other._map))
-    {
+        _threshold(other._threshold), _map(std::move(other._map)) {
         other._data = nullptr;
         other._map = nullptr;
     }
@@ -84,27 +81,22 @@ class ConcurrentFlatMap
 
     size_t capacity() const { return _map_size; }
 
-    void setMaxSize(const size_t max_size)
-    {
-        if(4 * max_size > _map_size)
-        {
+    void setMaxSize(const size_t max_size) {
+        if(4 * max_size > _map_size) {
             freeInternalData();
             allocate(4 * max_size);
         }
     }
 
-    Value &operator[](const Key key)
-    {
+    Value& operator[](const Key key) {
         size_t hash = key & (_map_size - 1);
         MapElement *elem = &_map[hash];
         int32_t expected = elem->timestamp;
         int32_t desired = _threshold - 1;
-        while(!(expected == _threshold && elem->key == key))
-        {
+        while(!(expected == _threshold && elem->key == key)) {
             if(expected < desired &&
                __atomic_compare_exchange_n(&elem->timestamp, &expected, desired, false,
-                                           __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
-            {
+                                           __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) {
                 elem->key = key;
                 elem->value = Value();
                 elem->timestamp = _threshold;
@@ -118,28 +110,23 @@ class ConcurrentFlatMap
         return elem->value;
     }
 
-    Value *get_if_contained(const Key key)
-    {
+    Value *get_if_contained(const Key key) {
         size_t hash = find(key, key & (_map_size - 1));
         MapElement *elem = &_map[hash];
         return elem->timestamp == _threshold && elem->key == key ? &elem->value : nullptr;
     }
 
-    void clear()
-    {
-        if(_threshold >= std::numeric_limits<int32_t>::max() - 2)
-        {
+    void clear() {
+        if(_threshold >= std::numeric_limits<int32_t>::max() - 2) {
             _threshold = 0;
-            for(size_t i = 0; i < _map_size; ++i)
-            {
+            for(size_t i = 0; i < _map_size; ++i) {
                 _map[i].timestamp = 0;
             }
         }
         _threshold += 2;
     }
 
-    void freeInternalData()
-    {
+    void freeInternalData() {
         _map_size = 0;
         _threshold = 0;
         _data = nullptr;
@@ -148,13 +135,10 @@ class ConcurrentFlatMap
 
   private:
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t find(const Key key,
-                                                   const size_t start_hash) const
-    {
+                                                   const size_t start_hash) const {
         size_t hash = start_hash & (_map_size - 1);
-        while(_map[hash].timestamp == _threshold)
-        {
-            if(_map[hash].key == key)
-            {
+        while(_map[hash].timestamp == _threshold) {
+            if(_map[hash].key == key) {
                 return hash;
             }
             hash = (hash + 1) & (_map_size - 1);
@@ -162,10 +146,8 @@ class ConcurrentFlatMap
         return hash;
     }
 
-    void allocate(const size_t size)
-    {
-        if(_data == nullptr)
-        {
+    void allocate(const size_t size) {
+        if(_data == nullptr) {
             _map_size = align_to_next_power_of_two(size);
             _data = std::make_unique<uint8_t[]>(_map_size * sizeof(MapElement));
             _threshold = 2;
@@ -174,8 +156,7 @@ class ConcurrentFlatMap
         }
     }
 
-    size_t align_to_next_power_of_two(const size_t size) const
-    {
+    size_t align_to_next_power_of_two(const size_t size) const {
         return std::pow(2.0, std::ceil(std::log2(static_cast<double>(size))));
     }
 

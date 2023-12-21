@@ -51,8 +51,8 @@ class GreedyMapping
      * communication hypergraph with the strongest connection to the partial assignment to
      * the processor that results in the least increasing of the steiner tree metric.
      */
-    static void mapToTargetGraph(CommunicationHypergraph &communication_hg,
-                                 const TargetGraph &target_graph, const Context &context);
+    static void mapToTargetGraph(CommunicationHypergraph& communication_hg,
+                                 const TargetGraph& target_graph, const Context& context);
 
   private:
     GreedyMapping() {}

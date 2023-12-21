@@ -38,21 +38,18 @@ class DoNothingFlowRefiner final : public IFlowRefiner
 {
   public:
     template <typename... Args>
-    explicit DoNothingFlowRefiner(Args &&...) noexcept
-    {
-    }
-    DoNothingFlowRefiner(const DoNothingFlowRefiner &) = delete;
-    DoNothingFlowRefiner(DoNothingFlowRefiner &&) = delete;
-    DoNothingFlowRefiner &operator=(const DoNothingFlowRefiner &) = delete;
-    DoNothingFlowRefiner &operator=(DoNothingFlowRefiner &&) = delete;
+    explicit DoNothingFlowRefiner(Args&&...) noexcept {}
+    DoNothingFlowRefiner(const DoNothingFlowRefiner&) = delete;
+    DoNothingFlowRefiner(DoNothingFlowRefiner&&) = delete;
+    DoNothingFlowRefiner& operator=(const DoNothingFlowRefiner&) = delete;
+    DoNothingFlowRefiner& operator=(DoNothingFlowRefiner&&) = delete;
 
   private:
-    void initializeImpl(mt_kahypar_partitioned_hypergraph_const_t &) override final {}
+    void initializeImpl(mt_kahypar_partitioned_hypergraph_const_t&) override final {}
 
-    MoveSequence refineImpl(mt_kahypar_partitioned_hypergraph_const_t &,
-                            const Subhypergraph &,
-                            const HighResClockTimepoint &) override final
-    {
+    MoveSequence refineImpl(mt_kahypar_partitioned_hypergraph_const_t&,
+                            const Subhypergraph&,
+                            const HighResClockTimepoint&) override final {
         return MoveSequence{ {}, 0 };
     }
 

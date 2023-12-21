@@ -69,16 +69,14 @@ class SoedRollback
 
         RecalculationData() : cut_data(), km1_data() {}
 
-        void reset()
-        {
+        void reset() {
             cut_data.reset();
             km1_data.reset();
         }
     };
 
     // Updates the auxilliary data for a node move m with index m_id.
-    static void updateMove(const MoveID m_id, const Move &m, vec<RecalculationData> &r)
-    {
+    static void updateMove(const MoveID m_id, const Move& m, vec<RecalculationData>& r) {
         r[m.to].km1_data.first_in = std::min(r[m.to].km1_data.first_in, m_id);
         r[m.from].km1_data.last_out = std::max(r[m.from].km1_data.last_out, m_id);
         r[m.from].cut_data.first_out = std::min(r[m.from].cut_data.first_out, m_id);
@@ -88,16 +86,14 @@ class SoedRollback
 
     // Updates the number of non-moved in a block.
     static void updateNonMovedPinInBlock(const PartitionID block,
-                                         vec<RecalculationData> &r)
-    {
+                                         vec<RecalculationData>& r) {
         r[block].km1_data.remaining_pins++;
     }
 
     template <typename PartitionedHypergraph>
-    static HyperedgeWeight benefit(const PartitionedHypergraph &phg, const HyperedgeID e,
-                                   const MoveID m_id, const Move &m,
-                                   vec<RecalculationData> &r)
-    {
+    static HyperedgeWeight benefit(const PartitionedHypergraph& phg, const HyperedgeID e,
+                                   const MoveID m_id, const Move& m,
+                                   vec<RecalculationData>& r) {
         const HyperedgeWeight edge_weight = phg.edgeWeight(e);
         const HypernodeID edge_size = phg.edgeSize(e);
         // KM1 PART OF SOED METRIC
@@ -123,10 +119,9 @@ class SoedRollback
     }
 
     template <typename PartitionedHypergraph>
-    static HyperedgeWeight penalty(const PartitionedHypergraph &phg, const HyperedgeID e,
-                                   const MoveID m_id, const Move &m,
-                                   vec<RecalculationData> &r)
-    {
+    static HyperedgeWeight penalty(const PartitionedHypergraph& phg, const HyperedgeID e,
+                                   const MoveID m_id, const Move& m,
+                                   vec<RecalculationData>& r) {
         const HyperedgeWeight edge_weight = phg.edgeWeight(e);
         const HypernodeID edge_size = phg.edgeSize(e);
         // KM1 PART OF SOED METRIC

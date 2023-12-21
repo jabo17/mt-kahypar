@@ -40,30 +40,26 @@ class Level
     using Hypergraph = typename TypeTraits::Hypergraph;
 
   public:
-    explicit Level(Hypergraph &&contracted_hypergraph,
-                   parallel::scalable_vector<HypernodeID> &&communities,
+    explicit Level(Hypergraph&& contracted_hypergraph,
+                   parallel::scalable_vector<HypernodeID>&& communities,
                    double coarsening_time) :
         _contracted_hypergraph(std::move(contracted_hypergraph)),
-        _communities(std::move(communities)), _coarsening_time(coarsening_time)
-    {
-    }
+        _communities(std::move(communities)), _coarsening_time(coarsening_time) {}
 
-    Hypergraph &contractedHypergraph() { return _contracted_hypergraph; }
+    Hypergraph& contractedHypergraph() { return _contracted_hypergraph; }
 
-    const Hypergraph &contractedHypergraph() const { return _contracted_hypergraph; }
+    const Hypergraph& contractedHypergraph() const { return _contracted_hypergraph; }
 
     // ! Maps a global vertex id of the representative hypergraph
     // ! to its global vertex id in the contracted hypergraph
-    HypernodeID mapToContractedHypergraph(const HypernodeID hn) const
-    {
+    HypernodeID mapToContractedHypergraph(const HypernodeID hn) const {
         ASSERT(hn < _communities.size());
         return _communities[hn];
     }
 
     double coarseningTime() const { return _coarsening_time; }
 
-    void freeInternalData()
-    {
+    void freeInternalData() {
         tbb::parallel_invoke([&] { _contracted_hypergraph.freeInternalData(); },
                              [&] { parallel::free(_communities); });
     }
@@ -89,19 +85,14 @@ class UncoarseningData
     using ParallelHyperedge = typename Hypergraph::ParallelHyperedge;
 
   public:
-    explicit UncoarseningData(bool n_level, Hypergraph &hg, const Context &context) :
-        nlevel(n_level), _hg(hg), _context(context)
-    {
-        if(n_level)
-        {
+    explicit UncoarseningData(bool n_level, Hypergraph& hg, const Context& context) :
+        nlevel(n_level), _hg(hg), _context(context) {
+        if(n_level) {
             compactified_hg = std::make_unique<Hypergraph>();
             compactified_phg = std::make_unique<PartitionedHypergraph>();
-        }
-        else
-        {
+        } else {
             size_t estimated_number_of_levels = UL(1);
-            if(hg.initialNumNodes() > context.coarsening.contraction_limit)
-            {
+            if(hg.initialNumNodes() > context.coarsening.contraction_limit) {
                 estimated_number_of_levels =
                     std::ceil(std::log2(static_cast<double>(hg.initialNumNodes()) /
                                         static_cast<double>(
@@ -115,26 +106,22 @@ class UncoarseningData
         partitioned_hg = std::make_unique<PartitionedHypergraph>();
     }
 
-    ~UncoarseningData() noexcept
-    {
+    ~UncoarseningData() noexcept {
         tbb::parallel_for(
             UL(0), hierarchy.size(),
             [&](const size_t i) { (hierarchy)[i].freeInternalData(); },
             tbb::static_partitioner());
     }
 
-    void setPartitionedHypergraph(PartitionedHypergraph &&phg)
-    {
+    void setPartitionedHypergraph(PartitionedHypergraph&& phg) {
         ASSERT(!is_phg_initialized);
         partitioned_hg = std::make_unique<PartitionedHypergraph>(std::move(phg));
         is_phg_initialized = true;
     }
 
-    void finalizeCoarsening()
-    {
-        utils::Timer &timer = utils::Utilities::instance().getTimer(_context.utility_id);
-        if(nlevel)
-        {
+    void finalizeCoarsening() {
+        utils::Timer& timer = utils::Utilities::instance().getTimer(_context.utility_id);
+        if(nlevel) {
             // Create compactified hypergraph containing only enabled vertices and
             // hyperedges with consecutive IDs => Less complexity in initial partitioning.
             timer.start_timer("compactify_hypergraph", "Compactify Hypergraph");
@@ -144,34 +131,26 @@ class UncoarseningData
             *compactified_phg = PartitionedHypergraph(_context.partition.k,
                                                       *compactified_hg, parallel_tag_t());
             timer.stop_timer("compactify_hypergraph");
-        }
-        else
-        {
+        } else {
             timer.start_timer("finalize_multilevel_hierarchy",
                               "Finalize Multilevel Hierarchy");
             // Free memory of temporary contraction buffer and
             // release coarsening memory in memory pool
-            if(!hierarchy.empty())
-            {
+            if(!hierarchy.empty()) {
                 hierarchy.back().contractedHypergraph().freeTmpContractionBuffer();
-            }
-            else
-            {
+            } else {
                 _hg.freeTmpContractionBuffer();
             }
-            if(_context.type == ContextType::main)
-            {
+            if(_context.type == ContextType::main) {
                 parallel::MemoryPool::instance().release_mem_group("Coarsening");
             }
 
             // Construct partitioned hypergraph for initial partitioning
-            if(!is_phg_initialized)
-            {
+            if(!is_phg_initialized) {
                 *partitioned_hg =
                     PartitionedHypergraph(_context.partition.k, _hg, parallel_tag_t());
             }
-            if(!hierarchy.empty())
-            {
+            if(!hierarchy.empty()) {
                 partitioned_hg->setHypergraph(hierarchy.back().contractedHypergraph());
             }
             is_phg_initialized = true;
@@ -181,12 +160,11 @@ class UncoarseningData
     }
 
     void
-    performMultilevelContraction(parallel::scalable_vector<HypernodeID> &&communities,
+    performMultilevelContraction(parallel::scalable_vector<HypernodeID>&& communities,
                                  bool deterministic,
-                                 const HighResClockTimepoint &round_start)
-    {
+                                 const HighResClockTimepoint& round_start) {
         ASSERT(!is_finalized);
-        Hypergraph &current_hg =
+        Hypergraph& current_hg =
             hierarchy.empty() ? _hg : hierarchy.back().contractedHypergraph();
         ASSERT(current_hg.initialNumNodes() == communities.size());
         Hypergraph contracted_hg = current_hg.contract(communities, deterministic);
@@ -197,14 +175,10 @@ class UncoarseningData
                                elapsed_time);
     }
 
-    PartitionedHypergraph &coarsestPartitionedHypergraph()
-    {
-        if(nlevel)
-        {
+    PartitionedHypergraph& coarsestPartitionedHypergraph() {
+        if(nlevel) {
             return *compactified_phg;
-        }
-        else
-        {
+        } else {
             return *partitioned_hg;
         }
     }
@@ -236,22 +210,20 @@ class UncoarseningData
     bool nlevel;
 
   private:
-    Hypergraph &_hg;
-    const Context &_context;
+    Hypergraph& _hg;
+    const Context& _context;
 };
 
 typedef struct uncoarsening_data_s uncoarsening_data_t;
 
 namespace uncoarsening {
 template <typename TypeTraits>
-uncoarsening_data_t *to_pointer(UncoarseningData<TypeTraits> &ip_data)
-{
+uncoarsening_data_t *to_pointer(UncoarseningData<TypeTraits>& ip_data) {
     return reinterpret_cast<uncoarsening_data_t *>(&ip_data);
 }
 
 template <typename TypeTraits>
-UncoarseningData<TypeTraits> &to_reference(uncoarsening_data_t *ptr)
-{
+UncoarseningData<TypeTraits>& to_reference(uncoarsening_data_t *ptr) {
     return *reinterpret_cast<UncoarseningData<TypeTraits> *>(ptr);
 }
 }

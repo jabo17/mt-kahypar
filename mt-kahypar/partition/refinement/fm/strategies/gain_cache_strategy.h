@@ -41,14 +41,11 @@ class GainCacheStrategy : public IFMStrategy
     using LocalFM = LocalizedKWayFM<GraphAndGainTypes>;
     using PartitionedHypergraph = typename GraphAndGainTypes::PartitionedHypergraph;
 
-    GainCacheStrategy(const Context &context, FMSharedData &sharedData) :
-        Base(context, sharedData)
-    {
-    }
+    GainCacheStrategy(const Context& context, FMSharedData& sharedData) :
+        Base(context, sharedData) {}
 
-    bool dispatchedFindMoves(LocalFM &local_fm, PartitionedHypergraph &phg,
-                             size_t task_id, size_t num_seeds, size_t)
-    {
+    bool dispatchedFindMoves(LocalFM& local_fm, PartitionedHypergraph& phg,
+                             size_t task_id, size_t num_seeds, size_t) {
         LocalGainCacheStrategy local_strategy =
             local_fm.template initializeDispatchedStrategy<LocalGainCacheStrategy>();
         return local_fm.findMoves(local_strategy, phg, task_id, num_seeds);
@@ -56,9 +53,8 @@ class GainCacheStrategy : public IFMStrategy
 
   private:
     virtual void findMovesImpl(localized_k_way_fm_t local_fm,
-                               mt_kahypar_partitioned_hypergraph_t &phg, size_t num_tasks,
-                               size_t num_seeds, size_t round) final
-    {
+                               mt_kahypar_partitioned_hypergraph_t& phg, size_t num_tasks,
+                               size_t num_seeds, size_t round) final {
         Base::findMovesWithConcreteStrategy<GainCacheStrategy>(local_fm, phg, num_tasks,
                                                                num_seeds, round);
     }

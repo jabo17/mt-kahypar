@@ -36,11 +36,9 @@
 namespace mt_kahypar {
 
 #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC
-void TargetGraph::precomputeDistances(const size_t max_connectivity)
-{
+void TargetGraph::precomputeDistances(const size_t max_connectivity) {
     const size_t num_entries = std::pow(_k, max_connectivity);
-    if(num_entries > MEMORY_LIMIT)
-    {
+    if(num_entries > MEMORY_LIMIT) {
         throw SystemException("Too much memory requested for precomputing steiner trees "
                               "of connectivity sets in the target graph.");
     }
@@ -51,31 +49,24 @@ void TargetGraph::precomputeDistances(const size_t max_connectivity)
     _is_initialized = true;
 }
 
-HyperedgeWeight TargetGraph::distance(const ds::StaticBitset &connectivity_set) const
-{
+HyperedgeWeight TargetGraph::distance(const ds::StaticBitset& connectivity_set) const {
     const PartitionID connectivity = connectivity_set.popcount();
     const size_t idx = index(connectivity_set);
-    if(likely(connectivity <= _max_precomputed_connectitivty))
-    {
+    if(likely(connectivity <= _max_precomputed_connectitivty)) {
         ASSERT(idx < _distances.size());
         if constexpr(TRACK_STATS)
             ++_stats.precomputed;
         return _distances[idx];
-    }
-    else
-    {
+    } else {
 // We have not precomputed the optimal steiner tree for the connectivity set.
 #ifdef __linux__
-        HashTableHandle &handle = _handles.local();
+        HashTableHandle& handle = _handles.local();
         auto res = handle.find(idx);
-        if(likely(res != handle.end()))
-        {
+        if(likely(res != handle.end())) {
             if constexpr(TRACK_STATS)
                 ++_stats.cache_hits;
             return (*res).second;
-        }
-        else
-        {
+        } else {
             if constexpr(TRACK_STATS)
                 ++_stats.cache_misses;
             // Entry is not cached => Compute 2-approximation of optimal steiner tree
@@ -86,14 +77,11 @@ HyperedgeWeight TargetGraph::distance(const ds::StaticBitset &connectivity_set) 
         }
 #elif defined(_WIN32) or defined(__APPLE__)
         auto res = _cache.find(idx);
-        if(likely(res != _cache.end()))
-        {
+        if(likely(res != _cache.end())) {
             if constexpr(TRACK_STATS)
                 ++_stats.cache_hits;
             return res->second;
-        }
-        else
-        {
+        } else {
             if constexpr(TRACK_STATS)
                 ++_stats.cache_misses;
             // Entry is not cached => Compute 2-approximation of optimal steiner tree
@@ -114,26 +102,23 @@ HyperedgeWeight TargetGraph::distance(const ds::StaticBitset &connectivity_set) 
  * contained in the connectivity set.
  */
 HyperedgeWeight TargetGraph::computeWeightOfMSTOnMetricCompletion(
-    const ds::StaticBitset &connectivity_set) const
-{
+    const ds::StaticBitset& connectivity_set) const {
     ASSERT(_is_initialized);
     ASSERT(connectivity_set.popcount() > 0);
-    MSTData &mst_data = _local_mst_data.local();
-    ds::Bitset &remaining_nodes = mst_data.bitset;
+    MSTData& mst_data = _local_mst_data.local();
+    ds::Bitset& remaining_nodes = mst_data.bitset;
     ds::StaticBitset cur_blocks(remaining_nodes.numBlocks(), remaining_nodes.data());
-    vec<HyperedgeWeight> &lightest_edge = mst_data.lightest_edge;
-    PQ &pq = mst_data.pq;
+    vec<HyperedgeWeight>& lightest_edge = mst_data.lightest_edge;
+    PQ& pq = mst_data.pq;
     ASSERT(pq.empty());
 
     auto push = [&](const PartitionID u) {
-        for(const PartitionID &v : cur_blocks)
-        {
+        for(const PartitionID& v : cur_blocks) {
             ASSERT(u != v);
             const HyperedgeWeight dist = _distances[index(u, v)];
             // If there is a lighter edge connecting v to the MST,
             // we push v with the new weight into the PQ.
-            if(dist < lightest_edge[v])
-            {
+            if(dist < lightest_edge[v]) {
                 pq.push(std::make_pair(dist, v));
                 lightest_edge[v] = dist;
             }
@@ -142,8 +127,7 @@ HyperedgeWeight TargetGraph::computeWeightOfMSTOnMetricCompletion(
 
     // Initialize data structure and PQ
     PartitionID root = kInvalidPartition;
-    for(const PartitionID &block : connectivity_set)
-    {
+    for(const PartitionID& block : connectivity_set) {
         remaining_nodes.set(block);
         lightest_edge[block] = std::numeric_limits<HyperedgeWeight>::max();
         root = block;
@@ -152,13 +136,11 @@ HyperedgeWeight TargetGraph::computeWeightOfMSTOnMetricCompletion(
     push(root);
 
     HyperedgeWeight res = 0;
-    while(!pq.empty())
-    {
+    while(!pq.empty()) {
         PQElement best = pq.top();
         pq.pop();
         const PartitionID u = best.second;
-        if(!remaining_nodes.isSet(u))
-        {
+        if(!remaining_nodes.isSet(u)) {
             // u is already contained in the MST -> skip
             continue;
         }

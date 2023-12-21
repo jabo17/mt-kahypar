@@ -41,9 +41,8 @@ namespace ds {
 
 DynamicHypergraph DynamicHypergraphFactory::construct(
     const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,
-    const HyperedgeVector &edge_vector, const HyperedgeWeight *hyperedge_weight,
-    const HypernodeWeight *hypernode_weight, const bool)
-{
+    const HyperedgeVector& edge_vector, const HyperedgeWeight *hyperedge_weight,
+    const HypernodeWeight *hypernode_weight, const bool) {
     DynamicHypergraph hypergraph;
     hypergraph._num_hypernodes = num_hypernodes;
     hypergraph._num_hyperedges = num_hyperedges;
@@ -89,19 +88,17 @@ DynamicHypergraph DynamicHypergraphFactory::construct(
                                             parallel::IntegralAtomicWrapper<bool>(false));
             tbb::parallel_for(ID(0), num_hyperedges, [&](const size_t pos) {
                 // Setup hyperedges
-                DynamicHypergraph::Hyperedge &hyperedge = hypergraph._hyperedges[pos];
+                DynamicHypergraph::Hyperedge& hyperedge = hypergraph._hyperedges[pos];
                 hyperedge.enable();
                 hyperedge.setFirstEntry(pin_prefix_sum[pos]);
                 hyperedge.setSize(pin_prefix_sum.value(pos));
-                if(hyperedge_weight)
-                {
+                if(hyperedge_weight) {
                     hyperedge.setWeight(hyperedge_weight[pos]);
                 }
 
                 size_t incidence_array_pos = hyperedge.firstEntry();
                 size_t hash = kEdgeHashSeed;
-                for(const HypernodeID &pin : edge_vector[pos])
-                {
+                for(const HypernodeID& pin : edge_vector[pos]) {
                     ASSERT(incidence_array_pos < hyperedge.firstInvalidEntry());
                     ASSERT(pin < num_hypernodes);
                     // Compute hash of hyperedge
@@ -124,10 +121,9 @@ DynamicHypergraph DynamicHypergraphFactory::construct(
                 [&] { hypergraph._contraction_tree.initialize(num_hypernodes); });
             tbb::parallel_for(ID(0), num_hypernodes, [&](const HypernodeID hn) {
                 // Setup hypernodes
-                DynamicHypergraph::Hypernode &hypernode = hypergraph._hypernodes[hn];
+                DynamicHypergraph::Hypernode& hypernode = hypergraph._hypernodes[hn];
                 hypernode.enable();
-                if(hypernode_weight)
-                {
+                if(hypernode_weight) {
                     hypernode.setWeight(hypernode_weight[hn]);
                 }
             });
@@ -147,8 +143,7 @@ DynamicHypergraph DynamicHypergraphFactory::construct(
  * hyperedges within a consecutive range of IDs.
  */
 std::pair<DynamicHypergraph, parallel::scalable_vector<HypernodeID> >
-DynamicHypergraphFactory::compactify(const DynamicHypergraph &hypergraph)
-{
+DynamicHypergraphFactory::compactify(const DynamicHypergraph& hypergraph) {
     HypernodeID num_hypernodes = 0;
     HyperedgeID num_hyperedges = 0;
     parallel::scalable_vector<HypernodeID> hn_mapping;
@@ -172,7 +167,7 @@ DynamicHypergraphFactory::compactify(const DynamicHypergraph &hypergraph)
         [&] {
             he_mapping.assign(hypergraph._num_hyperedges + 1, 0);
             hypergraph.doParallelForAllEdges(
-                [&](const HyperedgeID &he) { he_mapping[he + 1] = ID(1); });
+                [&](const HyperedgeID& he) { he_mapping[he + 1] = ID(1); });
 
             parallel::TBBPrefixSum<HyperedgeID, parallel::scalable_vector>
                 he_mapping_prefix_sum(he_mapping);
@@ -205,8 +200,7 @@ DynamicHypergraphFactory::compactify(const DynamicHypergraph &hypergraph)
                 const HyperedgeID mapped_he = he_mapping[he];
                 ASSERT(mapped_he < num_hyperedges);
                 hyperedge_weights[mapped_he] = hypergraph.edgeWeight(he);
-                for(const HypernodeID pin : hypergraph.pins(he))
-                {
+                for(const HypernodeID pin : hypergraph.pins(he)) {
                     edge_vector[mapped_he].push_back(hn_mapping[pin]);
                 }
             });
@@ -223,23 +217,21 @@ DynamicHypergraphFactory::compactify(const DynamicHypergraph &hypergraph)
     tbb::parallel_invoke(
         [&] {
             // Set community ids
-            hypergraph.doParallelForAllNodes([&](const HypernodeID &hn) {
+            hypergraph.doParallelForAllNodes([&](const HypernodeID& hn) {
                 const HypernodeID mapped_hn = hn_mapping[hn];
                 compactified_hypergraph.setCommunityID(mapped_hn,
                                                        hypergraph.communityID(hn));
             });
         },
         [&] {
-            if(hypergraph.hasFixedVertices())
-            {
+            if(hypergraph.hasFixedVertices()) {
                 // Set fixed vertices
                 ds::FixedVertexSupport<DynamicHypergraph> fixed_vertices(
                     compactified_hypergraph.initialNumNodes(),
                     hypergraph._fixed_vertices.numBlocks());
                 fixed_vertices.setHypergraph(&compactified_hypergraph);
-                hypergraph.doParallelForAllNodes([&](const HypernodeID &hn) {
-                    if(hypergraph.isFixed(hn))
-                    {
+                hypergraph.doParallelForAllNodes([&](const HypernodeID& hn) {
+                    if(hypergraph.isFixed(hn)) {
                         const HypernodeID mapped_hn = hn_mapping[hn];
                         fixed_vertices.fixToBlock(mapped_hn,
                                                   hypergraph.fixedVertexBlock(hn));

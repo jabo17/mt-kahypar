@@ -71,27 +71,23 @@ struct FileHandle
     char *mapped_file;
     size_t length;
 
-    void closeHandle()
-    {
+    void closeHandle() {
         CloseHandle(hFile);
         CloseHandle(hMem);
     }
 };
 #endif
 
-size_t file_size(const std::string &filename)
-{
+size_t file_size(const std::string& filename) {
     struct stat stat_buf;
     const int res = stat(filename.c_str(), &stat_buf);
-    if(res < 0)
-    {
+    if(res < 0) {
         throw InvalidInputException("Could not open:" + filename);
     }
     return static_cast<size_t>(stat_buf.st_size);
 }
 
-FileHandle mmap_file(const std::string &filename)
-{
+FileHandle mmap_file(const std::string& filename) {
     FileHandle handle;
     handle.length = file_size(filename);
 
@@ -101,8 +97,7 @@ FileHandle mmap_file(const std::string &filename)
 
     /* create security descriptor (needed for Windows NT) */
     pSD = (PSECURITY_DESCRIPTOR)malloc(SECURITY_DESCRIPTOR_MIN_LENGTH);
-    if(pSD == NULL)
-    {
+    if(pSD == NULL) {
         throw SystemException("Error while creating security descriptor!");
     }
 
@@ -117,8 +112,7 @@ FileHandle mmap_file(const std::string &filename)
     handle.hFile = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, &sa,
                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
-    if(handle.hFile == INVALID_HANDLE_VALUE)
-    {
+    if(handle.hFile == INVALID_HANDLE_VALUE) {
         free(pSD);
         throw InvalidInputException("Invalid file handle when opening: " + filename);
     }
@@ -127,27 +121,23 @@ FileHandle mmap_file(const std::string &filename)
     handle.hMem =
         CreateFileMapping(handle.hFile, &sa, PAGE_READONLY, 0, handle.length, NULL);
     free(pSD);
-    if(handle.hMem == NULL)
-    {
+    if(handle.hMem == NULL) {
         throw InvalidInputException("Invalid file mapping when opening: " + filename);
     }
 
     // map file to memory
     handle.mapped_file = (char *)MapViewOfFile(handle.hMem, FILE_MAP_READ, 0, 0, 0);
-    if(handle.mapped_file == NULL)
-    {
+    if(handle.mapped_file == NULL) {
         throw SystemException("Failed to map file to main memory:" + filename);
     }
 #elif defined(__linux__) or defined(__APPLE__)
     handle.fd = open(filename.c_str(), O_RDONLY);
-    if(handle.fd < -1)
-    {
+    if(handle.fd < -1) {
         throw InvalidInputException("Could not open: " + filename);
     }
     handle.mapped_file =
         (char *)mmap(0, handle.length, PROT_READ, MAP_SHARED, handle.fd, 0);
-    if(handle.mapped_file == MAP_FAILED)
-    {
+    if(handle.mapped_file == MAP_FAILED) {
         close(handle.fd);
         throw SystemException("Error while mapping file to memory");
     }
@@ -156,8 +146,7 @@ FileHandle mmap_file(const std::string &filename)
     return handle;
 }
 
-void munmap_file(FileHandle &handle)
-{
+void munmap_file(FileHandle& handle) {
 #ifdef _WIN32
     UnmapViewOfFile(handle.mapped_file);
 #elif defined(__linux__) or defined(__APPLE__)
@@ -167,20 +156,16 @@ void munmap_file(FileHandle &handle)
 }
 
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-bool is_line_ending(char *mapped_file, size_t pos)
-{
+bool is_line_ending(char *mapped_file, size_t pos) {
     return mapped_file[pos] == '\r' || mapped_file[pos] == '\n' ||
            mapped_file[pos] == '\0';
 }
 
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-void do_line_ending(char *mapped_file, size_t &pos)
-{
+void do_line_ending(char *mapped_file, size_t& pos) {
     ASSERT(is_line_ending(mapped_file, pos));
-    if(mapped_file[pos] != '\0')
-    {
-        if(mapped_file[pos] == '\r')
-        { // windows line ending
+    if(mapped_file[pos] != '\0') {
+        if(mapped_file[pos] == '\r') { // windows line ending
             ++pos;
             ASSERT(mapped_file[pos] == '\n');
         }
@@ -189,12 +174,9 @@ void do_line_ending(char *mapped_file, size_t &pos)
 }
 
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-void goto_next_line(char *mapped_file, size_t &pos, const size_t length)
-{
-    for(;; ++pos)
-    {
-        if(pos == length || is_line_ending(mapped_file, pos))
-        {
+void goto_next_line(char *mapped_file, size_t& pos, const size_t length) {
+    for(;; ++pos) {
+        if(pos == length || is_line_ending(mapped_file, pos)) {
             do_line_ending(mapped_file, pos);
             break;
         }
@@ -202,19 +184,14 @@ void goto_next_line(char *mapped_file, size_t &pos, const size_t length)
 }
 
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-int64_t read_number(char *mapped_file, size_t &pos, const size_t length)
-{
+int64_t read_number(char *mapped_file, size_t& pos, const size_t length) {
     int64_t number = 0;
-    while(mapped_file[pos] == ' ')
-    {
+    while(mapped_file[pos] == ' ') {
         ++pos;
     }
-    for(; pos < length; ++pos)
-    {
-        if(mapped_file[pos] == ' ' || is_line_ending(mapped_file, pos))
-        {
-            while(mapped_file[pos] == ' ')
-            {
+    for(; pos < length; ++pos) {
+        if(mapped_file[pos] == ' ' || is_line_ending(mapped_file, pos)) {
+            while(mapped_file[pos] == ' ') {
                 ++pos;
             }
             break;
@@ -225,20 +202,17 @@ int64_t read_number(char *mapped_file, size_t &pos, const size_t length)
     return number;
 }
 
-void readHGRHeader(char *mapped_file, size_t &pos, const size_t length,
-                   HyperedgeID &num_hyperedges, HypernodeID &num_hypernodes,
-                   mt_kahypar::Type &type)
-{
+void readHGRHeader(char *mapped_file, size_t& pos, const size_t length,
+                   HyperedgeID& num_hyperedges, HypernodeID& num_hypernodes,
+                   mt_kahypar::Type& type) {
     // Skip comments
-    while(mapped_file[pos] == '%')
-    {
+    while(mapped_file[pos] == '%') {
         goto_next_line(mapped_file, pos, length);
     }
 
     num_hyperedges = read_number(mapped_file, pos, length);
     num_hypernodes = read_number(mapped_file, pos, length);
-    if(!is_line_ending(mapped_file, pos))
-    {
+    if(!is_line_ending(mapped_file, pos)) {
         type = static_cast<mt_kahypar::Type>(read_number(mapped_file, pos, length));
     }
     do_line_ending(mapped_file, pos);
@@ -253,22 +227,16 @@ struct HyperedgeRange
 };
 
 inline bool isSinglePinHyperedge(char *mapped_file, size_t pos, const size_t length,
-                                 const bool has_hyperedge_weights)
-{
+                                 const bool has_hyperedge_weights) {
     size_t num_spaces = 0;
-    for(; pos < length; ++pos)
-    {
-        if(is_line_ending(mapped_file, pos))
-        {
+    for(; pos < length; ++pos) {
+        if(is_line_ending(mapped_file, pos)) {
             break;
-        }
-        else if(mapped_file[pos] == ' ')
-        {
+        } else if(mapped_file[pos] == ' ') {
             ++num_spaces;
         }
 
-        if(num_spaces == 2)
-        {
+        if(num_spaces == 2) {
             break;
         }
     }
@@ -279,22 +247,19 @@ struct HyperedgeReadResult
 {
     HyperedgeReadResult() :
         num_removed_single_pin_hyperedges(0), num_duplicated_pins(0),
-        num_hes_with_duplicated_pins(0)
-    {
-    }
+        num_hes_with_duplicated_pins(0) {}
 
     size_t num_removed_single_pin_hyperedges;
     size_t num_duplicated_pins;
     size_t num_hes_with_duplicated_pins;
 };
 
-HyperedgeReadResult readHyperedges(char *mapped_file, size_t &pos, const size_t length,
+HyperedgeReadResult readHyperedges(char *mapped_file, size_t& pos, const size_t length,
                                    const HyperedgeID num_hyperedges,
                                    const mt_kahypar::Type type,
-                                   HyperedgeVector &hyperedges,
-                                   vec<HyperedgeWeight> &hyperedges_weight,
-                                   const bool remove_single_pin_hes)
-{
+                                   HyperedgeVector& hyperedges,
+                                   vec<HyperedgeWeight>& hyperedges_weight,
+                                   const bool remove_single_pin_hes) {
     HyperedgeReadResult res;
     const bool has_hyperedge_weights =
         type == mt_kahypar::Type::EdgeWeights ||
@@ -313,12 +278,10 @@ HyperedgeReadResult readHyperedges(char *mapped_file, size_t &pos, const size_t 
             HyperedgeID current_num_hyperedges = 0;
             const HyperedgeID num_hyperedges_per_range = std::max(
                 (num_hyperedges / (2 * std::thread::hardware_concurrency())), ID(1));
-            while(current_num_hyperedges < num_hyperedges)
-            {
+            while(current_num_hyperedges < num_hyperedges) {
                 // Skip Comments
                 ASSERT(pos < length);
-                while(mapped_file[pos] == '%')
-                {
+                while(mapped_file[pos] == '%') {
                     goto_next_line(mapped_file, pos, length);
                     ASSERT(pos < length);
                 }
@@ -326,12 +289,10 @@ HyperedgeReadResult readHyperedges(char *mapped_file, size_t &pos, const size_t 
                 // This check is fine even with windows line endings!
                 ASSERT(mapped_file[pos - 1] == '\n');
                 if(!remove_single_pin_hes ||
-                   !isSinglePinHyperedge(mapped_file, pos, length, has_hyperedge_weights))
-                {
+                   !isSinglePinHyperedge(mapped_file, pos, length,
+                                         has_hyperedge_weights)) {
                     ++current_range_num_hyperedges;
-                }
-                else
-                {
+                } else {
                     ++res.num_removed_single_pin_hyperedges;
                 }
                 ++current_num_hyperedges;
@@ -339,8 +300,7 @@ HyperedgeReadResult readHyperedges(char *mapped_file, size_t &pos, const size_t 
 
                 // If there are enough hyperedges in the current scanned range
                 // we store that range, which will be later processed in parallel
-                if(current_range_num_hyperedges == num_hyperedges_per_range)
-                {
+                if(current_range_num_hyperedges == num_hyperedges_per_range) {
                     hyperedge_ranges.push_back(
                         HyperedgeRange{ current_range_start, pos, current_range_start_id,
                                         current_range_num_hyperedges });
@@ -349,8 +309,7 @@ HyperedgeReadResult readHyperedges(char *mapped_file, size_t &pos, const size_t 
                     current_range_num_hyperedges = 0;
                 }
             }
-            if(current_range_num_hyperedges > 0)
-            {
+            if(current_range_num_hyperedges > 0) {
                 hyperedge_ranges.push_back(
                     HyperedgeRange{ current_range_start, pos, current_range_start_id,
                                     current_range_num_hyperedges });
@@ -358,8 +317,7 @@ HyperedgeReadResult readHyperedges(char *mapped_file, size_t &pos, const size_t 
         },
         [&] { hyperedges.resize(num_hyperedges); },
         [&] {
-            if(has_hyperedge_weights)
-            {
+            if(has_hyperedge_weights) {
                 hyperedges_weight.resize(num_hyperedges);
             }
         });
@@ -367,47 +325,41 @@ HyperedgeReadResult readHyperedges(char *mapped_file, size_t &pos, const size_t 
     const HyperedgeID tmp_num_hyperedges =
         num_hyperedges - res.num_removed_single_pin_hyperedges;
     hyperedges.resize(tmp_num_hyperedges);
-    if(has_hyperedge_weights)
-    {
+    if(has_hyperedge_weights) {
         hyperedges_weight.resize(tmp_num_hyperedges);
     }
 
     // Process all ranges in parallel and build hyperedge vector
     tbb::parallel_for(UL(0), hyperedge_ranges.size(), [&](const size_t i) {
-        HyperedgeRange &range = hyperedge_ranges[i];
+        HyperedgeRange& range = hyperedge_ranges[i];
         size_t current_pos = range.start;
         const size_t current_end = range.end;
         HyperedgeID current_id = range.start_id;
         const HyperedgeID last_id = current_id + range.num_hyperedges;
 
-        while(current_id < last_id)
-        {
+        while(current_id < last_id) {
             // Skip Comments
             ASSERT(current_pos < current_end);
-            while(mapped_file[current_pos] == '%')
-            {
+            while(mapped_file[current_pos] == '%') {
                 goto_next_line(mapped_file, current_pos, current_end);
                 ASSERT(current_pos < current_end);
             }
 
             if(!remove_single_pin_hes ||
                !isSinglePinHyperedge(mapped_file, current_pos, current_end,
-                                     has_hyperedge_weights))
-            {
+                                     has_hyperedge_weights)) {
                 ASSERT(current_id < hyperedges.size());
-                if(has_hyperedge_weights)
-                {
+                if(has_hyperedge_weights) {
                     hyperedges_weight[current_id] =
                         read_number(mapped_file, current_pos, current_end);
                 }
 
-                Hyperedge &hyperedge = hyperedges[current_id];
+                Hyperedge& hyperedge = hyperedges[current_id];
                 // Note, a hyperedge line must contain at least one pin
                 HypernodeID pin = read_number(mapped_file, current_pos, current_end);
                 ASSERT(pin > 0, V(current_id));
                 hyperedge.push_back(pin - 1);
-                while(!is_line_ending(mapped_file, current_pos))
-                {
+                while(!is_line_ending(mapped_file, current_pos)) {
                     pin = read_number(mapped_file, current_pos, current_end);
                     ASSERT(pin > 0, V(current_id));
                     hyperedge.push_back(pin - 1);
@@ -417,31 +369,25 @@ HyperedgeReadResult readHyperedges(char *mapped_file, size_t &pos, const size_t 
                 // Detect duplicated pins
                 std::sort(hyperedge.begin(), hyperedge.end());
                 size_t j = 1;
-                for(size_t i = 1; i < hyperedge.size(); ++i)
-                {
-                    if(hyperedge[j - 1] != hyperedge[i])
-                    {
+                for(size_t i = 1; i < hyperedge.size(); ++i) {
+                    if(hyperedge[j - 1] != hyperedge[i]) {
                         std::swap(hyperedge[i], hyperedge[j++]);
                     }
                 }
-                if(j < hyperedge.size())
-                {
+                if(j < hyperedge.size()) {
                     // Remove duplicated pins
                     __atomic_fetch_add(&res.num_hes_with_duplicated_pins, 1,
                                        __ATOMIC_RELAXED);
                     __atomic_fetch_add(&res.num_duplicated_pins, hyperedge.size() - j,
                                        __ATOMIC_RELAXED);
-                    for(size_t i = j; i < hyperedge.size(); ++i)
-                    {
+                    for(size_t i = j; i < hyperedge.size(); ++i) {
                         hyperedge.pop_back();
                     }
                 }
 
                 ASSERT(hyperedge.size() >= 2);
                 ++current_id;
-            }
-            else
-            {
+            } else {
                 goto_next_line(mapped_file, current_pos, current_end);
             }
         }
@@ -449,19 +395,16 @@ HyperedgeReadResult readHyperedges(char *mapped_file, size_t &pos, const size_t 
     return res;
 }
 
-void readHypernodeWeights(char *mapped_file, size_t &pos, const size_t length,
+void readHypernodeWeights(char *mapped_file, size_t& pos, const size_t length,
                           const HypernodeID num_hypernodes, const mt_kahypar::Type type,
-                          vec<HypernodeWeight> &hypernodes_weight)
-{
+                          vec<HypernodeWeight>& hypernodes_weight) {
     bool has_hypernode_weights = type == mt_kahypar::Type::NodeWeights ||
                                          type == mt_kahypar::Type::EdgeAndNodeWeights ?
                                      true :
                                      false;
-    if(has_hypernode_weights)
-    {
+    if(has_hypernode_weights) {
         hypernodes_weight.resize(num_hypernodes);
-        for(HypernodeID hn = 0; hn < num_hypernodes; ++hn)
-        {
+        for(HypernodeID hn = 0; hn < num_hypernodes; ++hn) {
             ASSERT(pos > 0 && pos < length);
             ASSERT(mapped_file[pos - 1] == '\n');
             hypernodes_weight[hn] = read_number(mapped_file, pos, length);
@@ -470,14 +413,13 @@ void readHypernodeWeights(char *mapped_file, size_t &pos, const size_t length,
     }
 }
 
-void readHypergraphFile(const std::string &filename, HyperedgeID &num_hyperedges,
-                        HypernodeID &num_hypernodes,
-                        HyperedgeID &num_removed_single_pin_hyperedges,
-                        HyperedgeVector &hyperedges,
-                        vec<HyperedgeWeight> &hyperedges_weight,
-                        vec<HypernodeWeight> &hypernodes_weight,
-                        const bool remove_single_pin_hes)
-{
+void readHypergraphFile(const std::string& filename, HyperedgeID& num_hyperedges,
+                        HypernodeID& num_hypernodes,
+                        HyperedgeID& num_removed_single_pin_hyperedges,
+                        HyperedgeVector& hyperedges,
+                        vec<HyperedgeWeight>& hyperedges_weight,
+                        vec<HypernodeWeight>& hypernodes_weight,
+                        const bool remove_single_pin_hes) {
     ASSERT(!filename.empty(), "No filename for hypergraph file specified");
     FileHandle handle = mmap_file(filename);
     size_t pos = 0;
@@ -494,8 +436,7 @@ void readHypergraphFile(const std::string &filename, HyperedgeID &num_hyperedges
     num_hyperedges -= res.num_removed_single_pin_hyperedges;
     num_removed_single_pin_hyperedges = res.num_removed_single_pin_hyperedges;
 
-    if(res.num_hes_with_duplicated_pins > 0)
-    {
+    if(res.num_hes_with_duplicated_pins > 0) {
         WARNING("Removed" << res.num_duplicated_pins << "duplicated pins in"
                           << res.num_hes_with_duplicated_pins << "hyperedges!");
     }
@@ -508,21 +449,18 @@ void readHypergraphFile(const std::string &filename, HyperedgeID &num_hyperedges
     munmap_file(handle);
 }
 
-void readMetisHeader(char *mapped_file, size_t &pos, const size_t length,
-                     HyperedgeID &num_edges, HypernodeID &num_vertices,
-                     bool &has_edge_weights, bool &has_vertex_weights)
-{
+void readMetisHeader(char *mapped_file, size_t& pos, const size_t length,
+                     HyperedgeID& num_edges, HypernodeID& num_vertices,
+                     bool& has_edge_weights, bool& has_vertex_weights) {
     // Skip comments
-    while(mapped_file[pos] == '%')
-    {
+    while(mapped_file[pos] == '%') {
         goto_next_line(mapped_file, pos, length);
     }
 
     num_vertices = read_number(mapped_file, pos, length);
     num_edges = read_number(mapped_file, pos, length);
 
-    if(!is_line_ending(mapped_file, pos))
-    {
+    if(!is_line_ending(mapped_file, pos)) {
         // read the (up to) three 0/1 format digits
         uint32_t format_num = read_number(mapped_file, pos, length);
         ASSERT(format_num < 100, "Vertex sizes in input file are not supported.");
@@ -543,12 +481,11 @@ struct VertexRange
     const HyperedgeID edge_start_id;
 };
 
-void readVertices(char *mapped_file, size_t &pos, const size_t length,
+void readVertices(char *mapped_file, size_t& pos, const size_t length,
                   const HyperedgeID num_edges, const HypernodeID num_vertices,
                   const bool has_edge_weights, const bool has_vertex_weights,
-                  HyperedgeVector &edges, vec<HyperedgeWeight> &edges_weight,
-                  vec<HypernodeWeight> &vertices_weight)
-{
+                  HyperedgeVector& edges, vec<HyperedgeWeight>& edges_weight,
+                  vec<HypernodeWeight>& vertices_weight) {
     vec<VertexRange> vertex_ranges;
     tbb::parallel_invoke(
         [&] {
@@ -563,12 +500,10 @@ void readVertices(char *mapped_file, size_t &pos, const size_t length,
             HyperedgeID current_range_num_edges = 0;
             const HypernodeID num_vertices_per_range = std::max(
                 (num_vertices / (2 * std::thread::hardware_concurrency())), ID(1));
-            while(current_range_vertex_id + current_range_num_vertices < num_vertices)
-            {
+            while(current_range_vertex_id + current_range_num_vertices < num_vertices) {
                 // Skip Comments
                 ASSERT(pos < length);
-                while(mapped_file[pos] == '%')
-                {
+                while(mapped_file[pos] == '%') {
                     goto_next_line(mapped_file, pos, length);
                     ASSERT(pos < length);
                 }
@@ -579,23 +514,19 @@ void readVertices(char *mapped_file, size_t &pos, const size_t length,
                 // Count the forward edges, ignore backward edges.
                 // This is necessary because we can only calculate unique edge ids
                 // efficiently if the edges are deduplicated.
-                if(has_vertex_weights)
-                {
+                if(has_vertex_weights) {
                     read_number(mapped_file, pos, length);
                 }
                 HyperedgeID vertex_degree = 0;
-                while(!is_line_ending(mapped_file, pos) && pos < length)
-                {
+                while(!is_line_ending(mapped_file, pos) && pos < length) {
                     const HypernodeID source =
                         current_range_vertex_id + current_range_num_vertices;
                     const HypernodeID target = read_number(mapped_file, pos, length);
                     ASSERT(source != target);
-                    if(source < target)
-                    {
+                    if(source < target) {
                         ++vertex_degree;
                     }
-                    if(has_edge_weights)
-                    {
+                    if(has_edge_weights) {
                         read_number(mapped_file, pos, length);
                     }
                 }
@@ -604,8 +535,7 @@ void readVertices(char *mapped_file, size_t &pos, const size_t length,
 
                 // If there are enough vertices in the current scanned range
                 // we store that range, which will be processed in parallel later
-                if(current_range_num_vertices == num_vertices_per_range)
-                {
+                if(current_range_num_vertices == num_vertices_per_range) {
                     vertex_ranges.push_back(
                         VertexRange{ current_range_start, pos, current_range_vertex_id,
                                      current_range_num_vertices, current_range_edge_id });
@@ -616,8 +546,7 @@ void readVertices(char *mapped_file, size_t &pos, const size_t length,
                     current_range_num_edges = 0;
                 }
             }
-            if(current_range_num_vertices > 0)
-            {
+            if(current_range_num_vertices > 0) {
                 vertex_ranges.push_back(
                     VertexRange{ current_range_start, pos, current_range_vertex_id,
                                  current_range_num_vertices, current_range_edge_id });
@@ -629,24 +558,20 @@ void readVertices(char *mapped_file, size_t &pos, const size_t length,
         },
         [&] { edges.resize(num_edges); },
         [&] {
-            if(has_edge_weights)
-            {
+            if(has_edge_weights) {
                 edges_weight.resize(num_edges);
             }
         },
         [&] {
-            if(has_vertex_weights)
-            {
+            if(has_vertex_weights) {
                 vertices_weight.resize(num_vertices);
             }
         });
 
     ASSERT([&]() {
         HyperedgeID last_end = 0;
-        for(const auto &range : vertex_ranges)
-        {
-            if(last_end > range.start)
-            {
+        for(const auto& range : vertex_ranges) {
+            if(last_end > range.start) {
                 return false;
             }
             last_end = range.end;
@@ -656,39 +581,34 @@ void readVertices(char *mapped_file, size_t &pos, const size_t length,
 
     // Process all ranges in parallel, build edge vector and assign weights
     tbb::parallel_for(UL(0), vertex_ranges.size(), [&](const size_t i) {
-        const VertexRange &range = vertex_ranges[i];
+        const VertexRange& range = vertex_ranges[i];
         size_t current_pos = range.start;
         const size_t current_end = range.end;
         HypernodeID current_vertex_id = range.vertex_start_id;
         const HypernodeID last_vertex_id = current_vertex_id + range.num_vertices;
         HyperedgeID current_edge_id = range.edge_start_id;
 
-        while(current_vertex_id < last_vertex_id)
-        {
+        while(current_vertex_id < last_vertex_id) {
             // Skip Comments
             ASSERT(current_pos < current_end);
-            while(mapped_file[pos] == '%')
-            {
+            while(mapped_file[pos] == '%') {
                 goto_next_line(mapped_file, current_pos, current_end);
                 ASSERT(current_pos < current_end);
             }
 
-            if(has_vertex_weights)
-            {
+            if(has_vertex_weights) {
                 ASSERT(current_vertex_id < vertices_weight.size());
                 vertices_weight[current_vertex_id] =
                     read_number(mapped_file, current_pos, current_end);
             }
 
-            while(!is_line_ending(mapped_file, current_pos))
-            {
+            while(!is_line_ending(mapped_file, current_pos)) {
                 const HypernodeID target =
                     read_number(mapped_file, current_pos, current_end);
                 ASSERT(target > 0 && (target - 1) < num_vertices, V(target));
 
                 // process forward edges, ignore backward edges
-                if(current_vertex_id < (target - 1))
-                {
+                if(current_vertex_id < (target - 1)) {
                     ASSERT(current_edge_id < edges.size());
                     // At this point, some magic is involved:
                     // In case of the graph partitioner, the right handed expression is
@@ -696,15 +616,12 @@ void readVertices(char *mapped_file, size_t &pos, const size_t length,
                     // handed expression is considered  a vector.
                     edges[current_edge_id] = { current_vertex_id, target - 1 };
 
-                    if(has_edge_weights)
-                    {
+                    if(has_edge_weights) {
                         edges_weight[current_edge_id] =
                             read_number(mapped_file, current_pos, current_end);
                     }
                     ++current_edge_id;
-                }
-                else if(has_edge_weights)
-                {
+                } else if(has_edge_weights) {
                     read_number(mapped_file, current_pos, current_end);
                 }
             }
@@ -714,11 +631,10 @@ void readVertices(char *mapped_file, size_t &pos, const size_t length,
     });
 }
 
-void readGraphFile(const std::string &filename, HyperedgeID &num_edges,
-                   HypernodeID &num_vertices, HyperedgeVector &edges,
-                   vec<HyperedgeWeight> &edges_weight,
-                   vec<HypernodeWeight> &vertices_weight)
-{
+void readGraphFile(const std::string& filename, HyperedgeID& num_edges,
+                   HypernodeID& num_vertices, HyperedgeVector& edges,
+                   vec<HyperedgeWeight>& edges_weight,
+                   vec<HypernodeWeight>& vertices_weight) {
     ASSERT(!filename.empty(), "No filename for metis file specified");
     FileHandle handle = mmap_file(filename);
     size_t pos = 0;
@@ -738,64 +654,48 @@ void readGraphFile(const std::string &filename, HyperedgeID &num_edges,
     munmap_file(handle);
 }
 
-void readPartitionFile(const std::string &filename, std::vector<PartitionID> &partition)
-{
+void readPartitionFile(const std::string& filename, std::vector<PartitionID>& partition) {
     ASSERT(!filename.empty(), "No filename for partition file specified");
     ASSERT(partition.empty(), "Partition vector is not empty");
     std::ifstream file(filename);
-    if(file)
-    {
+    if(file) {
         int part;
-        while(file >> part)
-        {
+        while(file >> part) {
             partition.push_back(part);
         }
         file.close();
-    }
-    else
-    {
+    } else {
         std::cerr << "Error: File not found: " << std::endl;
     }
 }
 
-void readPartitionFile(const std::string &filename, PartitionID *partition)
-{
+void readPartitionFile(const std::string& filename, PartitionID *partition) {
     ASSERT(!filename.empty(), "No filename for partition file specified");
     std::ifstream file(filename);
-    if(file)
-    {
+    if(file) {
         int part;
         HypernodeID hn = 0;
-        while(file >> part)
-        {
+        while(file >> part) {
             partition[hn++] = part;
         }
         file.close();
-    }
-    else
-    {
+    } else {
         std::cerr << "Error: File not found: " << std::endl;
     }
 }
 
 template <typename PartitionedHypergraph>
-void writePartitionFile(const PartitionedHypergraph &phg, const std::string &filename)
-{
-    if(filename.empty())
-    {
+void writePartitionFile(const PartitionedHypergraph& phg, const std::string& filename) {
+    if(filename.empty()) {
         LOG << "No filename for partition file specified";
-    }
-    else
-    {
+    } else {
         std::ofstream out_stream(filename.c_str());
         std::vector<PartitionID> partition(phg.initialNumNodes(), -1);
-        for(const HypernodeID &hn : phg.nodes())
-        {
+        for(const HypernodeID& hn : phg.nodes()) {
             ASSERT(hn < partition.size());
             partition[hn] = phg.partID(hn);
         }
-        for(const PartitionID &part : partition)
-        {
+        for(const PartitionID& part : partition) {
             out_stream << part << std::endl;
         }
         out_stream.close();
@@ -804,7 +704,7 @@ void writePartitionFile(const PartitionedHypergraph &phg, const std::string &fil
 
 namespace {
 #define WRITE_PARTITION_FILE(X)                                                          \
-    void writePartitionFile(const X &phg, const std::string &filename)
+    void writePartitionFile(const X& phg, const std::string& filename)
 } // namespace
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(WRITE_PARTITION_FILE)

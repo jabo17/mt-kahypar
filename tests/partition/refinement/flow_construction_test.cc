@@ -75,8 +75,7 @@ class AFlowHypergraphConstructor : public Test
                                           { 6, 9 } },
                                         nullptr, nullptr, true)),
         phg(3, hg, parallel_tag_t()), context(), flow_hg(), hfc(flow_hg, 42),
-        constructor(nullptr), whfc_to_node()
-    {
+        constructor(nullptr), whfc_to_node() {
         context.partition.k = 3;
         context.partition.perfect_balance_part_weights.assign(3, 5);
         context.partition.max_part_weights.assign(2, 4);
@@ -103,8 +102,7 @@ class AFlowHypergraphConstructor : public Test
             std::make_unique<Constructor>(hg.initialNumEdges(), flow_hg, hfc, context);
     }
 
-    bool is_default_construction() const
-    {
+    bool is_default_construction() const {
         return Configuration::is_default_construction();
     }
 
@@ -131,30 +129,23 @@ typedef ::testing::Types<
 
 TYPED_TEST_CASE(AFlowHypergraphConstructor, TestConfigs);
 
-void constructSubhypergraph(const PartitionedHypergraph &phg, Subhypergraph &sub_hg)
-{
+void constructSubhypergraph(const PartitionedHypergraph& phg, Subhypergraph& sub_hg) {
     vec<bool> visited(phg.initialNumEdges(), false);
-    for(const HypernodeID &hn : sub_hg.nodes_of_block_0)
-    {
+    for(const HypernodeID& hn : sub_hg.nodes_of_block_0) {
         sub_hg.num_pins += phg.nodeDegree(hn);
         sub_hg.weight_of_block_0 += phg.nodeWeight(hn);
-        for(const HyperedgeID &he : phg.incidentEdges(hn))
-        {
-            if(!visited[he])
-            {
+        for(const HyperedgeID& he : phg.incidentEdges(hn)) {
+            if(!visited[he]) {
                 sub_hg.hes.push_back(he);
                 visited[he] = true;
             }
         }
     }
-    for(const HypernodeID &hn : sub_hg.nodes_of_block_1)
-    {
+    for(const HypernodeID& hn : sub_hg.nodes_of_block_1) {
         sub_hg.num_pins += phg.nodeDegree(hn);
         sub_hg.weight_of_block_1 += phg.nodeWeight(hn);
-        for(const HyperedgeID &he : phg.incidentEdges(hn))
-        {
-            if(!visited[he])
-            {
+        for(const HyperedgeID& he : phg.incidentEdges(hn)) {
+            if(!visited[he]) {
                 sub_hg.hes.push_back(he);
                 visited[he] = true;
             }
@@ -163,8 +154,7 @@ void constructSubhypergraph(const PartitionedHypergraph &phg, Subhypergraph &sub
 }
 
 void verifyFlowProblemStats(const FlowProblem expected_prob,
-                            const FlowProblem actual_prob)
-{
+                            const FlowProblem actual_prob) {
     ASSERT_EQ(expected_prob.source, actual_prob.source);
     ASSERT_EQ(expected_prob.sink, actual_prob.sink);
     ASSERT_EQ(expected_prob.total_cut, actual_prob.total_cut);
@@ -179,54 +169,42 @@ struct Hyperedge
     whfc::Flow capacity;
 };
 
-void verifyFlowHypergraph(FlowHypergraphBuilder &flow_hg,
-                          const vec<Hyperedge> &tmp_hyperedges)
-{
+void verifyFlowHypergraph(FlowHypergraphBuilder& flow_hg,
+                          const vec<Hyperedge>& tmp_hyperedges) {
     vec<Hyperedge> hyperedges = tmp_hyperedges;
     vec<bool> already_matched_hes(flow_hg.numHyperedges(), false);
-    for(size_t i = 0; i < hyperedges.size(); ++i)
-    {
-        Hyperedge &he = hyperedges[i];
+    for(size_t i = 0; i < hyperedges.size(); ++i) {
+        Hyperedge& he = hyperedges[i];
         whfc::Hyperedge found_he = whfc::Hyperedge::Invalid();
 
-        for(const whfc::Hyperedge &whfc_he : flow_hg.hyperedgeIDs())
-        {
+        for(const whfc::Hyperedge& whfc_he : flow_hg.hyperedgeIDs()) {
             if(!already_matched_hes[whfc_he] &&
-               flow_hg.pinCount(whfc_he) == he.pins.size())
-            {
+               flow_hg.pinCount(whfc_he) == he.pins.size()) {
                 size_t idx = 0;
                 bool equal = true;
-                for(const auto &p : flow_hg.pinsOf(whfc_he))
-                {
-                    if(p.pin != he.pins[idx++])
-                    {
+                for(const auto& p : flow_hg.pinsOf(whfc_he)) {
+                    if(p.pin != he.pins[idx++]) {
                         equal = false;
                         break;
                     }
                 }
-                if(equal)
-                {
+                if(equal) {
                     found_he = whfc_he;
                     break;
                 }
             }
         }
 
-        if(found_he != whfc::Hyperedge::Invalid())
-        {
+        if(found_he != whfc::Hyperedge::Invalid()) {
             ASSERT_EQ(flow_hg.capacity(found_he), he.capacity);
             he.capacity -= flow_hg.capacity(found_he);
             already_matched_hes[found_he] = true;
-            if(he.capacity > 0)
-            {
+            if(he.capacity > 0) {
                 --i;
             }
-        }
-        else
-        {
+        } else {
             LOG << "Hyperedge not found:";
-            for(const whfc::Node &pin : he.pins)
-            {
+            for(const whfc::Node& pin : he.pins) {
                 std::cout << pin << " ";
             }
             std::cout << std::endl;
@@ -235,8 +213,7 @@ void verifyFlowHypergraph(FlowHypergraphBuilder &flow_hg,
     }
 }
 
-TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithTwoHypernodes1)
-{
+TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithTwoHypernodes1) {
     Subhypergraph sub_hg{ 0, 1, { 1 }, { 4 }, 0, 0, {}, 0 };
     constructSubhypergraph(this->phg, sub_hg);
 
@@ -256,8 +233,7 @@ TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithTwoHypernode
                                           { { NODE(2), NODE(3) }, CAPACITY(2) } });
 }
 
-TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithTwoHypernodes2)
-{
+TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithTwoHypernodes2) {
     Subhypergraph sub_hg{ 0, 1, { 3 }, { 6 }, 0, 0, {}, 0 };
     constructSubhypergraph(this->phg, sub_hg);
 
@@ -277,8 +253,7 @@ TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithTwoHypernode
                                           { { NODE(2), NODE(3) }, CAPACITY(2) } });
 }
 
-TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithThreeHypernodes1)
-{
+TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithThreeHypernodes1) {
     Subhypergraph sub_hg{ 0, 1, { 1, 3 }, { 4 }, 0, 0, {}, 0 };
     constructSubhypergraph(this->phg, sub_hg);
 
@@ -301,8 +276,7 @@ TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithThreeHyperno
                            { { NODE(3), NODE(1), NODE(2), NODE(4) }, CAPACITY(1) } });
 }
 
-TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithThreeHypernodes2)
-{
+TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithThreeHypernodes2) {
     Subhypergraph sub_hg{ 0, 1, { 1 }, { 4, 6 }, 0, 0, {}, 0 };
     constructSubhypergraph(this->phg, sub_hg);
 
@@ -325,8 +299,7 @@ TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithThreeHyperno
                            { { NODE(0), NODE(1), NODE(3), NODE(4) }, CAPACITY(1) } });
 }
 
-TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithFourHypernodes)
-{
+TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithFourHypernodes) {
     Subhypergraph sub_hg{ 0, 1, { 1, 3 }, { 4, 6 }, 0, 0, {}, 0 };
     constructSubhypergraph(this->phg, sub_hg);
 
@@ -350,8 +323,7 @@ TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithFourHypernod
                            { { NODE(1), NODE(2), NODE(4), NODE(5) }, CAPACITY(1) } });
 }
 
-TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithFiveHypernodes1)
-{
+TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithFiveHypernodes1) {
     Subhypergraph sub_hg{ 0, 1, { 0, 1, 3 }, { 4, 6 }, 0, 0, {}, 0 };
     constructSubhypergraph(this->phg, sub_hg);
 
@@ -378,8 +350,7 @@ TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithFiveHypernod
                            { { NODE(4), NODE(1), NODE(2), NODE(5) }, CAPACITY(1) } });
 }
 
-TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithFiveHypernodes2)
-{
+TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithFiveHypernodes2) {
     Subhypergraph sub_hg{ 0, 1, { 1, 3 }, { 4, 5, 6 }, 0, 0, {}, 0 };
     constructSubhypergraph(this->phg, sub_hg);
 
@@ -406,8 +377,7 @@ TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithFiveHypernod
                            { { NODE(0), NODE(1), NODE(4), NODE(5) }, CAPACITY(1) } });
 }
 
-TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithSixHypernodes)
-{
+TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithSixHypernodes) {
     Subhypergraph sub_hg{ 0, 1, { 0, 1, 3 }, { 4, 5, 6 }, 0, 0, {}, 0 };
     constructSubhypergraph(this->phg, sub_hg);
 
@@ -436,8 +406,7 @@ TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithSixHypernode
                            { { NODE(1), NODE(2), NODE(5), NODE(6) }, CAPACITY(1) } });
 }
 
-TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithAllHypernodes)
-{
+TYPED_TEST(AFlowHypergraphConstructor, ConstructsAFlowHypergraphWithAllHypernodes) {
     Subhypergraph sub_hg{ 0, 1, { 0, 1, 2, 3 }, { 4, 5, 6, 7 }, 0, 0, {}, 0 };
     constructSubhypergraph(this->phg, sub_hg);
 

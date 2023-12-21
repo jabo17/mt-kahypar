@@ -37,8 +37,7 @@
 namespace mt_kahypar {
 
 template <typename TypeTraits>
-void NLevelUncoarsener<TypeTraits>::initializeImpl()
-{
+void NLevelUncoarsener<TypeTraits>::initializeImpl() {
     // Initialize n-level batch uncontraction hierarchy
     _timer.start_timer("create_batch_uncontraction_hierarchy",
                        "Create n-Level Hierarchy");
@@ -53,8 +52,7 @@ void NLevelUncoarsener<TypeTraits>::initializeImpl()
     _stats.current_number_of_nodes = _uncoarseningData.compactified_hg->initialNumNodes();
     Base::initializeRefinementAlgorithms();
 
-    if(_context.type == ContextType::main)
-    {
+    if(_context.type == ContextType::main) {
         _context.initial_km1 = _current_metrics.quality;
     }
 
@@ -77,8 +75,7 @@ void NLevelUncoarsener<TypeTraits>::initializeImpl()
     _uncoarseningData.partitioned_hg->setTargetGraph(_target_graph);
 
     // Initialize Gain Cache
-    if(_context.refinement.fm.algorithm == FMAlgorithm::kway_fm)
-    {
+    if(_context.refinement.fm.algorithm == FMAlgorithm::kway_fm) {
         GainCachePtr::initializeGainCache(*_uncoarseningData.partitioned_hg, _gain_cache);
     }
 
@@ -94,8 +91,7 @@ void NLevelUncoarsener<TypeTraits>::initializeImpl()
 
     // Enable progress bar if verbose output is enabled
     if(_context.partition.verbose_output && _context.partition.enable_progress_bar &&
-       !debug)
-    {
+       !debug) {
         _progress.enable();
         _progress.setObjective(_current_metrics.quality);
         _progress += _uncoarseningData.compactified_hg->initialNumNodes();
@@ -104,16 +100,13 @@ void NLevelUncoarsener<TypeTraits>::initializeImpl()
     // Initialize Refiner
     mt_kahypar_partitioned_hypergraph_t phg =
         utils::partitioned_hg_cast(*_uncoarseningData.partitioned_hg);
-    if(_rebalancer)
-    {
+    if(_rebalancer) {
         _rebalancer->initialize(phg);
     }
-    if(_label_propagation)
-    {
+    if(_label_propagation) {
         _label_propagation->initialize(phg);
     }
-    if(_fm)
-    {
+    if(_fm) {
         _fm->initialize(phg);
     }
 
@@ -124,33 +117,28 @@ void NLevelUncoarsener<TypeTraits>::initializeImpl()
             _uncoarseningData.round_coarsening_times.back() :
             std::numeric_limits<double>::max()); // Sentinel
 
-    if(_timer.isEnabled())
-    {
+    if(_timer.isEnabled()) {
         _timer.disable();
         _is_timer_disabled = true;
     }
 }
 
 template <typename TypeTraits>
-bool NLevelUncoarsener<TypeTraits>::isTopLevelImpl() const
-{
+bool NLevelUncoarsener<TypeTraits>::isTopLevelImpl() const {
     return _hierarchy.empty();
 }
 
 template <typename TypeTraits>
-void NLevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl()
-{
-    BatchVector &batches = _hierarchy.back();
+void NLevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl() {
+    BatchVector& batches = _hierarchy.back();
 
     // Uncontracts all batches from one coarsening pass. One coarsening pass iterates over
     // all nodes and contracts each node onto another node. Afterwards, we remove all
     // single-pin and identical nets. The following loop reverts all contractions and
     // restores single-pin and identical nets.
-    while(!batches.empty())
-    {
-        const Batch &batch = batches.back();
-        if(batch.size() > 0)
-        {
+    while(!batches.empty()) {
+        const Batch& batch = batches.back();
+        if(batch.size() > 0) {
             HEAVY_REFINEMENT_ASSERT(
                 metrics::quality(*_uncoarseningData.partitioned_hg, _context) ==
                     _current_metrics.quality,
@@ -177,16 +165,14 @@ void NLevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl()
             _timer.start_timer("collect_border_vertices", "Collect Border Vertices",
                                false, _force_measure_timings);
             tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
-                const Memento &memento = batch[i];
+                const Memento& memento = batch[i];
                 if(!_border_vertices_of_batch[memento.u] &&
-                   _uncoarseningData.partitioned_hg->isBorderNode(memento.u))
-                {
+                   _uncoarseningData.partitioned_hg->isBorderNode(memento.u)) {
                     _border_vertices_of_batch.set(memento.u, true);
                     _tmp_refinement_nodes.stream(memento.u);
                 }
                 if(!_border_vertices_of_batch[memento.v] &&
-                   _uncoarseningData.partitioned_hg->isBorderNode(memento.v))
-                {
+                   _uncoarseningData.partitioned_hg->isBorderNode(memento.v)) {
                     _border_vertices_of_batch.set(memento.v, true);
                     _tmp_refinement_nodes.stream(memento.v);
                 }
@@ -195,8 +181,7 @@ void NLevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl()
 
             // We perform localized refinement around the uncontracted nodes if the
             // current number of border nodes is greater than a predefined threshold.
-            if(_tmp_refinement_nodes.size() >= _stats.min_num_border_vertices)
-            {
+            if(_tmp_refinement_nodes.size() >= _stats.min_num_border_vertices) {
                 localizedRefine(*_uncoarseningData.partitioned_hg);
             }
 
@@ -212,14 +197,12 @@ void NLevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl()
 
     // Perform localized refinement on the remaining nodes such that we do
     // not miss any improvement.
-    if(_tmp_refinement_nodes.size() > 0)
-    {
+    if(_tmp_refinement_nodes.size() > 0) {
         localizedRefine(*_uncoarseningData.partitioned_hg);
     }
 
     // Restore single-pin and identical nets
-    if(!_uncoarseningData.removed_hyperedges_batches.empty())
-    {
+    if(!_uncoarseningData.removed_hyperedges_batches.empty()) {
         _timer.start_timer("restore_single_pin_and_parallel_nets",
                            "Restore Single Pin and Parallel Nets", false,
                            _force_measure_timings);
@@ -241,8 +224,7 @@ void NLevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl()
 
     _hierarchy.pop_back();
 
-    if(_hierarchy.empty())
-    {
+    if(_hierarchy.empty()) {
         // After we reach the top-level hypergraph, we perform an additional
         // refinement step on all border nodes.
         const HyperedgeWeight objective_before = _current_metrics.quality;
@@ -252,38 +234,32 @@ void NLevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl()
         _uncoarseningData.round_coarsening_times.pop_back();
         ASSERT(_uncoarseningData.round_coarsening_times.size() == 0);
         const HyperedgeWeight objective_after = _current_metrics.quality;
-        if(_context.partition.verbose_output && objective_after < objective_before)
-        {
+        if(_context.partition.verbose_output && objective_after < objective_before) {
             LOG << GREEN << "Top-Level Refinment improved objective from"
                 << objective_before << "to" << objective_after << END;
         }
 
-        if(_is_timer_disabled)
-        {
+        if(_is_timer_disabled) {
             _timer.enable();
         }
     }
 }
 
 template <typename TypeTraits>
-void NLevelUncoarsener<TypeTraits>::refineImpl()
-{
+void NLevelUncoarsener<TypeTraits>::refineImpl() {
     const double time_limit = Base::refinementTimeLimit(
         _context, _uncoarseningData.round_coarsening_times.back());
     globalRefine(*_uncoarseningData.partitioned_hg, time_limit);
 }
 
 template <typename TypeTraits>
-void NLevelUncoarsener<TypeTraits>::rebalancingImpl()
-{
+void NLevelUncoarsener<TypeTraits>::rebalancingImpl() {
     // If we reach the top-level hypergraph and the partition is still imbalanced,
     // we use a rebalancing algorithm to restore balance.
     if(_context.type == ContextType::main &&
-       !metrics::isBalanced(*_uncoarseningData.partitioned_hg, _context))
-    {
+       !metrics::isBalanced(*_uncoarseningData.partitioned_hg, _context)) {
         const HyperedgeWeight quality_before = _current_metrics.quality;
-        if(_context.partition.verbose_output)
-        {
+        if(_context.partition.verbose_output) {
             LOG << RED << "Partition is imbalanced (Current Imbalance:"
                 << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context)
                 << ") ->"
@@ -301,18 +277,14 @@ void NLevelUncoarsener<TypeTraits>::rebalancingImpl()
         _timer.stop_timer("rebalance");
 
         const HyperedgeWeight quality_after = _current_metrics.quality;
-        if(_context.partition.verbose_output)
-        {
+        if(_context.partition.verbose_output) {
             const HyperedgeWeight quality_delta = quality_after - quality_before;
-            if(quality_delta > 0)
-            {
+            if(quality_delta > 0) {
                 LOG << RED << "Rebalancer worsen solution quality by" << quality_delta
                     << "(Current Imbalance:"
                     << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context)
                     << ")" << END;
-            }
-            else
-            {
+            } else {
                 LOG << GREEN << "Rebalancer improves solution quality by"
                     << abs(quality_delta) << "(Current Imbalance:"
                     << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context)
@@ -328,50 +300,43 @@ void NLevelUncoarsener<TypeTraits>::rebalancingImpl()
 }
 
 template <typename TypeTraits>
-HyperedgeWeight NLevelUncoarsener<TypeTraits>::getObjectiveImpl() const
-{
+HyperedgeWeight NLevelUncoarsener<TypeTraits>::getObjectiveImpl() const {
     return _current_metrics.quality;
 }
 
 template <typename TypeTraits>
-void NLevelUncoarsener<TypeTraits>::updateMetricsImpl()
-{
+void NLevelUncoarsener<TypeTraits>::updateMetricsImpl() {
     _current_metrics = Base::initializeMetrics(*_uncoarseningData.partitioned_hg);
     _progress.setObjective(_current_metrics.quality);
 }
 
 template <typename TypeTraits>
-typename TypeTraits::PartitionedHypergraph &
-NLevelUncoarsener<TypeTraits>::currentPartitionedHypergraphImpl()
-{
+typename TypeTraits::PartitionedHypergraph&
+NLevelUncoarsener<TypeTraits>::currentPartitionedHypergraphImpl() {
     return *_uncoarseningData.partitioned_hg;
 }
 
 template <typename TypeTraits>
-HypernodeID NLevelUncoarsener<TypeTraits>::currentNumberOfNodesImpl() const
-{
+HypernodeID NLevelUncoarsener<TypeTraits>::currentNumberOfNodesImpl() const {
     return _stats.current_number_of_nodes;
 }
 
 template <typename TypeTraits>
-typename TypeTraits::PartitionedHypergraph &&
-NLevelUncoarsener<TypeTraits>::movePartitionedHypergraphImpl()
-{
+typename TypeTraits::PartitionedHypergraph&&
+NLevelUncoarsener<TypeTraits>::movePartitionedHypergraphImpl() {
     ASSERT(isTopLevelImpl());
     return std::move(*_uncoarseningData.partitioned_hg);
 }
 
 template <typename TypeTraits>
 void NLevelUncoarsener<TypeTraits>::localizedRefine(
-    PartitionedHypergraph &partitioned_hypergraph)
-{
+    PartitionedHypergraph& partitioned_hypergraph) {
     // Copy all border nodes into one vector
     vec<HypernodeID> refinement_nodes = _tmp_refinement_nodes.copy_parallel();
     _tmp_refinement_nodes.clear_parallel();
     _border_vertices_of_batch.reset();
 
-    if(debug && _context.type == ContextType::main)
-    {
+    if(debug && _context.type == ContextType::main) {
         io::printHypergraphInfo(partitioned_hypergraph.hypergraph(), _context,
                                 "Refinement Hypergraph", false);
         DBG << "Start Refinement - objective = " << _current_metrics.quality
@@ -381,13 +346,11 @@ void NLevelUncoarsener<TypeTraits>::localizedRefine(
     bool improvement_found = true;
     mt_kahypar_partitioned_hypergraph_t phg =
         utils::partitioned_hg_cast(partitioned_hypergraph);
-    while(improvement_found)
-    {
+    while(improvement_found) {
         improvement_found = false;
 
         if(_label_propagation && _context.refinement.label_propagation.algorithm !=
-                                     LabelPropagationAlgorithm::do_nothing)
-        {
+                                     LabelPropagationAlgorithm::do_nothing) {
             _timer.start_timer("label_propagation", "Label Propagation", false,
                                _force_measure_timings);
             improvement_found |=
@@ -396,16 +359,14 @@ void NLevelUncoarsener<TypeTraits>::localizedRefine(
             _timer.stop_timer("label_propagation", _force_measure_timings);
         }
 
-        if(_fm && _context.refinement.fm.algorithm != FMAlgorithm::do_nothing)
-        {
+        if(_fm && _context.refinement.fm.algorithm != FMAlgorithm::do_nothing) {
             _timer.start_timer("fm", "FM", false, _force_measure_timings);
             improvement_found |= _fm->refine(phg, refinement_nodes, _current_metrics,
                                              std::numeric_limits<double>::max());
             _timer.stop_timer("fm", _force_measure_timings);
         }
 
-        if(_context.type == ContextType::main)
-        {
+        if(_context.type == ContextType::main) {
             ASSERT(_current_metrics.quality ==
                        metrics::quality(partitioned_hypergraph,
                                         _context.partition.objective),
@@ -415,24 +376,21 @@ void NLevelUncoarsener<TypeTraits>::localizedRefine(
                        << V(_current_metrics.quality));
         }
 
-        if(!_context.refinement.refine_until_no_improvement)
-        {
+        if(!_context.refinement.refine_until_no_improvement) {
             break;
         }
     }
 
-    if(_context.type == ContextType::main)
-    {
+    if(_context.type == ContextType::main) {
         DBG << "--------------------------------------------------\n";
     }
 }
 
 template <typename TypeTraits>
 void NLevelUncoarsener<TypeTraits>::globalRefine(
-    PartitionedHypergraph &partitioned_hypergraph, const double time_limit)
-{
+    PartitionedHypergraph& partitioned_hypergraph, const double time_limit) {
 
-    auto applyGlobalFMParameters = [&](const FMParameters &fm,
+    auto applyGlobalFMParameters = [&](const FMParameters& fm,
                                        const NLevelGlobalFMParameters global_fm) {
         NLevelGlobalFMParameters tmp_global_fm;
         tmp_global_fm.num_seed_nodes = fm.num_seed_nodes;
@@ -442,10 +400,8 @@ void NLevelUncoarsener<TypeTraits>::globalRefine(
         return tmp_global_fm;
     };
 
-    if(_context.refinement.global_fm.use_global_fm)
-    {
-        if(debug && _context.type == ContextType::main)
-        {
+    if(_context.refinement.global_fm.use_global_fm) {
+        if(debug && _context.type == ContextType::main) {
             io::printHypergraphInfo(partitioned_hypergraph.hypergraph(), _context,
                                     "Refinement Hypergraph", false);
             DBG << "Start Refinement - objective = " << _current_metrics.quality
@@ -454,8 +410,7 @@ void NLevelUncoarsener<TypeTraits>::globalRefine(
 
         // Enable Timings
         bool was_enabled = false;
-        if(!_timer.isEnabled() && _context.type == ContextType::main)
-        {
+        if(!_timer.isEnabled() && _context.type == ContextType::main) {
             _timer.enable();
             was_enabled = true;
         }
@@ -467,20 +422,18 @@ void NLevelUncoarsener<TypeTraits>::globalRefine(
         bool improvement_found = true;
         mt_kahypar_partitioned_hypergraph_t phg =
             utils::partitioned_hg_cast(partitioned_hypergraph);
-        while(improvement_found)
-        {
+        while(improvement_found) {
             improvement_found = false;
             const HyperedgeWeight metric_before = _current_metrics.quality;
 
-            if(_fm && _context.refinement.fm.algorithm != FMAlgorithm::do_nothing)
-            {
+            if(_fm && _context.refinement.fm.algorithm != FMAlgorithm::do_nothing) {
                 _timer.start_timer("fm", "FM");
                 improvement_found |= _fm->refine(phg, {}, _current_metrics, time_limit);
                 _timer.stop_timer("fm");
             }
 
-            if(_flows && _context.refinement.flows.algorithm != FlowAlgorithm::do_nothing)
-            {
+            if(_flows &&
+               _context.refinement.flows.algorithm != FlowAlgorithm::do_nothing) {
                 _timer.start_timer("initialize_flow_scheduler",
                                    "Initialize Flow Scheduler");
                 _flows->initialize(phg);
@@ -493,8 +446,7 @@ void NLevelUncoarsener<TypeTraits>::globalRefine(
                 _timer.stop_timer("flow_refinement_scheduler");
             }
 
-            if(_context.type == ContextType::main)
-            {
+            if(_context.type == ContextType::main) {
                 ASSERT(_current_metrics.quality ==
                            metrics::quality(partitioned_hypergraph,
                                             _context.partition.objective),
@@ -508,8 +460,8 @@ void NLevelUncoarsener<TypeTraits>::globalRefine(
             const double relative_improvement =
                 1.0 - static_cast<double>(metric_after) / metric_before;
             if(!_context.refinement.global_fm.refine_until_no_improvement ||
-               relative_improvement <= _context.refinement.relative_improvement_threshold)
-            {
+               relative_improvement <=
+                   _context.refinement.relative_improvement_threshold) {
                 break;
             }
         }
@@ -517,13 +469,11 @@ void NLevelUncoarsener<TypeTraits>::globalRefine(
         applyGlobalFMParameters(_context.refinement.fm, tmp_global_fm);
         _timer.stop_timer("global_refinement");
 
-        if(was_enabled)
-        {
+        if(was_enabled) {
             _timer.disable();
         }
 
-        if(_context.type == ContextType::main)
-        {
+        if(_context.type == ContextType::main) {
             DBG << "--------------------------------------------------\n";
         }
     }
