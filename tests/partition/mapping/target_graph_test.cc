@@ -35,13 +35,14 @@ using ::testing::Test;
 
 namespace mt_kahypar {
 
-class ATargetGraph : public Test {
+class ATargetGraph : public Test
+{
 
   using UnsafeBlock = ds::StaticBitset::Block;
 
- public:
-  ATargetGraph() :
-    graph(nullptr) {
+public:
+  ATargetGraph() : graph(nullptr)
+  {
 
     /**
      * Target Graph:
@@ -59,95 +60,92 @@ class ATargetGraph : public Test {
      * | 1         | 2         | 2         | 2
      * |      1    |      1    |      2    |
      * 12 -------- 13 -------- 14 -------- 15
-    */
-    vec<HyperedgeWeight> edge_weights =
-      { 1, 2, 4,
-        3, 2, 1, 1,
-        3, 2, 1,
-        1, 1, 3, 2,
-        2, 4, 2,
-        1, 2, 2, 2,
-        1, 1, 2 };
-    graph = std::make_unique<TargetGraph>(
-      ds::StaticGraphFactory::construct(16, 24,
-        { { 0, 1 }, { 1, 2 }, { 2, 3 },
-          { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 },
-          { 4, 5 }, { 5, 6 }, { 6, 7 },
-          { 4, 8 }, { 5, 9 }, { 6, 10 }, { 7, 11 },
-          { 8, 9 }, { 9, 10 }, { 10, 11 },
-          { 8, 12 }, { 9, 13 }, { 10, 14 }, { 11, 15 },
-          { 12, 13 }, { 13, 14 }, { 14, 15 } },
-          edge_weights.data()));
-
+     */
+    vec<HyperedgeWeight> edge_weights = { 1, 2, 4, 3, 2, 1, 1, 3, 2, 1, 1, 1,
+                                          3, 2, 2, 4, 2, 1, 2, 2, 2, 1, 1, 2 };
+    graph = std::make_unique<TargetGraph>(ds::StaticGraphFactory::construct(
+        16, 24, { { 0, 1 },  { 1, 2 },   { 2, 3 },   { 0, 4 },   { 1, 5 },   { 2, 6 },
+                  { 3, 7 },  { 4, 5 },   { 5, 6 },   { 6, 7 },   { 4, 8 },   { 5, 9 },
+                  { 6, 10 }, { 7, 11 },  { 8, 9 },   { 9, 10 },  { 10, 11 }, { 8, 12 },
+                  { 9, 13 }, { 10, 14 }, { 11, 15 }, { 12, 13 }, { 13, 14 }, { 14, 15 } },
+        edge_weights.data()));
   }
 
-
-  HyperedgeWeight distance(const vec<PartitionID>& connectivity_set) {
-    ds::Bitset bitset = getBitset(connectivity_set);;
+  HyperedgeWeight distance(const vec<PartitionID> &connectivity_set)
+  {
+    ds::Bitset bitset = getBitset(connectivity_set);
+    ;
     ds::StaticBitset con_set(bitset.numBlocks(), bitset.data());
     return graph->distance(con_set);
   }
 
-  HyperedgeWeight distanceWithBlock(const vec<PartitionID>& connectivity_set,
-                                    const PartitionID block) {
+  HyperedgeWeight distanceWithBlock(const vec<PartitionID> &connectivity_set,
+                                    const PartitionID block)
+  {
     ds::Bitset con_set = getBitset(connectivity_set);
     return graph->distanceWithBlock(con_set, block);
   }
 
-  HyperedgeWeight distanceWithoutBlock(const vec<PartitionID>& connectivity_set,
-                                       const PartitionID block) {
+  HyperedgeWeight distanceWithoutBlock(const vec<PartitionID> &connectivity_set,
+                                       const PartitionID block)
+  {
     ds::Bitset con_set = getBitset(connectivity_set);
     return graph->distanceWithoutBlock(con_set, block);
   }
 
-  HyperedgeWeight distanceAfterExchangingBlocks(const vec<PartitionID>& connectivity_set,
+  HyperedgeWeight distanceAfterExchangingBlocks(const vec<PartitionID> &connectivity_set,
                                                 const PartitionID removed_block,
-                                                const PartitionID added_block) {
+                                                const PartitionID added_block)
+  {
     ds::Bitset con_set = getBitset(connectivity_set);
     return graph->distanceAfterExchangingBlocks(con_set, removed_block, added_block);
   }
 
   std::unique_ptr<TargetGraph> graph;
 
- private:
-  ds::Bitset getBitset(const vec<PartitionID>& connectivity_set) {
+private:
+  ds::Bitset getBitset(const vec<PartitionID> &connectivity_set)
+  {
     ds::Bitset bitset(graph->numBlocks());
-    for ( const PartitionID block : connectivity_set ) {
+    for(const PartitionID block : connectivity_set)
+    {
       bitset.set(block);
     }
     return bitset;
   }
 
-  void setBit(UnsafeBlock& bits, size_t pos) {
-    bits |= (UL(1) << pos);
-  }
+  void setBit(UnsafeBlock &bits, size_t pos) { bits |= (UL(1) << pos); }
 };
 
 template <class F, class K>
-void executeConcurrent(F f1, K f2) {
+void executeConcurrent(F f1, K f2)
+{
   std::atomic<int> cnt(0);
   tbb::task_group group;
 
   group.run([&] {
-        cnt++;
-        while (cnt < 2) { }
-        f1();
-      });
+    cnt++;
+    while(cnt < 2)
+    {
+    }
+    f1();
+  });
 
   group.run([&] {
-        cnt++;
-        while (cnt < 2) { }
-        f2();
-      });
+    cnt++;
+    while(cnt < 2)
+    {
+    }
+    f2();
+  });
 
   group.wait();
 }
 
-TEST_F(ATargetGraph, HasCorrectNumberOfBlocks) {
-  ASSERT_EQ(16, graph->numBlocks());
-}
+TEST_F(ATargetGraph, HasCorrectNumberOfBlocks) { ASSERT_EQ(16, graph->numBlocks()); }
 
-TEST_F(ATargetGraph, ComputesAllShortestPaths) {
+TEST_F(ATargetGraph, ComputesAllShortestPaths)
+{
   graph->precomputeDistances(2);
   ASSERT_EQ(0, graph->distance(0, 0));
   ASSERT_EQ(0, graph->distance(1, 1));
@@ -164,7 +162,8 @@ TEST_F(ATargetGraph, ComputesAllShortestPaths) {
   ASSERT_EQ(7, graph->distance(4, 3));
 }
 
-TEST_F(ATargetGraph, ComputesAllShortestPathsWithConnectivitySet) {
+TEST_F(ATargetGraph, ComputesAllShortestPathsWithConnectivitySet)
+{
   graph->precomputeDistances(2);
   ASSERT_EQ(0, distance({ 0 }));
   ASSERT_EQ(0, distance({ 1 }));
@@ -181,7 +180,8 @@ TEST_F(ATargetGraph, ComputesAllShortestPathsWithConnectivitySet) {
   ASSERT_EQ(7, distance({ 4, 3 }));
 }
 
-TEST_F(ATargetGraph, ComputesAllSteinerTreesUpToSizeThree) {
+TEST_F(ATargetGraph, ComputesAllSteinerTreesUpToSizeThree)
+{
   graph->precomputeDistances(3);
   ASSERT_EQ(8, distance({ 0, 3, 9 }));
   ASSERT_EQ(8, distance({ 1, 3, 10 }));
@@ -195,7 +195,8 @@ TEST_F(ATargetGraph, ComputesAllSteinerTreesUpToSizeThree) {
   ASSERT_EQ(5, distance({ 9, 10, 14 }));
 }
 
-TEST_F(ATargetGraph, ComputeDistancesWithAnAdditionalBlock) {
+TEST_F(ATargetGraph, ComputeDistancesWithAnAdditionalBlock)
+{
   graph->precomputeDistances(3);
   ASSERT_EQ(8, distanceWithBlock({ 0, 3 }, 9));
   ASSERT_EQ(8, distanceWithBlock({ 1, 3 }, 10));
@@ -209,7 +210,8 @@ TEST_F(ATargetGraph, ComputeDistancesWithAnAdditionalBlock) {
   ASSERT_EQ(5, distanceWithBlock({ 10, 14 }, 9));
 }
 
-TEST_F(ATargetGraph, ComputeDistancesWithoutAnBlock) {
+TEST_F(ATargetGraph, ComputeDistancesWithoutAnBlock)
+{
   graph->precomputeDistances(3);
   ASSERT_EQ(8, distanceWithoutBlock({ 0, 2, 3, 9 }, 2));
   ASSERT_EQ(8, distanceWithoutBlock({ 1, 3, 7, 10 }, 7));
@@ -223,7 +225,8 @@ TEST_F(ATargetGraph, ComputeDistancesWithoutAnBlock) {
   ASSERT_EQ(5, distanceWithoutBlock({ 9, 10, 13, 14 }, 13));
 }
 
-TEST_F(ATargetGraph, ComputeDistancesAfterExchangingBlocks) {
+TEST_F(ATargetGraph, ComputeDistancesAfterExchangingBlocks)
+{
   graph->precomputeDistances(3);
   ASSERT_EQ(8, distanceAfterExchangingBlocks({ 0, 4, 9 }, 4, 3));
   ASSERT_EQ(8, distanceAfterExchangingBlocks({ 1, 3, 12 }, 12, 10));
@@ -237,19 +240,21 @@ TEST_F(ATargetGraph, ComputeDistancesAfterExchangingBlocks) {
   ASSERT_EQ(5, distanceAfterExchangingBlocks({ 9, 10, 12 }, 12, 14));
 }
 
-TEST_F(ATargetGraph, ComputesAllSteinerTreesUpToSizeFour) {
+TEST_F(ATargetGraph, ComputesAllSteinerTreesUpToSizeFour)
+{
   graph->precomputeDistances(4);
   ASSERT_EQ(10, distance({ 0, 3, 9, 11 }));
   ASSERT_EQ(8, distance({ 5, 8, 10, 13 }));
   ASSERT_EQ(11, distance({ 1, 3, 10, 15 }));
   ASSERT_EQ(9, distance({ 3, 9, 11, 15 }));
-  ASSERT_EQ(10, distance({ 2, 4, 10 ,12 }));
+  ASSERT_EQ(10, distance({ 2, 4, 10, 12 }));
   ASSERT_EQ(6, distance({ 0, 1, 2, 3 }));
   ASSERT_EQ(14, distance({ 0, 3, 12, 15 }));
   ASSERT_EQ(11, distance({ 0, 3, 9, 14 }));
 }
 
-TEST_F(ATargetGraph, ComputeDistanceBetweenNonPrecomputedSets) {
+TEST_F(ATargetGraph, ComputeDistanceBetweenNonPrecomputedSets)
+{
   graph->precomputeDistances(2);
   ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
   ASSERT_EQ(13, distance({ 0, 3, 10, 14 }));
@@ -258,36 +263,42 @@ TEST_F(ATargetGraph, ComputeDistanceBetweenNonPrecomputedSets) {
   ASSERT_EQ(15, distance({ 2, 3, 4, 8, 10, 14, 15 }));
 }
 
-TEST_F(ATargetGraph, ComputeDistanceBetweenNonPrecomputedSetsConcurrently) {
+TEST_F(ATargetGraph, ComputeDistanceBetweenNonPrecomputedSetsConcurrently)
+{
   graph->precomputeDistances(2);
-  executeConcurrent([&] {
-    ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
-    ASSERT_EQ(13, distance({ 0, 3, 10, 14 }));
-  }, [&] {
-    ASSERT_EQ(13, distance({ 0, 4, 6, 13, 15 }));
-    ASSERT_EQ(10, distance({ 1, 5, 8, 10, 12 }));
-    ASSERT_EQ(15, distance({ 2, 3, 4, 8, 10, 14, 15 }));
-  });
+  executeConcurrent(
+      [&] {
+        ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
+        ASSERT_EQ(13, distance({ 0, 3, 10, 14 }));
+      },
+      [&] {
+        ASSERT_EQ(13, distance({ 0, 4, 6, 13, 15 }));
+        ASSERT_EQ(10, distance({ 1, 5, 8, 10, 12 }));
+        ASSERT_EQ(15, distance({ 2, 3, 4, 8, 10, 14, 15 }));
+      });
 }
 
-TEST_F(ATargetGraph, UsesACachedDistanceForNonPrecomputedSets) {
+TEST_F(ATargetGraph, UsesACachedDistanceForNonPrecomputedSets)
+{
   graph->precomputeDistances(2);
   ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
   ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
 }
 
-TEST_F(ATargetGraph, InsertsIntoCacheConcurrentlyForNonPrecomputedSets) {
+TEST_F(ATargetGraph, InsertsIntoCacheConcurrentlyForNonPrecomputedSets)
+{
   graph->precomputeDistances(2);
-  executeConcurrent([&] {
-    ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
-    ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
-  }, [&] {
-    ASSERT_EQ(13, distance({ 0, 4, 6, 13, 15 }));
-    ASSERT_EQ(13, distance({ 0, 4, 6, 13, 15 }));
-  });
+  executeConcurrent(
+      [&] {
+        ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
+        ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
+      },
+      [&] {
+        ASSERT_EQ(13, distance({ 0, 4, 6, 13, 15 }));
+        ASSERT_EQ(13, distance({ 0, 4, 6, 13, 15 }));
+      });
   ASSERT_EQ(8, distance({ 0, 5, 9, 10 }));
   ASSERT_EQ(13, distance({ 0, 4, 6, 13, 15 }));
 }
 
-
-}  // namespace mt_kahypar
+} // namespace mt_kahypar

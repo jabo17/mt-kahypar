@@ -32,11 +32,11 @@
 
 #include "kahypar-resources/meta/mandatory.h"
 
-#include "mt-kahypar/parallel/stl/scalable_vector.h"
-#include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/delta_connectivity_set.h"
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/datastructures/sparse_map.h"
+#include "mt-kahypar/parallel/stl/scalable_vector.h"
+#include "mt-kahypar/partition/context.h"
 
 namespace mt_kahypar {
 namespace ds {
@@ -78,122 +78,122 @@ public:
   static constexpr HyperedgeID HIGH_DEGREE_THRESHOLD =
       PartitionedHypergraph::HIGH_DEGREE_THRESHOLD;
 
-  DeltaPartitionedHypergraph (const Context &context) :
-      _k (context.partition.k), _phg (nullptr),
-      _part_weights_delta (context.partition.k, 0), _part_ids_delta (),
-      _pins_in_part_delta (), _connectivity_set_delta (context.partition.k)
+  DeltaPartitionedHypergraph(const Context &context) :
+      _k(context.partition.k), _phg(nullptr), _part_weights_delta(context.partition.k, 0),
+      _part_ids_delta(), _pins_in_part_delta(),
+      _connectivity_set_delta(context.partition.k)
   {
     const bool top_level = context.type == ContextType::main;
-    _part_ids_delta.initialize (MAP_SIZE_SMALL);
-    _pins_in_part_delta.initialize (MAP_SIZE_LARGE);
+    _part_ids_delta.initialize(MAP_SIZE_SMALL);
+    _pins_in_part_delta.initialize(MAP_SIZE_LARGE);
   }
 
-  DeltaPartitionedHypergraph (const DeltaPartitionedHypergraph &) = delete;
-  DeltaPartitionedHypergraph &operator= (const DeltaPartitionedHypergraph &) = delete;
+  DeltaPartitionedHypergraph(const DeltaPartitionedHypergraph &) = delete;
+  DeltaPartitionedHypergraph &operator=(const DeltaPartitionedHypergraph &) = delete;
 
-  DeltaPartitionedHypergraph (DeltaPartitionedHypergraph &&other) = default;
-  DeltaPartitionedHypergraph &operator= (DeltaPartitionedHypergraph &&other) = default;
+  DeltaPartitionedHypergraph(DeltaPartitionedHypergraph &&other) = default;
+  DeltaPartitionedHypergraph &operator=(DeltaPartitionedHypergraph &&other) = default;
 
-  ~DeltaPartitionedHypergraph () = default;
+  ~DeltaPartitionedHypergraph() = default;
 
-  void setPartitionedHypergraph (PartitionedHypergraph *phg)
+  void setPartitionedHypergraph(PartitionedHypergraph *phg)
   {
     _phg = phg;
-    _connectivity_set_delta.setConnectivitySet (&phg->getConnectivityInformation ());
+    _connectivity_set_delta.setConnectivitySet(&phg->getConnectivityInformation());
   }
 
   // ####################### Mapping ######################
 
-  bool hasTargetGraph () const
+  bool hasTargetGraph() const
   {
-    ASSERT (_phg);
-    return _phg->hasTargetGraph ();
+    ASSERT(_phg);
+    return _phg->hasTargetGraph();
   }
 
-  const TargetGraph *targetGraph () const
+  const TargetGraph *targetGraph() const
   {
-    ASSERT (_phg);
-    return _phg->targetGraph ();
+    ASSERT(_phg);
+    return _phg->targetGraph();
   }
 
   // ####################### Iterators #######################
 
   // ! Returns an iterator over the set of active nodes of the hypergraph
-  IteratorRange<HypernodeIterator> nodes () const
+  IteratorRange<HypernodeIterator> nodes() const
   {
-    ASSERT (_phg);
-    return _phg->nodes ();
+    ASSERT(_phg);
+    return _phg->nodes();
   }
 
   // ! Returns an iterator over the set of active edges of the hypergraph
-  IteratorRange<HyperedgeIterator> edges () const
+  IteratorRange<HyperedgeIterator> edges() const
   {
-    ASSERT (_phg);
-    return _phg->edges ();
+    ASSERT(_phg);
+    return _phg->edges();
   }
 
   // ! Returns a range to loop over the incident nets of hypernode u.
-  IteratorRange<IncidentNetsIterator> incidentEdges (const HypernodeID u) const
+  IteratorRange<IncidentNetsIterator> incidentEdges(const HypernodeID u) const
   {
-    ASSERT (_phg);
-    return _phg->incidentEdges (u);
+    ASSERT(_phg);
+    return _phg->incidentEdges(u);
   }
 
   // ! Returns a range to loop over the pins of hyperedge e.
-  IteratorRange<IncidenceIterator> pins (const HyperedgeID e) const
+  IteratorRange<IncidenceIterator> pins(const HyperedgeID e) const
   {
-    ASSERT (_phg);
-    return _phg->pins (e);
+    ASSERT(_phg);
+    return _phg->pins(e);
   }
 
   // ####################### Hypernode Information #######################
 
-  HypernodeWeight nodeWeight (const HypernodeID u) const
+  HypernodeWeight nodeWeight(const HypernodeID u) const
   {
-    ASSERT (_phg);
-    return _phg->nodeWeight (u);
+    ASSERT(_phg);
+    return _phg->nodeWeight(u);
   }
 
-  HyperedgeID nodeDegree (const HypernodeID u) const
+  HyperedgeID nodeDegree(const HypernodeID u) const
   {
-    ASSERT (_phg);
-    return _phg->nodeDegree (u);
+    ASSERT(_phg);
+    return _phg->nodeDegree(u);
   }
 
   // ####################### Hyperedge Information #######################
 
   // ! Number of pins of a hyperedge
-  HypernodeID edgeSize (const HyperedgeID e) const
+  HypernodeID edgeSize(const HyperedgeID e) const
   {
-    ASSERT (_phg);
-    return _phg->edgeSize (e);
+    ASSERT(_phg);
+    return _phg->edgeSize(e);
   }
 
-  HyperedgeWeight edgeWeight (const HyperedgeID e) const
+  HyperedgeWeight edgeWeight(const HyperedgeID e) const
   {
-    ASSERT (_phg);
-    return _phg->edgeWeight (e);
+    ASSERT(_phg);
+    return _phg->edgeWeight(e);
   }
 
   // ! Returns true, if the hyperedge contains only a single pin
-  bool isSinglePin (const HyperedgeID e) const
+  bool isSinglePin(const HyperedgeID e) const
   {
-    ASSERT (_phg);
-    return _phg->isSinglePin (e);
+    ASSERT(_phg);
+    return _phg->isSinglePin(e);
   }
 
   // ! Target of an edge
-  HypernodeID edgeTarget (const HyperedgeID e) const
+  HypernodeID edgeTarget(const HyperedgeID e) const
   {
-    ASSERT (_phg);
-    return _phg->edgeTarget (e);
+    ASSERT(_phg);
+    return _phg->edgeTarget(e);
   }
 
   // ! Source of an edge
-  HypernodeID edgeSource (const HyperedgeID e) const
+  HypernodeID edgeSource(const HyperedgeID e) const
   {
-    ASSERT (_phg);
-    return _phg->edgeSource (e);
+    ASSERT(_phg);
+    return _phg->edgeSource(e);
   }
 
   // ####################### Partition Information #######################
@@ -202,14 +202,14 @@ public:
   // ! Move is successful, if it is not violating the balance
   // ! constraint specified by 'max_weight_to'.
   template <typename DeltaFunc>
-  bool changeNodePart (const HypernodeID u, const PartitionID from, const PartitionID to,
-                       const HypernodeWeight max_weight_to, DeltaFunc &&delta_func)
+  bool changeNodePart(const HypernodeID u, const PartitionID from, const PartitionID to,
+                      const HypernodeWeight max_weight_to, DeltaFunc &&delta_func)
   {
-    ASSERT (_phg);
-    assert (partID (u) == from);
-    assert (from != to);
-    const HypernodeWeight wu = _phg->nodeWeight (u);
-    if (partWeight (to) + wu <= max_weight_to)
+    ASSERT(_phg);
+    assert(partID(u) == from);
+    assert(from != to);
+    const HypernodeWeight wu = _phg->nodeWeight(u);
+    if(partWeight(to) + wu <= max_weight_to)
     {
       _part_ids_delta[u] = to;
       _part_weights_delta[to] += wu;
@@ -218,20 +218,20 @@ public:
       SynchronizedEdgeUpdate sync_update;
       sync_update.from = from;
       sync_update.to = to;
-      sync_update.target_graph = _phg->targetGraph ();
-      for (const HyperedgeID &he : _phg->incidentEdges (u))
+      sync_update.target_graph = _phg->targetGraph();
+      for(const HyperedgeID &he : _phg->incidentEdges(u))
       {
         sync_update.he = he;
-        sync_update.edge_weight = edgeWeight (he);
-        sync_update.edge_size = edgeSize (he);
-        sync_update.pin_count_in_from_part_after = decrementPinCountOfBlock (he, from);
-        sync_update.pin_count_in_to_part_after = incrementPinCountOfBlock (he, to);
-        if constexpr (maintain_connectivity_set)
+        sync_update.edge_weight = edgeWeight(he);
+        sync_update.edge_size = edgeSize(he);
+        sync_update.pin_count_in_from_part_after = decrementPinCountOfBlock(he, from);
+        sync_update.pin_count_in_to_part_after = incrementPinCountOfBlock(he, to);
+        if constexpr(maintain_connectivity_set)
         {
-          updateConnectivitySet (he, sync_update);
-          sync_update.connectivity_set_after = &deepCopyOfConnectivitySet (he);
+          updateConnectivitySet(he, sync_update);
+          sync_update.connectivity_set_after = &deepCopyOfConnectivitySet(he);
         }
-        delta_func (sync_update);
+        delta_func(sync_update);
       }
       return true;
     }
@@ -242,149 +242,149 @@ public:
   }
 
   // curry
-  bool changeNodePart (const HypernodeID u, const PartitionID from, const PartitionID to,
-                       const HypernodeWeight max_weight_to)
+  bool changeNodePart(const HypernodeID u, const PartitionID from, const PartitionID to,
+                      const HypernodeWeight max_weight_to)
   {
-    return changeNodePart (u, from, to, max_weight_to, NoOpDeltaFunc ());
+    return changeNodePart(u, from, to, max_weight_to, NoOpDeltaFunc());
   }
 
   // ! Returns the block of hypernode u
-  PartitionID partID (const HypernodeID u) const
+  PartitionID partID(const HypernodeID u) const
   {
-    ASSERT (_phg);
-    const PartitionID *part_id = _part_ids_delta.get_if_contained (u);
-    return part_id ? *part_id : _phg->partID (u);
+    ASSERT(_phg);
+    const PartitionID *part_id = _part_ids_delta.get_if_contained(u);
+    return part_id ? *part_id : _phg->partID(u);
   }
 
   // ! Returns if the node is a fixed vertex
-  bool isFixed (const HypernodeID u) const
+  bool isFixed(const HypernodeID u) const
   {
-    ASSERT (_phg);
-    return _phg->isFixed (u);
+    ASSERT(_phg);
+    return _phg->isFixed(u);
   }
 
   // ! Returns the total weight of block p
-  HypernodeWeight partWeight (const PartitionID p) const
+  HypernodeWeight partWeight(const PartitionID p) const
   {
-    ASSERT (_phg);
-    ASSERT (p != kInvalidPartition && p < _k);
-    return _phg->partWeight (p) + _part_weights_delta[p];
+    ASSERT(_phg);
+    ASSERT(p != kInvalidPartition && p < _k);
+    return _phg->partWeight(p) + _part_weights_delta[p];
   }
 
   // ! Returns the number of pins of hyperedge e in block p
-  HypernodeID pinCountInPart (const HyperedgeID e, const PartitionID p) const
+  HypernodeID pinCountInPart(const HyperedgeID e, const PartitionID p) const
   {
-    ASSERT (_phg);
-    ASSERT (p != kInvalidPartition && p < _k);
-    const int32_t *pin_count_delta = _pins_in_part_delta.get_if_contained (e * _k + p);
-    return std::max (static_cast<int32_t> (_phg->pinCountInPart (e, p)) +
-                         (pin_count_delta ? *pin_count_delta : 0),
-                     0);
+    ASSERT(_phg);
+    ASSERT(p != kInvalidPartition && p < _k);
+    const int32_t *pin_count_delta = _pins_in_part_delta.get_if_contained(e * _k + p);
+    return std::max(static_cast<int32_t>(_phg->pinCountInPart(e, p)) +
+                        (pin_count_delta ? *pin_count_delta : 0),
+                    0);
   }
 
   // ! Returns an iterator over the connectivity set of hyperedge he
-  IteratorRange<ConnectivitySetIterator> connectivitySet (const HyperedgeID e) const
+  IteratorRange<ConnectivitySetIterator> connectivitySet(const HyperedgeID e) const
   {
-    return _connectivity_set_delta.connectivitySet (e);
+    return _connectivity_set_delta.connectivitySet(e);
   }
 
   // ! Returns the number of blocks contained in hyperedge he
-  PartitionID connectivity (const HyperedgeID e) const
+  PartitionID connectivity(const HyperedgeID e) const
   {
-    return _connectivity_set_delta.connectivity (e);
+    return _connectivity_set_delta.connectivity(e);
   }
 
   // ! Creates a deep copy of the connectivity set of hyperedge he
-  Bitset &deepCopyOfConnectivitySet (const HyperedgeID he) const
+  Bitset &deepCopyOfConnectivitySet(const HyperedgeID he) const
   {
-    return _connectivity_set_delta.deepCopy (he);
+    return _connectivity_set_delta.deepCopy(he);
   }
 
   // ! Clears all deltas applied to the partitioned hypergraph
-  void clear ()
+  void clear()
   {
     // O(k)
-    _part_weights_delta.assign (_k, 0);
+    _part_weights_delta.assign(_k, 0);
     // Constant Time
-    _part_ids_delta.clear ();
-    _pins_in_part_delta.clear ();
-    _connectivity_set_delta.reset ();
+    _part_ids_delta.clear();
+    _pins_in_part_delta.clear();
+    _connectivity_set_delta.reset();
   }
 
-  void dropMemory ()
+  void dropMemory()
   {
-    if (!_memory_dropped)
+    if(!_memory_dropped)
     {
       _memory_dropped = true;
-      _part_ids_delta.freeInternalData ();
-      _pins_in_part_delta.freeInternalData ();
-      _connectivity_set_delta.freeInternalData ();
+      _part_ids_delta.freeInternalData();
+      _pins_in_part_delta.freeInternalData();
+      _connectivity_set_delta.freeInternalData();
     }
   }
 
-  size_t combinedMemoryConsumption () const
+  size_t combinedMemoryConsumption() const
   {
-    return _pins_in_part_delta.size_in_bytes () + _part_ids_delta.size_in_bytes () +
-           _connectivity_set_delta.size_in_bytes ();
+    return _pins_in_part_delta.size_in_bytes() + _part_ids_delta.size_in_bytes() +
+           _connectivity_set_delta.size_in_bytes();
   }
 
-  PartitionID k () const { return _k; }
+  PartitionID k() const { return _k; }
 
-  void changeNumberOfBlocks (const PartitionID new_k)
+  void changeNumberOfBlocks(const PartitionID new_k)
   {
-    if (new_k > _k)
+    if(new_k > _k)
     {
-      _part_weights_delta.assign (new_k, 0);
+      _part_weights_delta.assign(new_k, 0);
     }
-    _connectivity_set_delta.setNumberOfBlocks (new_k);
+    _connectivity_set_delta.setNumberOfBlocks(new_k);
     _k = new_k;
   }
 
-  void memoryConsumption (utils::MemoryTreeNode *parent) const
+  void memoryConsumption(utils::MemoryTreeNode *parent) const
   {
-    ASSERT (parent);
+    ASSERT(parent);
 
     utils::MemoryTreeNode *delta_phg_node =
-        parent->addChild ("Delta Partitioned Hypergraph");
+        parent->addChild("Delta Partitioned Hypergraph");
     utils::MemoryTreeNode *part_weights_node =
-        delta_phg_node->addChild ("Delta Part Weights");
-    part_weights_node->updateSize (_part_weights_delta.capacity () *
-                                   sizeof (HypernodeWeight));
-    utils::MemoryTreeNode *part_ids_node = delta_phg_node->addChild ("Delta Part IDs");
-    part_ids_node->updateSize (_part_ids_delta.size_in_bytes ());
+        delta_phg_node->addChild("Delta Part Weights");
+    part_weights_node->updateSize(_part_weights_delta.capacity() *
+                                  sizeof(HypernodeWeight));
+    utils::MemoryTreeNode *part_ids_node = delta_phg_node->addChild("Delta Part IDs");
+    part_ids_node->updateSize(_part_ids_delta.size_in_bytes());
     utils::MemoryTreeNode *pins_in_part_node =
-        delta_phg_node->addChild ("Delta Pins In Part");
-    pins_in_part_node->updateSize (_pins_in_part_delta.size_in_bytes ());
+        delta_phg_node->addChild("Delta Pins In Part");
+    pins_in_part_node->updateSize(_pins_in_part_delta.size_in_bytes());
   }
 
 private:
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HypernodeID decrementPinCountOfBlock (const HyperedgeID e, const PartitionID p)
+  HypernodeID decrementPinCountOfBlock(const HyperedgeID e, const PartitionID p)
   {
-    return std::max (static_cast<int32_t> (_phg->pinCountInPart (e, p)) +
-                         --_pins_in_part_delta[e * _k + p],
-                     static_cast<int32_t> (0));
+    return std::max(static_cast<int32_t>(_phg->pinCountInPart(e, p)) +
+                        --_pins_in_part_delta[e * _k + p],
+                    static_cast<int32_t>(0));
   }
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HypernodeID incrementPinCountOfBlock (const HyperedgeID e, const PartitionID p)
+  HypernodeID incrementPinCountOfBlock(const HyperedgeID e, const PartitionID p)
   {
-    return std::max (static_cast<int32_t> (_phg->pinCountInPart (e, p)) +
-                         ++_pins_in_part_delta[e * _k + p],
-                     static_cast<int32_t> (0));
+    return std::max(static_cast<int32_t>(_phg->pinCountInPart(e, p)) +
+                        ++_pins_in_part_delta[e * _k + p],
+                    static_cast<int32_t>(0));
   }
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  void updateConnectivitySet (const HyperedgeID e,
-                              const SynchronizedEdgeUpdate &sync_update)
+  void updateConnectivitySet(const HyperedgeID e,
+                             const SynchronizedEdgeUpdate &sync_update)
   {
-    if (sync_update.pin_count_in_from_part_after == 0)
+    if(sync_update.pin_count_in_from_part_after == 0)
     {
-      _connectivity_set_delta.remove (sync_update.he, sync_update.from);
+      _connectivity_set_delta.remove(sync_update.he, sync_update.from);
     }
-    if (sync_update.pin_count_in_to_part_after == 1)
+    if(sync_update.pin_count_in_to_part_after == 1)
     {
-      _connectivity_set_delta.add (sync_update.he, sync_update.to);
+      _connectivity_set_delta.add(sync_update.he, sync_update.to);
     }
   }
 

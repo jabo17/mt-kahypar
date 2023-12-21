@@ -36,6 +36,7 @@ namespace mt_kahypar {
 // Forward Declartion
 class TargetGraph;
 
+// clang-format off
 struct PartitioningParameters {
   Mode mode = Mode::UNDEFINED;
   Objective objective = Objective::UNDEFINED;
@@ -318,7 +319,8 @@ class Context {
  private:
   void load_n_level_preset();
 };
+// clang-format on
 
-std::ostream & operator<< (std::ostream& str, const Context& context);
+std::ostream &operator<<(std::ostream &str, const Context &context);
 
-}  // namespace mt_kahypar
+} // namespace mt_kahypar

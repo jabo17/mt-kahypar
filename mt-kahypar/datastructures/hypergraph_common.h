@@ -43,18 +43,18 @@ namespace mt_kahypar {
 using HardwareTopology = mt_kahypar::parallel::HardwareTopology<>;
 using TBBInitializer = mt_kahypar::parallel::TBBInitializer<HardwareTopology, false>;
 
-#define UI64(X) static_cast<uint64_t> (X)
+#define UI64(X) static_cast<uint64_t>(X)
 
 struct parallel_tag_t
 {
 };
 using RatingType = double;
 #if KAHYPAR_USE_64_BIT_IDS
-#define ID(X) static_cast<uint64_t> (X)
+#define ID(X) static_cast<uint64_t>(X)
 using HypernodeID = uint64_t;
 using HyperedgeID = uint64_t;
 #else
-#define ID(X) static_cast<uint32_t> (X)
+#define ID(X) static_cast<uint32_t>(X)
 using HypernodeID = uint32_t;
 using HyperedgeID = uint32_t;
 #endif
@@ -72,20 +72,20 @@ struct Arc
   NodeID head;
   ArcWeight weight;
 
-  Arc () : head (0), weight (0) {}
+  Arc() : head(0), weight(0) {}
 
-  Arc (NodeID head, ArcWeight weight) : head (head), weight (weight) {}
+  Arc(NodeID head, ArcWeight weight) : head(head), weight(weight) {}
 };
 
 // Constant Declarations
 static constexpr PartitionID kInvalidPartition = -1;
-static constexpr HypernodeID kInvalidHypernode = std::numeric_limits<HypernodeID>::max ();
-static constexpr HypernodeID kInvalidHyperedge = std::numeric_limits<HyperedgeID>::max ();
-static constexpr Gain kInvalidGain = std::numeric_limits<HyperedgeID>::min ();
+static constexpr HypernodeID kInvalidHypernode = std::numeric_limits<HypernodeID>::max();
+static constexpr HypernodeID kInvalidHyperedge = std::numeric_limits<HyperedgeID>::max();
+static constexpr Gain kInvalidGain = std::numeric_limits<HyperedgeID>::min();
 static constexpr size_t kEdgeHashSeed = 42;
 
-static constexpr HypernodeID invalidNode = std::numeric_limits<HypernodeID>::max ();
-static constexpr Gain invalidGain = std::numeric_limits<Gain>::min ();
+static constexpr HypernodeID invalidNode = std::numeric_limits<HypernodeID>::max();
+static constexpr Gain invalidGain = std::numeric_limits<Gain>::min();
 
 namespace ds {
 using Clustering = vec<PartitionID>;
@@ -98,9 +98,9 @@ struct Move
   HypernodeID node = invalidNode;
   Gain gain = invalidGain;
 
-  bool isValid () const { return from != kInvalidPartition; }
+  bool isValid() const { return from != kInvalidPartition; }
 
-  void invalidate () { from = kInvalidPartition; }
+  void invalidate() { from = kInvalidPartition; }
 };
 
 struct Memento
@@ -155,7 +155,7 @@ struct SynchronizedEdgeUpdate
 
 struct NoOpDeltaFunc
 {
-  void operator() (const SynchronizedEdgeUpdate &) {}
+  void operator()(const SynchronizedEdgeUpdate &) {}
 };
 
 template <typename Hypergraph, typename ConInfo>

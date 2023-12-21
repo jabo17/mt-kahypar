@@ -24,8 +24,8 @@
  * SOFTWARE.
  ******************************************************************************/
 
-#include <random>
 #include "gmock/gmock.h"
+#include <random>
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/io/hypergraph_factory.h"
@@ -39,30 +39,31 @@ using ::testing::Test;
 namespace mt_kahypar {
 
 namespace {
-  using Hypergraph = typename StaticHypergraphTypeTraits::Hypergraph;
-  using PartitionedHypergraph = typename StaticHypergraphTypeTraits::PartitionedHypergraph;
-  using BlockPriorityQueue = ds::ExclusiveHandleHeap< ds::MaxHeap<Gain, PartitionID> >;
-  using VertexPriorityQueue = ds::MaxHeap<Gain, HypernodeID>;    // these need external handles
+using Hypergraph = typename StaticHypergraphTypeTraits::Hypergraph;
+using PartitionedHypergraph = typename StaticHypergraphTypeTraits::PartitionedHypergraph;
+using BlockPriorityQueue = ds::ExclusiveHandleHeap<ds::MaxHeap<Gain, PartitionID> >;
+using VertexPriorityQueue = ds::MaxHeap<Gain, HypernodeID>; // these need external handles
 }
 
-
-template<typename Strategy>
-struct AFMStrategy : public Test {
-  vec<Gain> insertAndExtractAllMoves(PartitionedHypergraph& phg,
-                                     const Context& context,
-                                     Km1GainCache& gain_cache,
-                                     FMSharedData& sd,
-                                     BlockPriorityQueue& blockPQ,
-                                     vec<VertexPriorityQueue>& vertexPQs) {
+template <typename Strategy>
+struct AFMStrategy : public Test
+{
+  vec<Gain> insertAndExtractAllMoves(PartitionedHypergraph &phg, const Context &context,
+                                     Km1GainCache &gain_cache, FMSharedData &sd,
+                                     BlockPriorityQueue &blockPQ,
+                                     vec<VertexPriorityQueue> &vertexPQs)
+  {
     Strategy strategy(context, sd, blockPQ, vertexPQs);
 
     Move m;
     vec<Gain> gains;
-    for (HypernodeID u : phg.nodes()) {
+    for(HypernodeID u : phg.nodes())
+    {
       strategy.insertIntoPQ(phg, gain_cache, u);
     }
 
-    while (strategy.findNextMove(phg, gain_cache, m)) {
+    while(strategy.findNextMove(phg, gain_cache, m))
+    {
       gains.push_back(m.gain);
     }
     strategy.reset();
@@ -70,40 +71,46 @@ struct AFMStrategy : public Test {
   }
 };
 
-using FMStrategyTestTypes = ::testing::Types<LocalGainCacheStrategy, LocalUnconstrainedStrategy>;
+using FMStrategyTestTypes =
+    ::testing::Types<LocalGainCacheStrategy, LocalUnconstrainedStrategy>;
 TYPED_TEST_CASE(AFMStrategy, FMStrategyTestTypes);
 
-TYPED_TEST(AFMStrategy, FindNextMove) {
+TYPED_TEST(AFMStrategy, FindNextMove)
+{
   PartitionID k = 8;
   Context context;
   context.partition.k = k;
   context.partition.epsilon = 0.03;
-  Hypergraph hg = io::readInputFile<Hypergraph>(
-    "../tests/instances/contracted_ibm01.hgr", FileFormat::hMetis, true);
+  Hypergraph hg = io::readInputFile<Hypergraph>("../tests/instances/contracted_ibm01.hgr",
+                                                FileFormat::hMetis, true);
   context.setupPartWeights(hg.totalWeight());
   PartitionedHypergraph phg = PartitionedHypergraph(k, hg);
-  for (PartitionID i = 0; i < k; ++i) {
+  for(PartitionID i = 0; i < k; ++i)
+  {
     context.partition.max_part_weights[i] = std::numeric_limits<HypernodeWeight>::max();
   }
 
   std::mt19937 rng(420);
   std::uniform_int_distribution<PartitionID> distr(0, k - 1);
-  for (HypernodeID u : hg.nodes()) {
+  for(HypernodeID u : hg.nodes())
+  {
     phg.setOnlyNodePart(u, distr(rng));
   }
   phg.initializePartition();
   Km1GainCache gain_cache;
   gain_cache.initializeGainCache(phg);
 
-
   context.refinement.fm.algorithm = FMAlgorithm::kway_fm;
 
   FMSharedData sd(hg.initialNumNodes(), false);
   BlockPriorityQueue blockPQ(k);
-  vec<VertexPriorityQueue> vertexPQs(k, VertexPriorityQueue(sd.vertexPQHandles.data(), sd.numberOfNodes));
+  vec<VertexPriorityQueue> vertexPQs(
+      k, VertexPriorityQueue(sd.vertexPQHandles.data(), sd.numberOfNodes));
 
-  vec<Gain> gains_cached = this->insertAndExtractAllMoves(phg, context, gain_cache, sd, blockPQ, vertexPQs);
-  ASSERT_TRUE(std::is_sorted(gains_cached.begin(), gains_cached.end(), std::greater<Gain>()));
+  vec<Gain> gains_cached =
+      this->insertAndExtractAllMoves(phg, context, gain_cache, sd, blockPQ, vertexPQs);
+  ASSERT_TRUE(
+      std::is_sorted(gains_cached.begin(), gains_cached.end(), std::greater<Gain>()));
 }
 
 }
