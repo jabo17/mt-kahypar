@@ -49,11 +49,11 @@ bool DeterministicMultilevelCoarsener<TypeTraits>::coarseningPassImpl() {
     clusters[u] = u;
   });
 
-  permutation.random_grouping(num_nodes, _context.shared_memory.static_balancing_work_packages, config.prng());
-  for (size_t sub_round = 0; sub_round < config.num_sub_rounds && num_nodes > currentLevelContractionLimit(); ++sub_round) {
-    auto [first_bucket, last_bucket] = parallel::chunking::bounds(
-      sub_round, config.num_buckets, config.num_buckets_per_sub_round);
-    size_t first = permutation.bucket_bounds[first_bucket], last = permutation.bucket_bounds[last_bucket];
+  permutation.shuffle(num_nodes, _context.shared_memory.static_balancing_work_packages, config.prng); // need shuffle for prefix-doubling
+
+  size_t last;
+  for (size_t first = 0; num_nodes > currentLevelContractionLimit() && first; first = last) {
+    last = first + 1; // TODO(lars) try 1000 nodes sequentially. then prefix doubling until 2% of nodes in a subround. 
 
     // each vertex finds a cluster it wants to join
     tbb::parallel_for(first, last, [&](size_t pos) {
@@ -147,6 +147,7 @@ void DeterministicMultilevelCoarsener<TypeTraits>::calculatePreferredTargetClust
   } else if (best_targets.empty()) {
     best_target = u;
   } else {
+    // TODO(lars) try using geometric instead of uniform distribution
     hashing::SimpleIntHash<uint32_t> sih;
     hashing::HashRNG hash_prng(sih, u);
     size_t pos = std::uniform_int_distribution<uint32_t>(0, best_targets.size() - 1)(hash_prng);
