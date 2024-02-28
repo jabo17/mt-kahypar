@@ -63,6 +63,8 @@ bool DeterministicMultilevelCoarsener<TypeTraits>::coarseningPassImpl() {
       }
     });
 
+  // TODO dynamic hyperedge size
+
     tbb::enumerable_thread_specific<size_t> num_contracted_nodes { 0 };
 
     // already approve if we can grant all requests for proposed cluster
