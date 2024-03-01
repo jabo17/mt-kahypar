@@ -75,7 +75,7 @@ bool DeterministicMultilevelCoarsener<TypeTraits>::coarseningPassImpl() {
       }
     });
 
-  // TODO dynamic hyperedge size
+    // TODO dynamic hyperedge size
 
     tbb::enumerable_thread_specific<size_t> num_contracted_nodes { 0 };
 
@@ -161,11 +161,13 @@ void DeterministicMultilevelCoarsener<TypeTraits>::calculatePreferredTargetClust
   } else if (best_targets.empty()) {
     best_target = u;
   } else {
-    // TODO(lars) try using geometric instead of uniform distribution
-    // hashing::SimpleIntHash<uint32_t> sih;
-    // hashing::HashRNG hash_prng(sih, u);
     std::mt19937 prng(u + round_seed);
-    size_t pos = std::uniform_int_distribution<uint32_t>(0, best_targets.size() - 1)(prng);
+    // This isn't quite it. Let k = best_targets.size()
+    // How about x ~ uniform(1, 2^{k} - 1). then take pos = k - 1 - log_2(x). P(pos = 0) = 0.5, P(pos = 1) = 0.25, ...
+    size_t pos = std::geometric_distribution<>(0.5)(prng);
+    if (pos >= best_targets.size()) { 
+      pos = 0;
+    }
     assert(pos < best_targets.size());
     best_target = best_targets[pos];
   }
