@@ -53,10 +53,20 @@ bool DeterministicMultilevelCoarsener<TypeTraits>::coarseningPassImpl() {
 
   round_seed = config.prng();
 
-  size_t last;
-  for (size_t first = 0; num_nodes > currentLevelContractionLimit() && first; first = last) {
-    last = first + 1; // TODO(lars) try 1000 nodes sequentially. then prefix doubling until 2% of nodes in a subround. 
+  // TODO add these to the cli 
+  constexpr size_t num_sequential_steps = 1000;
+  constexpr double growth_factor = 1.8;
+  constexpr double max_subround_size_fraction = 0.02;
+  const size_t max_subround_size = std::max<size_t>(1, num_nodes_before_pass * max_subround_size_fraction);
 
+  size_t last;
+  for (size_t first = 0; num_nodes > currentLevelContractionLimit() && first < num_nodes_before_pass; first = last) {
+    if (first < num_sequential_steps) {
+      last = first + 1;
+    } else {
+      size_t dist = std::max<size_t>(growth_factor * (last - first), max_subround_size);
+      last = std::min<size_t>(num_nodes_before_pass, first + dist);
+    }
     // each vertex finds a cluster it wants to join
     tbb::parallel_for(first, last, [&](size_t pos) {
       const HypernodeID u = permutation.at(pos);
