@@ -39,17 +39,19 @@ bool DeterministicMultilevelCoarsener<TypeTraits>::coarseningPassImpl() {
   timer.start_timer("coarsening_pass", "Clustering");
 
   const Hypergraph& hg = Base::currentHypergraph();
-  size_t num_nodes = Base::currentNumNodes();
+  HypernodeID num_nodes = Base::currentNumNodes();
   const double num_nodes_before_pass = num_nodes;
   vec<HypernodeID> clusters(num_nodes, kInvalidHypernode);
-  tbb::parallel_for(UL(0), num_nodes, [&](HypernodeID u) {
+  tbb::parallel_for(HypernodeID(0), num_nodes, [&](HypernodeID u) {
     cluster_weight[u] = hg.nodeWeight(u);
     opportunistic_cluster_weight[u] = cluster_weight[u];
     propositions[u] = u;
     clusters[u] = u;
   });
 
-  permutation.shuffle(num_nodes, _context.shared_memory.static_balancing_work_packages, config.prng); // need shuffle for prefix-doubling
+  permutation.shuffle(utils::IntegerRange<HypernodeID>{0, num_nodes}, _context.shared_memory.static_balancing_work_packages, config.prng); // need shuffle for prefix-doubling
+
+  round_seed = config.prng();
 
   size_t last;
   for (size_t first = 0; num_nodes > currentLevelContractionLimit() && first; first = last) {
@@ -150,9 +152,10 @@ void DeterministicMultilevelCoarsener<TypeTraits>::calculatePreferredTargetClust
     best_target = u;
   } else {
     // TODO(lars) try using geometric instead of uniform distribution
-    hashing::SimpleIntHash<uint32_t> sih;
-    hashing::HashRNG hash_prng(sih, u);
-    size_t pos = std::uniform_int_distribution<uint32_t>(0, best_targets.size() - 1)(hash_prng);
+    // hashing::SimpleIntHash<uint32_t> sih;
+    // hashing::HashRNG hash_prng(sih, u);
+    std::mt19937 prng(u + round_seed);
+    size_t pos = std::uniform_int_distribution<uint32_t>(0, best_targets.size() - 1)(prng);
     assert(pos < best_targets.size());
     best_target = best_targets[pos];
   }

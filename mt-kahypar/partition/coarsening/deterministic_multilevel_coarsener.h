@@ -157,5 +157,7 @@ private:
   size_t pass;
   utils::ProgressBar progress_bar;
 
+  int round_seed = 0;
+
 };
 }
