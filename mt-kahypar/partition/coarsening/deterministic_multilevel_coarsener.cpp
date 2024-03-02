@@ -49,8 +49,14 @@ bool DeterministicMultilevelCoarsener<TypeTraits>::coarseningPassImpl() {
     clusters[u] = u;
   });
 
-  permutation.shuffle(utils::IntegerRange<HypernodeID>{0, num_nodes}, _context.shared_memory.static_balancing_work_packages, config.prng); // need shuffle for prefix-doubling
+  if (_context.coarsening.use_adaptive_edge_size) {
+    hyperedge_size.resize(hg.initialNumEdges());
+    tbb::parallel_for(HyperedgeID(0), hg.initialNumEdges(), [&](HyperedgeID e) {
+      hyperedge_size[e] = hg.edgeSize(e);
+    });
+  }
 
+  permutation.shuffle(utils::IntegerRange<HypernodeID>{0, num_nodes}, _context.shared_memory.static_balancing_work_packages, config.prng); // need shuffle for prefix-doubling
   round_seed = config.prng();
 
   // TODO add these to the cli 
@@ -74,8 +80,6 @@ bool DeterministicMultilevelCoarsener<TypeTraits>::coarseningPassImpl() {
         calculatePreferredTargetCluster(u, clusters);
       }
     });
-
-    // TODO dynamic hyperedge size
 
     tbb::enumerable_thread_specific<size_t> num_contracted_nodes { 0 };
 
@@ -105,6 +109,33 @@ bool DeterministicMultilevelCoarsener<TypeTraits>::coarseningPassImpl() {
       num_nodes -= approveVerticesInTooHeavyClusters(clusters);
     }
 
+    if (_context.coarsening.use_adaptive_edge_size) {
+      // update hyperedge sizes
+      tbb::parallel_for(first, last, [&](size_t pos) {
+        HypernodeID u = permutation.at(pos);
+        if (u == propositions[u] || u == clusters[u]) {
+          return;
+        }
+
+        // another idea to speed this up. this is slow if degree(clusters[u]) is unnecessarily large --> can mark smaller?
+        // mark hg.incidentEdges(clusters[u]) in bitset
+        // for each e in hg.incidentEdges(u)
+        //     if e is marked --> reduce its size by 1
+        // this is assuming that the vertex clusters[u] is still in that cluster. If it left in this subround, the number of edge size reductions is reduced by 1
+
+        auto& ratings = default_rating_maps.local();
+        for (HyperedgeID he : hg.incidentEdges(u)) {
+          // this could be optimized to run once per affected hyperedge
+          if (hg.edgeSize(he) >= _context.partition.ignore_hyperedge_size_threshold) continue;
+          ratings.clear();
+          for (HypernodeID v : hg.pins(he)) {
+            ratings[clusters[v]] += 1;
+          }
+          hyperedge_size[he] = ratings.size();  // benign race
+        }
+      });
+    }
+    
     nodes_in_too_heavy_clusters.clear();
   }
 
@@ -129,8 +160,11 @@ void DeterministicMultilevelCoarsener<TypeTraits>::calculatePreferredTargetClust
   for (HyperedgeID he : hg.incidentEdges(u)) {
     HypernodeID he_size = hg.edgeSize(he);
     if (he_size < _context.partition.ignore_hyperedge_size_threshold) {
+      // TODO should he_size filter use the original edge size or the adaptive one?
+      he_size = _context.coarsening.use_adaptive_edge_size ? hyperedge_size[he] : he_size;
       double he_score = static_cast<double>(hg.edgeWeight(he)) / he_size;
       for (HypernodeID v : hg.pins(he)) {
+        // TODO dedup so that each pin counts only once?
         ratings[clusters[v]] += he_score;
       }
     }
@@ -161,6 +195,7 @@ void DeterministicMultilevelCoarsener<TypeTraits>::calculatePreferredTargetClust
   } else if (best_targets.empty()) {
     best_target = u;
   } else {
+    // TODO is this actually slow? Or do I just think it'll be slow
     std::mt19937 prng(u + round_seed);
     // This isn't quite it. Let k = best_targets.size()
     // How about x ~ uniform(1, 2^{k} - 1). then take pos = k - 1 - log_2(x). P(pos = 0) = 0.5, P(pos = 1) = 0.25, ...

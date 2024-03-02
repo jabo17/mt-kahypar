@@ -151,6 +151,7 @@ private:
   utils::ParallelPermutation<HypernodeID> permutation;
   vec<HypernodeID> propositions;
   vec<HypernodeWeight> cluster_weight, opportunistic_cluster_weight;
+  vec<HypernodeID> hyperedge_size;
   ds::BufferedVector<HypernodeID> nodes_in_too_heavy_clusters;
   tbb::enumerable_thread_specific<ds::SparseMap<HypernodeID, double>> default_rating_maps;
   tbb::enumerable_thread_specific<vec<HypernodeID>> ties;
