@@ -155,21 +155,26 @@ void DeterministicMultilevelCoarsener<TypeTraits>::calculatePreferredTargetClust
   const Hypergraph& hg = Base::currentHypergraph();
   auto& ratings = default_rating_maps.local();
   ratings.clear();
+  auto& bloom_filter = bloom_filters.local();
 
   // calculate ratings
   for (HyperedgeID he : hg.incidentEdges(u)) {
     HypernodeID he_size = hg.edgeSize(he);
     if (he_size < _context.partition.ignore_hyperedge_size_threshold) {
-      // TODO should he_size filter use the original edge size or the adaptive one?
       he_size = _context.coarsening.use_adaptive_edge_size ? hyperedge_size[he] : he_size;
       double he_score = static_cast<double>(hg.edgeWeight(he)) / he_size;
       for (HypernodeID v : hg.pins(he)) {
-        // TODO dedup so that each pin counts only once?
-        ratings[clusters[v]] += he_score;
+        const HypernodeID target = clusters[v];
+        const HypernodeID bloom_rep = target & bloom_filter_mask;
+        if (!bloom_filter[bloom_rep]) {
+          ratings[target] += he_score;
+          bloom_filter.set(bloom_rep, true);
+        }
       }
+      bloom_filter.reset();
     }
   }
-
+  
   // find highest rated, feasible cluster
   const PartitionID comm_u = hg.communityID(u);
   const HypernodeWeight weight_u = hg.nodeWeight(u);

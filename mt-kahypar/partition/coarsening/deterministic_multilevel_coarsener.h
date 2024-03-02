@@ -39,6 +39,7 @@
 #include "mt-kahypar/utils/cast.h"
 
 #include <tbb/enumerable_thread_specific.h>
+#include <tbb/parallel_reduce.h>
 
 namespace mt_kahypar {
 
@@ -81,6 +82,21 @@ public:
     pass(0),
     progress_bar(utils::cast<Hypergraph>(hypergraph).initialNumNodes(), 0, false)
   {
+    auto& hg = utils::cast<Hypergraph>(hypergraph);
+    size_t max_edge_size = 
+        tbb::parallel_reduce(tbb::blocked_range<HyperedgeID>(
+          HyperedgeID(0), hg.initialNumEdges()), HypernodeID(0),
+          [&](const tbb::blocked_range<HyperedgeID>& r, HypernodeID init) -> HypernodeID {
+            for (HyperedgeID e = r.begin(); e != r.end(); ++e) {
+              init = std::max(init, hg.edgeSize(e));
+            }
+            return init;
+          }, [](HypernodeID l, HypernodeID r) -> HypernodeID { return std::max(l, r); }
+        );
+    size_t s = std::min<size_t>(10 * max_edge_size, initial_num_nodes);
+    bloom_filter_mask = std::pow(2.0, std::ceil(std::log2(static_cast<double>(s))));
+    bloom_filter_mask -= 1;
+    bloom_filters = tbb::enumerable_thread_specific<kahypar::ds::FastResetFlagArray<>>(bloom_filter_mask);
   }
 
   ~DeterministicMultilevelCoarsener() {
@@ -160,5 +176,8 @@ private:
 
   int round_seed = 0;
 
+  size_t bloom_filter_mask;
+  tbb::enumerable_thread_specific<kahypar::ds::FastResetFlagArray<>> bloom_filters;
 };
-}
+
+}  // namespace mt_kahypar
