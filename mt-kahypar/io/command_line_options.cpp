@@ -311,7 +311,7 @@ namespace mt_kahypar {
              po::value<size_t>(&context.coarsening.num_sub_rounds_deterministic)->value_name(
                      "<size_t>")->default_value(16),
              "Number of sub-rounds used for deterministic coarsening.")
-             ("c-prefix_doubling",
+             ("c-prefix-doubling",
              po::value<bool>(&context.coarsening.prefix_doubling)->value_name(
                      "<bool>")->default_value(false),
              "Use prefix doubling.")
