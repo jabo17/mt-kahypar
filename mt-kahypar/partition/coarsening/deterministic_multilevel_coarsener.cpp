@@ -62,17 +62,22 @@ bool DeterministicMultilevelCoarsener<TypeTraits>::coarseningPassImpl() {
   // TODO add these to the cli 
   constexpr size_t num_sequential_steps = 1000;
   constexpr double growth_factor = 1.8;
-  constexpr double max_subround_size_fraction = 0.02;
+  constexpr double max_subround_size_fraction = 0.001;
   const size_t max_subround_size = std::max<size_t>(1, num_nodes_before_pass * max_subround_size_fraction);
 
   size_t last;
   for (size_t first = 0; num_nodes > currentLevelContractionLimit() && first < num_nodes_before_pass; first = last) {
-    if (first < num_sequential_steps) {
-      last = first + 1;
-    } else {
-      size_t dist = std::max<size_t>(growth_factor * (last - first), max_subround_size);
-      last = std::min<size_t>(num_nodes_before_pass, first + dist);
+    size_t dist = parallel::chunking::idiv_ceil(num_nodes_before_pass, config.num_sub_rounds);
+    if (_context.coarsening.prefix_doubling) {
+      if (first < num_sequential_steps) {
+        dist = 1;
+      } else {
+        dist = std::max<size_t>(growth_factor * (last - first), max_subround_size);
+      }
     }
+    last = std::min<size_t>(num_nodes_before_pass, first + dist);
+    
+    
     // each vertex finds a cluster it wants to join
     tbb::parallel_for(first, last, [&](size_t pos) {
       const HypernodeID u = permutation.at(pos);
@@ -155,23 +160,36 @@ void DeterministicMultilevelCoarsener<TypeTraits>::calculatePreferredTargetClust
   const Hypergraph& hg = Base::currentHypergraph();
   auto& ratings = default_rating_maps.local();
   ratings.clear();
-  auto& bloom_filter = bloom_filters.local();
-
+  
   // calculate ratings
-  for (HyperedgeID he : hg.incidentEdges(u)) {
-    HypernodeID he_size = hg.edgeSize(he);
-    if (he_size < _context.partition.ignore_hyperedge_size_threshold) {
-      he_size = _context.coarsening.use_adaptive_edge_size ? hyperedge_size[he] : he_size;
-      double he_score = static_cast<double>(hg.edgeWeight(he)) / he_size;
-      for (HypernodeID v : hg.pins(he)) {
-        const HypernodeID target = clusters[v];
-        const HypernodeID bloom_rep = target & bloom_filter_mask;
-        if (!bloom_filter[bloom_rep]) {
-          ratings[target] += he_score;
-          bloom_filter.set(bloom_rep, true);
+  if (_context.coarsening.bloom_filter) {
+    auto& bloom_filter = bloom_filters.local();
+    for (HyperedgeID he : hg.incidentEdges(u)) {
+      HypernodeID he_size = hg.edgeSize(he);
+      if (he_size < _context.partition.ignore_hyperedge_size_threshold) {
+        he_size = _context.coarsening.use_adaptive_edge_size ? hyperedge_size[he] : he_size;
+        double he_score = static_cast<double>(hg.edgeWeight(he)) / he_size;
+        for (HypernodeID v : hg.pins(he)) {
+          const HypernodeID target = clusters[v];
+          const HypernodeID bloom_rep = target & bloom_filter_mask;
+          if (!bloom_filter[bloom_rep]) {
+            ratings[target] += he_score;
+            bloom_filter.set(bloom_rep, true);
+          }
+        }
+        bloom_filter.reset();
+      }
+    }
+  } else {
+    for (HyperedgeID he : hg.incidentEdges(u)) {
+      HypernodeID he_size = hg.edgeSize(he);
+      if (he_size < _context.partition.ignore_hyperedge_size_threshold) {
+        he_size = _context.coarsening.use_adaptive_edge_size ? hyperedge_size[he] : he_size;
+        double he_score = static_cast<double>(hg.edgeWeight(he)) / he_size;
+        for (HypernodeID v : hg.pins(he)) {
+          ratings[clusters[v]] += he_score;
         }
       }
-      bloom_filter.reset();
     }
   }
   

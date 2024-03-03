@@ -310,7 +310,15 @@ namespace mt_kahypar {
             ("c-num-sub-rounds",
              po::value<size_t>(&context.coarsening.num_sub_rounds_deterministic)->value_name(
                      "<size_t>")->default_value(16),
-             "Number of sub-rounds used for deterministic coarsening.");
+             "Number of sub-rounds used for deterministic coarsening.")
+             ("c-prefix_doubling",
+             po::value<bool>(&context.coarsening.prefix_doubling)->value_name(
+                     "<bool>")->default_value(false),
+             "Use prefix doubling.")
+             ("c-bloom-filter",
+             po::value<bool>(&context.coarsening.bloom_filter)->value_name(
+                     "<bool>")->default_value(false),
+             "Use Bloom filter.");
     return options;
   }
 
