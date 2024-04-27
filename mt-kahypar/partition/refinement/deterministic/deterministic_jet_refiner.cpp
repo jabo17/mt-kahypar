@@ -172,9 +172,17 @@ bool DeterministicJetRefiner<GraphAndGainTypes>::refineImpl(mt_kahypar_partition
             // Apply all moves
             timer.start_timer("apply_moves", "Apply Moves");
             if (phg.is_graph) {
-                tbb::parallel_for(0UL, _active_nodes.size(), [&](const size_t i) {
-                    performMoveWithAttributedGain<true>(phg, _active_nodes[i]);
-                });
+                auto range = tbb::blocked_range<size_t>(UL(0), _active_nodes.size());
+                auto accum = [&](const tbb::blocked_range<size_t>& r, const Gain init) -> Gain {
+                    Gain my_gain = init;
+                    for (size_t i = r.begin(); i < r.end(); ++i) {
+                        my_gain += performMoveWithAttributedGain<false>(phg, _active_nodes[i]);
+                    }
+                    return my_gain;
+                };
+                Gain gain = tbb::parallel_reduce(range, 0, accum, std::plus<>());
+                //DBG << V(i) << V(current_metrics.quality) << V(gain);
+                current_metrics.quality -= gain;
             } else {
                 auto range = tbb::blocked_range<size_t>(UL(0), _active_nodes.size());
                 auto accum = [&](const tbb::blocked_range<size_t>& r, const Gain init) -> Gain {
@@ -212,7 +220,7 @@ bool DeterministicJetRefiner<GraphAndGainTypes>::refineImpl(mt_kahypar_partition
                 DBG << "[JET] finished rebalancing with quality " << current_metrics.quality << " and imbalance " << metrics::imbalance(phg, _context);
             }
             timer.start_timer("reb_quality", "Quality after Rebalancing");
-            if (phg.is_graph) {
+            if (false) {
                 current_metrics.quality += calculateGainDelta(phg);
             }
             current_metrics.imbalance = metrics::imbalance(phg, _context);
@@ -238,7 +246,7 @@ bool DeterministicJetRefiner<GraphAndGainTypes>::refineImpl(mt_kahypar_partition
         phg.resetEdgeSynchronization();
         if (!_current_partition_is_best) {
             DBG << "[JET] Rollback to best partition with value " << best_metrics.quality;
-            if (phg.is_graph) {
+            if (false) {
                 rollbackToBestPartition<true>(phg);
             } else {
                 rollbackToBestPartition<false>(phg);

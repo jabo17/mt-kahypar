@@ -73,7 +73,7 @@ bool DeterministicRebalancer<GraphAndGainTypes>::refineInternal(mt_kahypar_parti
     updateImbalance(phg);
     ++iteration;
   }
-  if (!phg.is_graph) {
+  if (true) {
     Gain delta = _gain_computation.delta();
     HEAVY_REFINEMENT_ASSERT(best_metrics.quality + delta == metrics::quality(phg, _context),
       V(best_metrics.quality) << V(delta) << V(metrics::quality(phg, _context)));
@@ -197,7 +197,7 @@ void DeterministicRebalancer<GraphAndGainTypes>::weakRebalancingRound(Partitione
             sum += phg.nodeWeight(_moves[part][last_move_idx].hn);
           }
         }
-        if (phg.is_graph) {
+        if (false) {
           tbb::parallel_for(0UL, last_move_idx, [&](const size_t j) {
             const auto& move = _moves[part][j];
             changeNodePart<true>(phg, move.hn, part, move.to, false);
