@@ -193,22 +193,22 @@ bool DeterministicJetRefiner<GraphAndGainTypes>::refineImpl(mt_kahypar_partition
                 }
                 timer.stop_timer("apply_moves");
                 // rebalance
+                if (top_level) {
+                    timer.start_timer("top_level_rebalance", "Top Level Rebalance");
+                } else {
+                    timer.start_timer("rebalance", "Rebalance");
+                }
                 if (!metrics::isBalanced(phg, _context)) {
                     DBG << "[JET] starting rebalancing with quality " << current_metrics.quality << " and imbalance " << metrics::imbalance(phg, _context);
                     const bool run_until_balanced = rounds_without_improvement == max_rounds_without_improvement - 1 && was_already_balanced;
-                    if (top_level) {
-                        timer.start_timer("top_level_rebalance", "Top Level Rebalance");
-                    } else {
-                        timer.start_timer("rebalance", "Rebalance");
-                    }
                     mt_kahypar_partitioned_hypergraph_t part_hg = utils::partitioned_hg_cast(phg);
                     _rebalancer.jetRebalance(part_hg, current_metrics, run_until_balanced);
-                    if (top_level) {
-                        timer.stop_timer("top_level_rebalance");
-                    } else {
-                        timer.stop_timer("rebalance");
-                    }
                     DBG << "[JET] finished rebalancing with quality " << current_metrics.quality << " and imbalance " << metrics::imbalance(phg, _context);
+                }
+                if (top_level) {
+                    timer.stop_timer("top_level_rebalance");
+                } else {
+                    timer.stop_timer("rebalance");
                 }
                 timer.start_timer("reb_quality", "Quality after Rebalancing");
                 if (phg.is_graph) {
