@@ -94,6 +94,10 @@ std::string serialize(const PartitionedHypergraph& phg,
   s << timer.get("find_moves") << sep;
   s << timer.get("exe_moves") << sep;
   s << timer.get("reb_quality");
+  for (size_t t : {1,4,16,64}) {
+    //s << sep << timer.get("refinement" + to_string(t));
+    timer.appendTimings(t, s);
+  }
   return s.str();
 }
 

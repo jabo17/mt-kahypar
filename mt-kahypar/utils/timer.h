@@ -44,14 +44,48 @@ class Timer {
 
   using HighResClockTimepoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
- public:
+public:
   static constexpr int MAX_LINE_LENGTH = 45;
   static char TOP_LEVEL_PREFIX[];
   static constexpr size_t TOP_LEVEL_PREFIX_LENGTH = 3;
   static char SUB_LEVEL_PREFIX[];
   static constexpr size_t SUB_LEVEL_PREFIX_LENGTH = 3;
 
- private:
+  void appendTimings(size_t thread, std::stringstream& s) {
+    std::vector<Timer::Timing> timings;
+    for (const auto& timing : _timings) {
+      timings.emplace_back(timing.second);
+    }
+    std::sort(timings.begin(), timings.end(),
+      [&](const Timer::Timing& lhs, const Timer::Timing& rhs) {
+      return lhs.order() < rhs.order();
+    });
+    auto print = [&](const Timer::Timing& timing) {
+      s << "," << timing.timing();
+    };
+
+    std::function<void(const Timer::Timing&, int)> dfs =
+      [&](const Timer::Timing& parent, int level) {
+      if (static_cast<size_t>(level) <= 3) {
+        for (const Timer::Timing& timing : timings) {
+          if (timing.parent() == parent.key()) {
+            print(timing);
+            dfs(timing, level + 1);
+          }
+        }
+      }
+    };
+    for (const Timer::Timing& timing : timings) {
+      if (timing.description().compare("Refinement" + std::to_string(thread)) == 0) {
+        print(timing);
+        if (_show_detailed_timings) {
+          dfs(timing, 3);
+        }
+      }
+    }
+  }
+
+private:
   struct Key {
     std::string parent;
     std::string key;
@@ -70,18 +104,18 @@ class Timer {
   };
 
   class ActiveTiming {
-   public:
+  public:
     ActiveTiming() :
       _key(""),
       _description(""),
-      _start() { }
+      _start() {}
 
     ActiveTiming(const std::string& key,
-                 const std::string& description,
-                 const HighResClockTimepoint& start) :
+      const std::string& description,
+      const HighResClockTimepoint& start) :
       _key(key),
       _description(description),
-      _start(start) { }
+      _start(start) {}
 
     std::string key() const {
       return _key;
@@ -95,23 +129,23 @@ class Timer {
       return _start;
     }
 
-   private:
+  private:
     std::string _key;
     std::string _description;
     HighResClockTimepoint _start;
   };
 
   class Timing {
-   public:
+  public:
     Timing(const std::string& key,
-           const std::string& description,
-           const std::string& parent,
-           const int order) :
+      const std::string& description,
+      const std::string& parent,
+      const int order) :
       _key(key),
       _description(description),
       _parent(parent),
       _order(order),
-      _timing(0.0) { }
+      _timing(0.0) {}
 
     std::string key() const {
       return _key;
@@ -141,7 +175,7 @@ class Timer {
       _timing += timing;
     }
 
-   private:
+  private:
     std::string _key;
     std::string _description;
     std::string _parent;
@@ -152,7 +186,7 @@ class Timer {
   using ActiveTimingStack = std::vector<ActiveTiming>;
   using LocalActiveTimingStack = tbb::enumerable_thread_specific<ActiveTimingStack>;
 
- public:
+public:
   explicit Timer() :
     _timing_mutex(),
     _timings(),
@@ -161,7 +195,7 @@ class Timer {
     _index(0),
     _is_enabled(true),
     _show_detailed_timings(false),
-    _max_output_depth(std::numeric_limits<size_t>::max()) { }
+    _max_output_depth(std::numeric_limits<size_t>::max()) {}
 
   Timer(const Timer& other) :
     _timing_mutex(),
@@ -171,9 +205,9 @@ class Timer {
     _index(other._index.load(std::memory_order_relaxed)),
     _is_enabled(other._is_enabled),
     _show_detailed_timings(other._show_detailed_timings),
-    _max_output_depth(other._max_output_depth) { }
+    _max_output_depth(other._max_output_depth) {}
 
-  Timer & operator= (const Timer &) = delete;
+  Timer& operator= (const Timer&) = delete;
 
   Timer(Timer&& other) :
     _timing_mutex(),
@@ -183,9 +217,9 @@ class Timer {
     _index(other._index.load(std::memory_order_relaxed)),
     _is_enabled(std::move(other._is_enabled)),
     _show_detailed_timings(std::move(other._show_detailed_timings)),
-    _max_output_depth(std::move(other._max_output_depth)) { }
+    _max_output_depth(std::move(other._max_output_depth)) {}
 
-  Timer & operator= (Timer &&) = delete;
+  Timer& operator= (Timer&&) = delete;
 
   void setMaximumOutputDepth(const size_t max_output_depth) {
     _max_output_depth = max_output_depth;
@@ -217,9 +251,9 @@ class Timer {
   }
 
   void start_timer(const std::string& key,
-                   const std::string& description,
-                   bool is_parallel_context = false,
-                   bool force = false) {
+    const std::string& description,
+    bool is_parallel_context = false,
+    bool force = false) {
     if (_is_enabled || force) {
       std::lock_guard<std::mutex> lock(_timing_mutex);
       if (force || is_parallel_context) {
@@ -263,13 +297,13 @@ class Timer {
         parent = _active_timings.back().key();
       }
 
-      Key timing_key { parent, current_timing.key() };
+      Key timing_key{ parent, current_timing.key() };
       if (_timings.find(timing_key) == _timings.end()) {
         _timings.emplace(
           std::piecewise_construct,
           std::forward_as_tuple(timing_key),
           std::forward_as_tuple(current_timing.key(),
-                                current_timing.description(), parent, _index++));
+            current_timing.description(), parent, _index++));
       }
       double time = std::chrono::duration<double>(end - current_timing.start()).count();
       _timings.at(timing_key).add_timing(time);
@@ -282,16 +316,16 @@ class Timer {
       timings.emplace_back(timing.second);
     }
     std::sort(timings.begin(), timings.end(),
-              [&](const Timing& lhs, const Timing& rhs) {
-          return lhs.key() < rhs.key();
-        });
+      [&](const Timing& lhs, const Timing& rhs) {
+      return lhs.key() < rhs.key();
+    });
 
     if (!timings.empty()) {
       auto print = [&](const std::string& key, const double time, const bool is_root) {
-                     if (_show_detailed_timings || is_root) {
-                       str << " " << key << "=" << time;
-                     }
-                   };
+        if (_show_detailed_timings || is_root) {
+          str << " " << key << "=" << time;
+        }
+      };
 
       // We aggregate timings in case there multiple timings with same key
       // but different parent
@@ -313,7 +347,7 @@ class Timer {
     }
   }
 
-  friend std::ostream & operator<< (std::ostream& str, const Timer& timer);
+  friend std::ostream& operator<< (std::ostream& str, const Timer& timer);
 
   double get(std::string key) const {
     for (const auto& x : _timings) {
@@ -325,7 +359,7 @@ class Timer {
     return 0.0;
   }
 
- private:
+
   std::mutex _timing_mutex;
   std::unordered_map<Key, Timing, KeyHasher, KeyEqual> _timings;
   // Global Active Timing Stack
@@ -345,42 +379,42 @@ class Timer {
 inline char Timer::TOP_LEVEL_PREFIX[] = " + ";
 inline char Timer::SUB_LEVEL_PREFIX[] = " + ";
 
-inline std::ostream & operator<< (std::ostream& str, const Timer& timer) {
+inline std::ostream& operator<< (std::ostream& str, const Timer& timer) {
   std::vector<Timer::Timing> timings;
   for (const auto& timing : timer._timings) {
     timings.emplace_back(timing.second);
   }
   std::sort(timings.begin(), timings.end(),
-            [&](const Timer::Timing& lhs, const Timer::Timing& rhs) {
-        return lhs.order() < rhs.order();
-      });
+    [&](const Timer::Timing& lhs, const Timer::Timing& rhs) {
+    return lhs.order() < rhs.order();
+  });
 
   auto print = [&](std::ostream& str, const Timer::Timing& timing, int level) {
-                 std::string prefix = "";
-                 prefix += level == 0 ? std::string(Timer::TOP_LEVEL_PREFIX, Timer::TOP_LEVEL_PREFIX_LENGTH) :
-                           std::string(Timer::TOP_LEVEL_PREFIX_LENGTH, ' ');
-                 prefix += level > 0 ? std::string(Timer::SUB_LEVEL_PREFIX_LENGTH * (level - 1), ' ') : "";
-                 prefix += level > 0 ? std::string(Timer::SUB_LEVEL_PREFIX, Timer::SUB_LEVEL_PREFIX_LENGTH) : "";
-                 size_t length = prefix.size() + timing.description().size();
-                 str << prefix
-                     << timing.description();
-                 if (length < Timer::MAX_LINE_LENGTH) {
-                   str << std::string(Timer::MAX_LINE_LENGTH - length, ' ');
-                 }
-                 str << " = " << timing.timing() << " s\n";
-               };
+    std::string prefix = "";
+    prefix += level == 0 ? std::string(Timer::TOP_LEVEL_PREFIX, Timer::TOP_LEVEL_PREFIX_LENGTH) :
+      std::string(Timer::TOP_LEVEL_PREFIX_LENGTH, ' ');
+    prefix += level > 0 ? std::string(Timer::SUB_LEVEL_PREFIX_LENGTH * (level - 1), ' ') : "";
+    prefix += level > 0 ? std::string(Timer::SUB_LEVEL_PREFIX, Timer::SUB_LEVEL_PREFIX_LENGTH) : "";
+    size_t length = prefix.size() + timing.description().size();
+    str << prefix
+      << timing.description();
+    if (length < Timer::MAX_LINE_LENGTH) {
+      str << std::string(Timer::MAX_LINE_LENGTH - length, ' ');
+    }
+    str << " = " << timing.timing() << " s\n";
+  };
 
   std::function<void(std::ostream&, const Timer::Timing&, int)> dfs =
     [&](std::ostream& str, const Timer::Timing& parent, int level) {
-      if ( static_cast<size_t>(level) <= timer._max_output_depth ) {
-        for (const Timer::Timing& timing : timings) {
-          if (timing.parent() == parent.key()) {
-            print(str, timing, level);
-            dfs(str, timing, level + 1);
-          }
+    if (static_cast<size_t>(level) <= timer._max_output_depth) {
+      for (const Timer::Timing& timing : timings) {
+        if (timing.parent() == parent.key()) {
+          print(str, timing, level);
+          dfs(str, timing, level + 1);
         }
       }
-    };
+    }
+  };
 
   for (const Timer::Timing& timing : timings) {
     if (timing.is_root()) {
@@ -393,6 +427,5 @@ inline std::ostream & operator<< (std::ostream& str, const Timer& timer) {
 
   return str;
 }
-
 }  // namespace utils
 }  // namespace mt_kahypar
