@@ -148,7 +148,7 @@ rebalancer::RebalancingMove DeterministicRebalancer<GraphAndGainTypes>::computeG
   }
 
   tmp_scores.clear();
-  return { hn, best_target, transformGain(best_gain, hn_weight) };
+  return { hn, best_target, best_gain };
 }
 
 template <typename  GraphAndGainTypes>
