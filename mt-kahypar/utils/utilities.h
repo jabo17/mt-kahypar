@@ -39,6 +39,12 @@
 
 namespace mt_kahypar {
 namespace utils {
+struct Measurements {
+  size_t top_level_iterations;
+
+public:
+  Measurements() : top_level_iterations(0) {};
+};
 class Utilities {
   static constexpr bool debug = false;
 
@@ -46,11 +52,13 @@ class Utilities {
     UtilityObjects() :
       stats(),
       ip_stats(),
-      timer() {}
+      timer(),
+      measurements() {}
 
     Stats stats;
     InitialPartitioningStats ip_stats;
     Timer timer;
+    Measurements measurements;
   };
 
 public:
@@ -85,6 +93,11 @@ public:
   Timer& getTimer(const size_t id) {
     ASSERT(id < _utilities.size());
     return _utilities[id].timer;
+  }
+
+  Measurements& getMeasurements(const size_t id) {
+    ASSERT(id < _utilities.size());
+    return _utilities[id].measurements;
   }
 
 private:

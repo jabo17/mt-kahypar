@@ -50,23 +50,23 @@ public:
 
     void reset() {
         cut_hyperedges.clear();
-        cut_hyperedge_weight = 0;
-        num_cut_hyperedges = 0;
+        cut_hyperedge_weight.store(0, std::memory_order_relaxed);
+        num_cut_hyperedges.store(0, std::memory_order_relaxed);
     }
-    vec<HyperedgeID>& getCutEdges() {
+    tbb::concurrent_vector<HyperedgeID>& getCutEdges() {
         return cut_hyperedges;
     }
 
-    vec<HyperedgeID> cut_hyperedges;
-    size_t num_cut_hyperedges;
-    HyperedgeWeight cut_hyperedge_weight;
-    HyperedgeWeight total_improvement;
+    tbb::concurrent_vector<HyperedgeID> cut_hyperedges;
+    CAtomic<size_t> num_cut_hyperedges;
+    CAtomic<HyperedgeWeight> cut_hyperedge_weight;
+    CAtomic<HyperedgeWeight> total_improvement;
 };
 
 template<typename TypeTraits>
 class DeterministicQuotientGraph {
 
-    static constexpr bool debug = false;
+    static constexpr bool debug = true;
     static constexpr bool enable_heavy_assert = false;
 
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
@@ -109,50 +109,54 @@ public:
         }
     }
 
-    DeterministicQuotientGraphEdge& getEdgeFiltered(const PartitionedHypergraph& phg, const PartitionID i, const PartitionID j) {
-        assert(i < j);
-        if constexpr (debug) {
-            DBG << "REQUESTING edge for blocks " << V(i) << ", " << V(j);
-            const auto& q = _edges[i][j];
-            DBG << V(q.cut_hyperedge_weight) << V(q.cut_hyperedges.size()) << V(q.num_cut_hyperedges) << V(q.total_improvement);
-        }
-        DeterministicQuotientGraphEdge& quotientEdge = _edges[i][j];
-        vec<HyperedgeID>& edges = quotientEdge.cut_hyperedges;
-        for (size_t idx = 0; idx < edges.size(); ++idx) {
-            const HyperedgeID he = edges[idx];
-            if constexpr (debug) {
-                size_t count0 = 0;
-                size_t count1 = 0;
-                for (const HypernodeID pin : phg.pins(he)) {
-                    if (phg.partID(pin) == i) count0++;
-                    if (phg.partID(pin) == j) count1++;
-                }
-                assert(count0 == phg.pinCountInPart(he, i));
-                assert(count1 == phg.pinCountInPart(he, j));
-            }
-            if (phg.pinCountInPart(he, i) == 0 || phg.pinCountInPart(he, j) == 0) {
-                edges[idx] = edges.back();
-                edges.pop_back();
-                quotientEdge.num_cut_hyperedges--;
-                quotientEdge.cut_hyperedge_weight -= phg.edgeWeight(he);
-                --idx;
-            }
-        }
-        // For determinism
-        tbb::parallel_sort(edges.begin(), edges.end());
-        if constexpr (debug) {
-            DBG << "AFTER FILTERING edge for blocks " << V(i) << ", " << V(j);
-            const auto& q = _edges[i][j];
-            DBG << V(q.cut_hyperedge_weight) << V(q.cut_hyperedges.size()) << V(q.num_cut_hyperedges) << V(q.total_improvement);
-            // for (const auto e : quotientEdge.cut_hyperedges) {
-            //     DBG << e << ", ";
-            // }
-        }
-        return quotientEdge;
-    }
+    // DeterministicQuotientGraphEdge& getEdgeFiltered(const PartitionedHypergraph& phg, const PartitionID i, const PartitionID j) {
+    //     assert(i < j);
+    //     if constexpr (debug) {
+    //         DBG << "REQUESTING edge for blocks " << V(i) << ", " << V(j);
+    //         const auto& q = _edges[i][j];
+    //         DBG << V(q.cut_hyperedge_weight) << V(q.cut_hyperedges.size()) << V(q.num_cut_hyperedges) << V(q.total_improvement);
+    //     }
+    //     DeterministicQuotientGraphEdge& quotientEdge = _edges[i][j];
+    //     tbb::concurrent_vector<HyperedgeID>& edges = quotientEdge.cut_hyperedges;
+    //     for (size_t idx = 0; idx < edges.size(); ++idx) {
+    //         const HyperedgeID he = edges[idx];
+    //         if constexpr (debug) {
+    //             size_t count0 = 0;
+    //             size_t count1 = 0;
+    //             for (const HypernodeID pin : phg.pins(he)) {
+    //                 if (phg.partID(pin) == i) count0++;
+    //                 if (phg.partID(pin) == j) count1++;
+    //             }
+    //             assert(count0 == phg.pinCountInPart(he, i));
+    //             assert(count1 == phg.pinCountInPart(he, j));
+    //         }
+    //         if (phg.pinCountInPart(he, i) == 0 || phg.pinCountInPart(he, j) == 0) {
+    //             edges[idx] = edges.back();
+    //             edges.pop_back();
+    //             quotientEdge.num_cut_hyperedges--;
+    //             quotientEdge.cut_hyperedge_weight -= phg.edgeWeight(he);
+    //             --idx;
+    //         }
+    //     }
+    //     DBG << "pre Sorting";
+    //     // For determinism
+    //     tbb::parallel_sort(edges.begin(), edges.end());
+    //     DBG << "post sorting";
+    //     if constexpr (debug) {
+    //         DBG << "AFTER FILTERING edge for blocks " << V(i) << ", " << V(j);
+    //         const auto& q = _edges[i][j];
+    //         DBG << V(q.cut_hyperedge_weight) << V(q.cut_hyperedges.size()) << V(q.num_cut_hyperedges) << V(q.total_improvement);
+    //         // for (const auto e : quotientEdge.cut_hyperedges) {
+    //         //     DBG << e << ", ";
+    //         // }
+    //     }
+    //     return quotientEdge;
+    // }
     template<typename F>
     void doForAllCutHyperedgesOfPair(const PartitionedHypergraph& phg, const PartitionID i, const PartitionID j, const F& f) {
-        for (const HyperedgeID he: _edges[i][j].cut_hyperedges) {
+        auto& edges = _edges[i][j].cut_hyperedges;
+        tbb::parallel_sort(edges.begin(), edges.end());
+        for (const HyperedgeID he : edges) {
             if (phg.pinCountInPart(he, i) > 0 && phg.pinCountInPart(he, j) > 0) {
                 f(he);
             }

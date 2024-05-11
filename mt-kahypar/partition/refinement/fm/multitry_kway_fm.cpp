@@ -99,8 +99,12 @@ namespace mt_kahypar {
     std::vector<HypernodeWeight> max_part_weights = setupMaxPartWeights(context);
     HighResClockTimepoint fm_start = std::chrono::high_resolution_clock::now();
     utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
+    utils::Measurements& measurements = utils::Utilities::instance().getMeasurements(context.utility_id);
 
-    for (size_t round = 0; round < context.refinement.fm.multitry_rounds; ++round) { // global multi try rounds
+    for (size_t round = 0; round < context.refinement.fm.multitry_rounds; ++round) {
+      if (initial_num_nodes == phg.initialNumNodes() && context.type == ContextType::main){
+        measurements.top_level_iterations++;
+      } // global multi try rounds
       for (PartitionID i = 0; i < context.partition.k; ++i) {
         initialPartWeights[i] = phg.partWeight(i);
       }

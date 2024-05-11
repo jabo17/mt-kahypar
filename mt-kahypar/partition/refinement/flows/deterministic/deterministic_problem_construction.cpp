@@ -124,16 +124,62 @@ Subhypergraph DeterministicProblemConstruction<TypeTraits>::construct(
     // We initialize the BFS with all cut hyperedges running
     // between the involved block associated with the search
     _bfs.clearQueue();
-    for (const HyperedgeID he : quotient_graph.getEdgeFiltered(phg, block0, block1).getCutEdges()) {
+    // auto test = quotient_graph.getEdgeFiltered(phg, block0, block1).getCutEdges();
+    // std::vector<HyperedgeID> test2;
+    // test2.reserve(test.size());
+    // for (const auto he : phg.edges()) {
+    //     bool check0 = false;
+    //     bool check1 = false;
+    //     for (const HypernodeID pin : phg.pins(he)) {
+    //         if (phg.partID(pin) == block0) check0 = true;
+    //         if (phg.partID(pin) == block1) check1 = true;
+    //     }
+    //     if (check0 && check1) {
+    //         test2.push_back(he);
+    //     }
+    // }
+    // if (test2.size() != test.size()) {
+    //     DBG << "HDSKJH" << V(test2.size()) << V(test.size());
+    // }
+    // //tbb::parallel_sort(test2.begin(), test2.end());
+    // for (size_t i = 0; i < test.size(); ++i) {
+    //     if (i < test2.size()) {
+    //         if (test[i] != test2[i]) {
+    //             DBG << "skldjfklsdjfl" << V(test[i]) << V(test2[i]);
+    //         }
+    //     } else {
+    //         DBG << "skldjfklsdjfl" << V(test[i]);
+
+    //     }
+    // }
+    // for (auto psin : phg.pins(27695)){
+    //     DBG << V(phg.partID(psin));
+    // }
+    // size_t count = 0;
+    // quotient_graph.doForAllCutHyperedgesOfPair(phg, block0, block1, [&](HyperedgeID he) {
+    //     count++;
+    // });
+    // DBG << V(test.size()) << V(test2.size()) << V(count);
+    // for (const HyperedgeID he : quotient_graph.getEdgeFiltered(phg, block0, block1).getCutEdges()) {
+    //     _bfs.add_pins_of_hyperedge_to_queue(he, phg, max_bfs_distance,
+    //         max_weight_block_0, max_weight_block_1);
+    //     // if constexpr (debug) {
+    //     //     bool check0 = false;
+    //     //     bool check1 = false;
+    //     //     for (const HypernodeID pin : phg.pins(he)) {
+    //     //         if (phg.partID(pin) == block0) check0 = true;
+    //     //         if (phg.partID(pin) == block1) check1 = true;
+    //     //     }
+    //     //     if (!check0 || !check1) {
+    //     //         DBG << "ungabunga" << V(he) << V(block0) << V(block1) << V(check0) << V(check1);
+    //     //     }
+    //     // }
+    // }
+    quotient_graph.doForAllCutHyperedgesOfPair(phg, block0, block1, [&](const HyperedgeID& he) {
         _bfs.add_pins_of_hyperedge_to_queue(he, phg, max_bfs_distance,
             max_weight_block_0, max_weight_block_1);
-    }
-    // quotient_graph.doForAllCutHyperedgesOfPair(phg, block0, block1, [&](const HyperedgeID& he) {
-    //     _bfs.add_pins_of_hyperedge_to_queue(he, phg, max_bfs_distance,
-    //     max_weight_block_0, max_weight_block_1);
-    // });
+    });
     _bfs.swap_with_next_queue();
-
     // BFS
     while (!_bfs.is_empty() &&
         !isMaximumProblemSizeReached(sub_hg,
@@ -172,7 +218,7 @@ Subhypergraph DeterministicProblemConstruction<TypeTraits>::construct(
             _bfs.swap_with_next_queue();
         }
     }
-    DBG << "Search ID:" << block0 << ", " << block1 << "-" << sub_hg;
+    DBG << block0 << ", " << block1 << "-" << sub_hg;
 
     // Check if all touched hyperedges are contained in subhypergraph
     ASSERT([&]() {

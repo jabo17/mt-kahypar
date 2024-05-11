@@ -93,7 +93,9 @@ std::string serialize(const PartitionedHypergraph& phg,
   s << timer.get("sorting") << sep;
   s << timer.get("find_moves") << sep;
   s << timer.get("exe_moves") << sep;
-  s << timer.get("reb_quality");
+  s << timer.get("reb_quality") << sep;
+  utils::Measurements& measurements = utils::Utilities::instance().getMeasurements(context.utility_id);
+  s << measurements.top_level_iterations;
   return s.str();
 }
 

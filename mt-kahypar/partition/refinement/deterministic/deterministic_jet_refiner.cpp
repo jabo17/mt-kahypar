@@ -53,7 +53,7 @@ bool DeterministicJetRefiner<GraphAndGainTypes>::refineImpl(mt_kahypar_partition
     const bool top_level = (phg.initialNumNodes() == _top_level_num_nodes);
     const auto& jet_context = _context.refinement.deterministic_refinement.jet;
     resizeDataStructuresForCurrentK();
-
+    utils::Measurements& measurements = utils::Utilities::instance().getMeasurements(_context.utility_id);
     auto afterburner = [&](const HypernodeID hn, auto add_node_fn) {
         Gain total_gain = 0;
         const PartitionID from = phg.partID(hn);
@@ -119,6 +119,9 @@ bool DeterministicJetRefiner<GraphAndGainTypes>::refineImpl(mt_kahypar_partition
         }
         size_t rounds_without_improvement = 0;
         for (size_t i = 0; rounds_without_improvement < max_rounds_without_improvement && (max_rounds == 0 || i < max_rounds); ++i) {
+            if (top_level) {
+                measurements.top_level_iterations++;
+            }
             if (_current_partition_is_best) {
                 storeCurrentPartition(phg, _best_partition);
             } else {
