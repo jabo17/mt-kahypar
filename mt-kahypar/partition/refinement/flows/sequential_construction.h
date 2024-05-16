@@ -30,6 +30,7 @@
 
 #include "algorithm/hyperflowcutter.h"
 #include "algorithm/sequential_push_relabel.h"
+#include "algorithm/parallel_push_relabel.h"
 
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/sparse_map.h"
@@ -105,7 +106,7 @@ class SequentialConstruction {
  public:
   explicit SequentialConstruction(const HyperedgeID num_hyperedges,
                                   FlowHypergraphBuilder& flow_hg,
-                                  whfc::HyperFlowCutter<whfc::SequentialPushRelabel>& hfc,
+                                  whfc::HyperFlowCutter<whfc::ParallelPushRelabel>& hfc,
                                   const Context& context) :
     _context(context),
     _flow_hg(flow_hg),
@@ -162,17 +163,17 @@ class SequentialConstruction {
 
   const Context& _context;
 
-  FlowHypergraphBuilder& _flow_hg;
-  whfc::HyperFlowCutter<whfc::SequentialPushRelabel>& _hfc;
+  FlowHypergraphBuilder& _flow_hg; // reset
+  whfc::HyperFlowCutter<whfc::ParallelPushRelabel>& _hfc; // reset
 
-  ds::DynamicSparseMap<HypernodeID, whfc::Node> _node_to_whfc;
-  ds::ThreadSafeFastResetFlagArray<> _visited_hns;
-  vec<whfc::Node> _tmp_pins;
-  vec<whfc::Hyperedge> _cut_hes;
+  ds::DynamicSparseMap<HypernodeID, whfc::Node> _node_to_whfc; // reset
+  ds::ThreadSafeFastResetFlagArray<> _visited_hns; // reset
+  vec<whfc::Node> _tmp_pins; // clear
+  vec<whfc::Hyperedge> _cut_hes; // reset
 
-  vec<TmpPin> _pins;
-  ds::DynamicSparseMap<HyperedgeID, HyperedgeID> _he_to_whfc;
+  vec<TmpPin> _pins; // reset
+  ds::DynamicSparseMap<HyperedgeID, HyperedgeID> _he_to_whfc; // reset
 
-  DynamicIdenticalNetDetection _identical_nets;
+  DynamicIdenticalNetDetection _identical_nets; // reset
 };
 }  // namespace mt_kahypar

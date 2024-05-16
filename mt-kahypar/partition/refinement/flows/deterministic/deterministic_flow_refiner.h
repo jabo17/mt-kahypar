@@ -44,7 +44,7 @@ template<typename GraphAndGainTypes>
 class DeterministicFlowRefiner {
 
     static constexpr bool debug = false;
-    static constexpr bool sequential = true;
+    static constexpr bool sequential = false;
 
     using PartitionedHypergraph = typename GraphAndGainTypes::PartitionedHypergraph;
     using TypeTraits = typename GraphAndGainTypes::TypeTraits;
@@ -55,7 +55,7 @@ public:
         _flow_hg(),
         _sequential_hfc(_flow_hg, context.partition.seed),
         _parallel_hfc(_flow_hg, context.partition.seed, true),
-        _sequential_construction(num_hyperedges, _flow_hg, _sequential_hfc, context),
+        _sequential_construction(num_hyperedges, _flow_hg, _parallel_hfc, context),
         _parallel_construction(num_hyperedges, _flow_hg, _parallel_hfc, context),
         _problem_construction(num_hypernodes, num_hyperedges, context),
         _whfc_to_node() {
@@ -106,7 +106,7 @@ private:
             // TODO: Decide wether to use sequential or parallel problem construction?
             //timer.start_timer("construct_flow_hypergraph", "Flow Hypergraph Construction", true);
             FlowProblem flow_problem;
-            if (sequential) {
+            if (true) {
                 flow_problem = _sequential_construction.constructFlowHypergraph(phg, sub_hg, block0, block1, _whfc_to_node);
             } else {
                 flow_problem = _parallel_construction.constructFlowHypergraph(phg, sub_hg, block0, block1, _whfc_to_node);

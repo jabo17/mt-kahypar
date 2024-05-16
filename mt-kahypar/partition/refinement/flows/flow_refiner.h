@@ -62,9 +62,9 @@ class FlowRefiner final : public IFlowRefiner {
     _block_1(kInvalidPartition),
     _flow_hg(),
     _sequential_hfc(_flow_hg, context.partition.seed),
-    _parallel_hfc(_flow_hg, context.partition.seed),
+    _parallel_hfc(_flow_hg, context.partition.seed, true),
     _whfc_to_node(),
-    _sequential_construction(num_hyperedges, _flow_hg, _sequential_hfc, context),
+    _sequential_construction(num_hyperedges, _flow_hg, _parallel_hfc, context),
     _parallel_construction(num_hyperedges, _flow_hg, _parallel_hfc, context) {
       _sequential_hfc.find_most_balanced = _context.refinement.flows.find_most_balanced_cut;
       _sequential_hfc.timer.active = false;
