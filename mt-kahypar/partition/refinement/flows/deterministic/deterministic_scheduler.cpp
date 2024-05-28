@@ -24,9 +24,9 @@ bool DeterministicFlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
         round_delta = 0;
         while (_scheduled_blocks.size() > 0) {
             vec<MoveSequence> sequences(_scheduled_blocks.size());
-            tbb::parallel_for(0UL, _scheduled_blocks.size(), [&](const size_t i) {
-                //for (size_t i = 0; i < _scheduled_blocks.size(); ++i) {
-                    //for (size_t i = _scheduled_blocks.size() - 1; i < _scheduled_blocks.size(); --i) {
+            //tbb::parallel_for(0UL, _scheduled_blocks.size(), [&](const size_t i) {
+            for (size_t i = 0; i < _scheduled_blocks.size(); ++i) {
+                //for (size_t i = _scheduled_blocks.size() - 1; i < _scheduled_blocks.size(); --i) {
                 const ScheduledPair& sp = _scheduled_blocks[i];
                 //auto& refiner = _refiners.local();
                 DeterministicFlowRefiner<GraphAndGainTypes> refiner(num_hypernodes, num_hyperedges,
@@ -38,7 +38,7 @@ bool DeterministicFlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
                 round_delta += improvement;
                 reportResults(sp.bp.i, sp.bp.j, moves);
                 _quotient_graph.reportImprovement(sp.bp.i, sp.bp.j, improvement);
-            });
+            }//);
             addCutHyperedgesToQuotientGraph(phg);
             _new_cut_hes.clear();
             //tbb::parallel_for(0UL, sequences.size(), [&](const size_t i) {
