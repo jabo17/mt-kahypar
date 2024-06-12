@@ -113,7 +113,7 @@ std::string serialize(const PartitionedHypergraph& phg,
     s << measurements.num_singletons[i] << sep;
     s << measurements.eliminated_edges[i] << sep;
     s << measurements.eliminated_pins[i] << sep;
-    s << measurements.score[i] << sep;
+    s << measurements.score[i];
   }
 
 
