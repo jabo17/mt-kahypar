@@ -213,6 +213,7 @@ private:
 
                         std::cout << std::endl;
                     }
+                    std::cout << std::endl;
                     // whfc::WHFC_IO::WHFCInformation infos;
                     // infos.maxBlockWeight = { std::max(
                     // flow_problem.weight_of_block_0, _context.partition.max_part_weights[block0]), std::max(
