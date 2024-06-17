@@ -38,6 +38,10 @@
 #include "mt-kahypar/partition/refinement/flows/deterministic/deterministic_problem_construction.h"
 #include "mt-kahypar/utils/cast.h"
 
+#include "external_tools/WHFC/io/hmetis_io.h"
+#include "external_tools/WHFC/io/whfc_io.h"
+
+
 namespace mt_kahypar {
 
 template<typename GraphAndGainTypes>
@@ -100,7 +104,25 @@ private:
         //timer.start_timer("problem_construction", "Problem Construction", true);
         Subhypergraph sub_hg = _problem_construction.construct(phg, quotientGraph, block0, block1);
         //timer.stop_timer("problem_construction");
-        DBG << sub_hg;
+        // if (block0 == 48 && block1 == 51 && seed == 3563114499) {
+        //     std::cout << sub_hg.block_0 << std::endl;
+        //     std::cout << sub_hg.block_1 << std::endl;
+        //     for (auto a : sub_hg.nodes_of_block_0) {
+        //         std::cout << a << ",";
+        //     }
+        //     std::cout << std::endl;
+        //     for (auto a : sub_hg.nodes_of_block_1) {
+        //         std::cout << a << ",";
+        //     }
+        //     std::cout << std::endl;
+        //     std::cout << sub_hg.weight_of_block_0 << std::endl;
+        //     std::cout << sub_hg.weight_of_block_1 << std::endl;
+        //     for (auto a : sub_hg.hes) {
+        //         std::cout << a << ",";
+        //     }
+        //     std::cout << std::endl;
+        //     std::cout << sub_hg.num_pins << std::endl;
+        // }
         if (sub_hg.numNodes() > 0) {
 
             // TODO: Decide wether to use sequential or parallel problem construction?
@@ -110,6 +132,34 @@ private:
                 flow_problem = _sequential_construction.constructFlowHypergraph(phg, sub_hg, block0, block1, _whfc_to_node);
             } else {
                 flow_problem = _parallel_construction.constructFlowHypergraph(phg, sub_hg, block0, block1, _whfc_to_node, true /*deterministic*/);
+                // FlowHypergraphBuilder fg = _flow_hg;
+                // vec<HypernodeID> whfc2 = _whfc_to_node;
+                // std::vector<int32_t> distances = _parallel_hfc.cs.border_nodes.distance;
+                // for (int i = 0; i < 10 && block0 == 37 && block1 == 39 && seed == 682769175; ++i) {
+                //     _flow_hg.clear();
+                //     _whfc_to_node.clear();
+                //     FlowProblem flow_problem2 = _parallel_construction.constructFlowHypergraph(phg, sub_hg, block0, block1, _whfc_to_node, true /*deterministic*/);
+                //     if (!compareFlowProblems(flow_problem, flow_problem2)) {
+                //         std::cout << "FLOW-PROBLEM" << std::endl;
+                //         exit(-1);
+                //     }
+                //     if (!compareFlowHypergraphs(_flow_hg, fg)) {
+                //         std::cout << "Flow-Hypergraph" << std::endl;
+                //         std::cout << "?????????????????????????????????????????????????????????????????" << std::endl;
+                //         _flow_hg.printHypergraph(std::cout);
+                //         std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+                //         fg.printHypergraph(std::cout);
+                //         exit(-1);
+                //     }
+                //     if (_whfc_to_node != whfc2) {
+                //         std::cout << "WHFC " << std::endl;
+                //         exit(-1);
+                //     }
+                //     if (_parallel_hfc.cs.border_nodes.distance != distances) {
+                //         std::cout << "Flow-Hypergraph" << std::endl;
+                //         exit(-1);
+                //     }
+                // }
             }
             if (flow_problem.total_cut - flow_problem.non_removable_cut > 0) {
                 //timer.stop_timer("construct_flow_hypergraph");
@@ -153,6 +203,48 @@ private:
 
             _parallel_hfc.setSeed(seed);
             _parallel_hfc.setFlowBound(flow_problem.total_cut - flow_problem.non_removable_cut);
+            if constexpr (debug) {
+
+                if (block0 == 37 && block1 == 39 && seed == 682769175) {
+                    print(_flow_hg);
+
+                    for (auto a : _parallel_hfc.cs.border_nodes.distance) {
+                        std::cout << a << ", ";
+
+                        std::cout << std::endl;
+                    }
+                    // whfc::WHFC_IO::WHFCInformation infos;
+                    // infos.maxBlockWeight = { std::max(
+                    // flow_problem.weight_of_block_0, _context.partition.max_part_weights[block0]), std::max(
+                    // flow_problem.weight_of_block_1, _context.partition.max_part_weights[block1]) };
+                    // infos.s = whfc::Node(block0);
+                    // infos.t = whfc::Node(block1);
+                    // infos.upperFlowBound = (flow_problem.total_cut - flow_problem.non_removable_cut);
+                    std::string pathtohg = "/home/robert/KIT/Master/mt-kahypar/external_tools/WHFC/build/hypergraph";
+
+                    //whfc::WHFC_IO::writeAdditionalInformation(pathtohg, infos, _parallel_hfc.cs.rng);
+
+                    // std::string name = std::to_string(block0) + "-" + std::to_string(block1) + "-" + std::to_string(std::max(flow_problem.weight_of_block_0, _context.partition.max_part_weights[block0])) + "-" + std::to_string(std::max(
+                    //     flow_problem.weight_of_block_1, _context.partition.max_part_weights[block1])) + "-" + std::to_string(flow_problem.total_cut - flow_problem.non_removable_cut) + "-" + std::to_string(seed);
+                    // whfc::HMetisIO::writeFlowHypergraph(_flow_hg, name);
+                    buildFromFlowHypergraph(whfc::HMetisIO::readFlowHypergraph(pathtohg));
+                    auto result = _parallel_hfc.enumerateCutsUntilBalancedOrFlowBoundExceeded(s, t);
+                    _sequential_hfc.reset();
+                    _sequential_hfc.cs.border_nodes.distance = _parallel_hfc.cs.border_nodes.distance;
+                    _sequential_hfc.cs.setMaxBlockWeight(0, std::max(
+                        flow_problem.weight_of_block_0, _context.partition.max_part_weights[block0]));
+                    _sequential_hfc.cs.setMaxBlockWeight(1, std::max(
+                        flow_problem.weight_of_block_1, _context.partition.max_part_weights[block1]));
+
+                    _sequential_hfc.setSeed(seed);
+                    _sequential_hfc.setFlowBound(flow_problem.total_cut - flow_problem.non_removable_cut);
+                    _sequential_hfc.enumerateCutsUntilBalancedOrFlowBoundExceeded(s, t);
+                    std::cout << _sequential_hfc.cs.toString() << std::endl;
+                    std::cout << _parallel_hfc.cs.toString() << std::endl;
+                    exit(-1);
+                }
+            }
+            // std::cout << name << std::endl;
             return _parallel_hfc.enumerateCutsUntilBalancedOrFlowBoundExceeded(s, t);
         }
     }
@@ -195,6 +287,195 @@ private:
         }
     }
 
+    void print(FlowHypergraphBuilder a) {
+        std::cout << a._finalized << std::endl;
+        std::cout << a._numPinsAtHyperedgeStart << std::endl;
+        for (auto i : a._inc_he_pos) {
+            std::cout << "(" << i << "),";
+        }
+        std::cout << std::endl;
+        for (auto i : a.nodes) {
+            std::cout << "(" << i.first_out << "," << i.weight << "),";
+        }
+        std::cout << std::endl;
+        for (auto i : a.hyperedges) {
+            std::cout << "(" << i.first_out << "," << i.capacity << "),";
+        }
+        std::cout << std::endl;
+
+        for (auto i : a.pins) {
+            std::cout << "(" << i.pin << "," << i.he_inc_iter << "),";
+        }
+        std::cout << std::endl;
+
+        for (auto i : a.incident_hyperedges) {
+            std::cout << "(" << i.e << "," << i.pin_iter << "),";
+        }
+        std::cout << std::endl;
+        std::cout << V(a.total_node_weight) << std::endl;
+        std::cout << V(a.maxHyperedgeCapacity) << std::endl;
+    }
+    bool compareSubHypergraphs(const Subhypergraph& a, const Subhypergraph& b) {
+        if (a.block_0 != b.block_0) {
+            return false;
+        }
+        if (a.block_1 != b.block_1) {
+            return false;
+        }
+        if (a.nodes_of_block_0 != b.nodes_of_block_0) {
+            return false;
+        }
+        if (a.nodes_of_block_1 != b.nodes_of_block_1) {
+            return false;
+        }
+        if (a.weight_of_block_0 != b.weight_of_block_0) {
+            return false;
+        }
+        if (a.weight_of_block_1 != b.weight_of_block_1) {
+            return false;
+        }
+        if (a.hes != b.hes) {
+            return false;
+        }
+        if (a.num_pins != b.num_pins) {
+            return false;
+        }
+        return true;
+    }
+
+    bool compareFlowProblems(const FlowProblem& a, const FlowProblem& b) {
+        if (a.source != b.source) {
+            return false;
+        }
+        if (a.sink != b.sink) {
+            return false;
+        }
+        if (a.total_cut != b.total_cut) {
+            return false;
+        }
+        if (a.non_removable_cut != b.non_removable_cut) {
+            return false;
+        }
+        if (a.weight_of_block_0 != b.weight_of_block_0) {
+            return false;
+        }
+        if (a.weight_of_block_1 != b.weight_of_block_1) {
+            return false;
+        }
+        return true;
+    }
+
+    bool compareFlowHypergraphs(const FlowHypergraphBuilder& a, const FlowHypergraphBuilder& b) {
+        if (a._finalized != b._finalized) {
+            return false;
+        }
+        if (a._numPinsAtHyperedgeStart != b._numPinsAtHyperedgeStart) {
+            return false;
+        }
+        if (a._inc_he_pos != b._inc_he_pos) {
+            return false;
+        }
+        if (a._tmp_csr_buckets.size() == b._tmp_csr_buckets.size()) {
+            for (size_t i = 0; i < a._tmp_csr_buckets.size(); ++i) {
+                if (!comapreCSRBucket(a._tmp_csr_buckets[i], b._tmp_csr_buckets[i])) {
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+        if (a.nodes.size() != b.nodes.size()) {
+            return false;
+        }
+        for (size_t i = 0; i < a.nodes.size(); ++i) {
+            if (a.nodes[i].first_out != b.nodes[i].first_out || a.nodes[i].weight != b.nodes[i].weight) {
+                return false;
+            }
+        }
+        if (a.hyperedges.size() != b.hyperedges.size()) {
+            return false;
+        }
+        for (size_t i = 0; i < a.hyperedges.size(); ++i) {
+            if (a.hyperedges[i].first_out != b.hyperedges[i].first_out || a.hyperedges[i].capacity != b.hyperedges[i].capacity) {
+                return false;
+            }
+        }
+        if (a.pins != b.pins) {
+            return false;
+        }
+        if (a.incident_hyperedges != b.incident_hyperedges) {
+            return false;
+        }
+        if (a.total_node_weight != b.total_node_weight) {
+            return false;
+        }
+
+        if (a.maxHyperedgeCapacity != b.maxHyperedgeCapacity) {
+            return false;
+        }
+        return true;
+    }
+
+    bool comapreCSRBucket(const FlowHypergraphBuilder::TmpCSRBucket& a, const FlowHypergraphBuilder::TmpCSRBucket& b) {
+        for (size_t i = 0; i < a._hes.size(); ++i) {
+            if (a._hes[i].capacity != b._hes[i].capacity || a._hes[i].first_out != b._hes[i].first_out) {
+                return false;
+            }
+        }
+        if (a._pins != b._pins) {
+            return false;
+        }
+        if (a._num_hes != b._num_hes) {
+            return false;
+        }
+        if (a._global_start_he != b._global_start_he) {
+            return false;
+        }
+        if (a._num_pins != b._num_pins) {
+            return false;
+        }
+        if (a._global_start_pin_idx != b._global_start_pin_idx) {
+            return false;
+        }
+        return true;
+    }
+
+    void buildFromFlowHypergraph(const whfc::FlowHypergraph& fhg) {
+        _flow_hg.clear();
+        _flow_hg.nodes.resize(fhg.nodes.size());
+        for (size_t i = 0; i < fhg.nodes.size(); ++i) {
+            _flow_hg.nodes[i] = fhg.nodes[i];
+        }
+        _flow_hg.hyperedges.resize(fhg.hyperedges.size());
+        for (size_t i = 0; i < fhg.hyperedges.size(); ++i) {
+            _flow_hg.hyperedges[i] = fhg.hyperedges[i];
+        }
+        _flow_hg.pins.resize(fhg.pins.size());
+        for (size_t i = 0; i < fhg.pins.size(); ++i) {
+            _flow_hg.pins[i] = fhg.pins[i];
+        }
+        _flow_hg.incident_hyperedges.resize(fhg.incident_hyperedges.size());
+        for (size_t i = 0; i < fhg.incident_hyperedges.size(); ++i) {
+            _flow_hg.incident_hyperedges[i] = fhg.incident_hyperedges[i];
+        }
+        _flow_hg.total_node_weight = fhg.total_node_weight;
+    }
+
+    FlowHypergraphBuilder getFlowHg() {
+        return _flow_hg;
+    }
+
+    void setFlowHg(FlowHypergraphBuilder fhg) {
+        _flow_hg = fhg;
+    }
+
+    FlowProblem getFlowProblem() {
+        return _fp;
+    }
+
+    void setFlowProblem(FlowProblem fp) {
+        _fp = fp;
+    }
 
 
     const Context& _context;
@@ -209,6 +490,6 @@ private:
     DeterministicProblemConstruction<TypeTraits> _problem_construction; // reset
 
     vec<HypernodeID> _whfc_to_node; // reset
-
+    FlowProblem _fp;
 };
 }  // namespace mt_kahypar

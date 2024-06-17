@@ -43,6 +43,20 @@
 
 namespace mt_kahypar {
 
+struct Result {
+    MoveSequence seq;
+    ScheduledPair sp;
+
+    void print() {
+        std::cout << sp.bp.i << ", " << sp.bp.j << ", " << sp.seed << std::endl;
+        for (auto m : seq.moves) {
+            std::cout << "(" << V(m.from) << ", " << V(m.to) << ", " << V(m.node) << ", " << V(m.gain) << "),";
+        }
+        std::cout << std::endl;
+    }
+};
+
+
 template<typename GraphAndGainTypes>
 class DeterministicFlowRefinementScheduler final : public IRefiner {
 
@@ -210,6 +224,7 @@ private:
     const HypernodeID num_hypernodes;
     vec<NewCutHyperedge> _new_cut_hes;
     tbb::concurrent_queue<ScheduledPair> _scheduled_blocks;
+    size_t _solved_flow_problems = 0;
 };
 
 }  // namespace kahypar

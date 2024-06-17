@@ -1,5 +1,5 @@
 #include "mt-kahypar/partition/refinement/flows/deterministic/deterministic_scheduler.h"
-
+#include "tbb/concurrent_vector.h"
 namespace mt_kahypar {
 
 
@@ -33,26 +33,40 @@ bool DeterministicFlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
         round_delta = 0;
         minImprovement = _context.refinement.flows.min_relative_improvement_per_round * current_metrics.quality;
         while (numScheduledBlocks > 0) {
+            tbb::concurrent_vector<Result> results;
             timer.start_timer("flow_refiner", "Flow_Refiner");
-            tbb::parallel_for(0UL, _refiners.size(), [&](const size_t refinerIdx) {
-                auto& refiner = *_refiners[refinerIdx];
-                ScheduledPair sp;
-                while (_scheduled_blocks.try_pop(sp)) {
-                    refiner.initialize(phg);
-
-                    MoveSequence moves = refiner.refine(phg, _quotient_graph, sp.bp.i, sp.bp.j, sp.seed);
-                    const HyperedgeWeight improvement = applyMoves(moves, phg);
-
-                    round_delta += improvement;
-                    reportResults(sp.bp.i, sp.bp.j, moves);
-                    _quotient_graph.reportImprovement(sp.bp.i, sp.bp.j, improvement);
-
-                }
+            //tbb::parallel_for(0UL, _refiners.size(), [&](const size_t refinerIdx) {
+            size_t refinerIdx = 0;
+            auto& refiner = *_refiners[refinerIdx];
+            ScheduledPair sp;
+            while (_scheduled_blocks.try_pop(sp)) {
+                refiner.initialize(phg);
+                //std::cout << sp.bp.i << ", " << sp.bp.j << ", " << sp.seed << std::endl;
+                MoveSequence moves = refiner.refine(phg, _quotient_graph, sp.bp.i, sp.bp.j, sp.seed);
+                const HyperedgeWeight improvement = applyMoves(moves, phg);
+                // for (auto m : moves.moves) {
+                //     std::cout << "(" << V(m.from) << ", " << V(m.to) << ", " << V(m.node) << ", " << V(m.gain) << "),";
+                // }
+                //std::cout << std::endl;
+                round_delta += improvement;
+                reportResults(sp.bp.i, sp.bp.j, moves);
+                _quotient_graph.reportImprovement(sp.bp.i, sp.bp.j, improvement);
+                results.push_back({ moves, sp });
+            }
+            //});
+            _solved_flow_problems += numScheduledBlocks;
+            DBG << V(_solved_flow_problems);
+            std::sort(results.begin(), results.end(), [&](const Result& a, const Result& b) {
+                return std::tie(a.sp.bp.i, a.sp.bp.j) < std::tie(b.sp.bp.i, b.sp.bp.j);
             });
+            if constexpr (debug) {
+                for (auto a : results) {
+                    a.print();
+                }
+            }
             timer.stop_timer("flow_refiner");
             addCutHyperedgesToQuotientGraph(phg);
             _new_cut_hes.clear();
-            assert(metrics::isBalanced(phg, _context));
             DBG << "#################################################### NEXT MATCHING ######################################################";
             timer.start_timer("scheduling_overhead", "Scheduling Overhead");
             numScheduledBlocks = _schedule.getNextMatching(_scheduled_blocks, _quotient_graph);

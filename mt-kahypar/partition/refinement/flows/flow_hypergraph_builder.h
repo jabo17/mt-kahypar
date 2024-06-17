@@ -36,7 +36,7 @@ namespace mt_kahypar {
   class FlowHypergraphBuilder : public whfc::FlowHypergraph {
 
     using TmpPinRange = mutable_range<vec<Pin>>;
-
+public:
     struct TmpCSRBucket {
       TmpCSRBucket() :
         _hes(),
@@ -267,7 +267,7 @@ namespace mt_kahypar {
       incident_hyperedges.shrink_to_fit();
     }
 
-  private:
+  public:
 
     // ####################### Sequential Construction #######################
 
