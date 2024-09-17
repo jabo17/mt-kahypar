@@ -34,6 +34,12 @@ target_link_libraries(HypergraphStats TBB::tbb TBB::tbbmalloc_proxy)
 set_property(TARGET HypergraphStats PROPERTY CXX_STANDARD 17)
 set_property(TARGET HypergraphStats PROPERTY CXX_STANDARD_REQUIRED ON)
 
+add_executable(MlGraphStats ml_graph_stats.cc)
+target_link_libraries(MlGraphStats ${Boost_LIBRARIES})
+target_link_libraries(MlGraphStats TBB::tbb TBB::tbbmalloc_proxy)
+set_property(TARGET MlGraphStats PROPERTY CXX_STANDARD 17)
+set_property(TARGET MlGraphStats PROPERTY CXX_STANDARD_REQUIRED ON)
+
 add_executable(MetisToScotch metis_to_scotch_converter.cc)
 target_link_libraries(MetisToScotch ${Boost_LIBRARIES})
 target_link_libraries(MetisToScotch TBB::tbb TBB::tbbmalloc_proxy)
@@ -110,6 +116,7 @@ set(TOOLS_TARGETS ${TOOLS_TARGETS} GraphToHgr
                                    HgrToParkway
                                    HgrToZoltan
                                    HypergraphStats
+                                   MlGraphStats
                                    MetisToScotch
                                    OneToOneMapping
                                    VerifyTargetGraphPartition

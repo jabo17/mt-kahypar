@@ -46,7 +46,7 @@ double parallel_stdev(const std::vector<T>& data, const double avg, const size_t
                 tmp_stdev += (data[i] - avg) * (data[i] - avg);
             }
             return tmp_stdev;
-            }, std::plus<double>()) / ( n- 1 ));
+            }, std::plus<double>()) / static_cast<double>(n));
 }
 
 template<typename T>
