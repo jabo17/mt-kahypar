@@ -29,6 +29,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 #include <vector>
 #include <string>
 #include <cstdint>
@@ -116,7 +117,7 @@ struct Statistic {
   // TODO: skew
   // TODO: chi^2 ?
 
-  std::vector<Feature> featureList() {
+  std::vector<Feature> featureList() const {
     std::vector<Feature> result {
       {avg, FeatureType::floatingpoint},
       {sd, FeatureType::floatingpoint},
@@ -161,7 +162,7 @@ struct GlobalFeatures {
   double modularity_1 = 0.0;
   double modularity_2 = 0.0;
 
-  std::vector<Feature> featureList() {
+  std::vector<Feature> featureList() const {
     std::vector<Feature> result_1 {
       {n, FeatureType::integer},
       {m, FeatureType::integer},
@@ -209,13 +210,15 @@ struct N1Features {
   Statistic degree_stats;  // over nodes
   Statistic locality_stats;  // over nodes
   uint64_t to_n1_edges = 0;
+  uint64_t to_n2_edges = 0;
+  uint64_t d1_nodes = 0;
   double modularity = 0;
   double max_modularity = 0;
   uint64_t max_modularity_size = 0;
   double min_contracted_degree = 0;
   uint64_t min_contracted_degree_size = 0;
 
-  std::vector<Feature> featureList() {
+  std::vector<Feature> featureList() const {
     std::vector<Feature> result_1 {
       {degree, FeatureType::integer},
       {degree_quantile, FeatureType::floatingpoint},
@@ -226,6 +229,8 @@ struct N1Features {
     result_1.insert(result_1.end(), locality_features.begin(), locality_features.end());
     std::vector<Feature> result_2 {
       {to_n1_edges, FeatureType::integer},
+      {to_n2_edges, FeatureType::integer},
+      {d1_nodes, FeatureType::integer},
       {modularity, FeatureType::floatingpoint},
       {max_modularity, FeatureType::floatingpoint},
       {max_modularity_size, FeatureType::integer},
@@ -244,7 +249,7 @@ struct N1Features {
     result_1.insert(result_1.end(), degree_header.begin(), degree_header.end());
     result_1.insert(result_1.end(), locality_header.begin(), locality_header.end());
     std::vector<std::string> result_2 {
-      "n1_to_n1_edges", "n1_modularity", "n1_max_modularity",
+      "n1_to_n1_edges", "n1_to_n2_edges", "n1_d1_nodes", "n1_modularity", "n1_max_modularity",
       "n1_max_modularity_size", "n1_min_contracted_degree", "n1_min_contracted_degree_size",
     };
     result_1.insert(result_1.end(), result_2.begin(), result_2.end());
@@ -263,7 +268,7 @@ struct N2Features {
   uint64_t out_edges = 0;
   double modularity = 0;
 
-  std::vector<Feature> featureList() {
+  std::vector<Feature> featureList() const {
     std::vector<Feature> result_1 { {size, FeatureType::integer} };
     std::vector<Feature> degree_features = degree_stats.featureList();
     std::vector<Feature> locality_features = locality_stats.featureList();
@@ -336,7 +341,7 @@ bool float_eq(double left, double right) {
 }
 
 
-GlobalFeatures computeGlobalFeatures(const Graph& graph) {
+std::pair<GlobalFeatures, std::vector<HyperedgeID>> computeGlobalFeatures(const Graph& graph) {
   GlobalFeatures features;
 
   std::vector<HyperedgeID> hn_degrees;
@@ -383,10 +388,51 @@ GlobalFeatures computeGlobalFeatures(const Graph& graph) {
   }
 
   // TODO: modularity
-  return features;
+  return {features, hn_degrees};
 }
 
+N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<HyperedgeID>& global_degrees, const NeighborhoodResult& data) {
+  N1Features result;
+  HypernodeID num_nodes = data.n1_list.size();
+  result.degree = num_nodes;
+  size_t lower = std::lower_bound(global_degrees.begin(), global_degrees.end(), result.degree) - global_degrees.begin();
+  size_t upper = std::upper_bound(global_degrees.begin(), global_degrees.end(), result.degree) - global_degrees.begin();
+  result.degree_quantile = (static_cast<double>(lower) + static_cast<double>(upper)) / (2 * static_cast<double>(global_degrees.size()));
 
+  // compute degree stats
+  std::vector<HyperedgeID> degrees;
+  degrees.reserve(num_nodes);
+  for (HypernodeID node: data.n1_list) {
+    degrees.push_back(graph.nodeDegree(node));
+  }
+  result.degree_stats = createStats(degrees, num_nodes >= 20000);
+
+  // compute locality stats and related values
+  std::vector<double> locality_values;
+  locality_values.reserve(num_nodes);
+  for (HypernodeID node: data.n1_list) {
+    uint64_t local_n1_edges = 0;
+    for (HyperedgeID edge: graph.incidentEdges(node)) {
+      HypernodeID neighbor = graph.edgeTarget(edge);
+      if (data.isInN1Exactly(neighbor)) {
+        result.to_n1_edges++;
+        local_n1_edges++;
+      } else if (!data.isRoot(neighbor)) {
+        result.to_n2_edges++;
+      }
+    }
+    HypernodeID node_degree = graph.nodeDegree(node);
+    uint64_t divisor = std::min(num_nodes, node_degree) - 1;
+    if (divisor != 0) {
+      locality_values.push_back(static_cast<double>(local_n1_edges / divisor));
+    } else if (node_degree == 1) {
+      result.d1_nodes++;
+    }
+  }
+  result.locality_stats = createStats(locality_values, locality_values.size() >= 20000);
+  // TODO: modularity, min_contracted_degree
+  return result;
+}
 
 
 // ################    Main   ################
@@ -428,7 +474,7 @@ int main(int argc, char* argv[]) {
       InstanceType::graph, context.partition.file_format, true);
   Graph& graph = utils::cast<Graph>(hypergraph);
 
-  GlobalFeatures global_features = computeGlobalFeatures(graph);
+  auto [global_features, degrees] = computeGlobalFeatures(graph);
 
   auto header = global_features.header();
   auto features = global_features.featureList();

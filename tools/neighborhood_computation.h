@@ -47,19 +47,23 @@ struct NeighborhoodResult {
   const FastResetArray& n2_set;
   bool includes_two_hop;
 
-  bool isInN1(HypernodeID node) {
-    return node == roots[0] || node == roots[1] || n1_set[node];
+  bool isRoot(HypernodeID node) const {
+    return node == roots[0] || node == roots[1];
   }
 
-  bool isInN1Exactly(HypernodeID node) {
+  bool isInN1(HypernodeID node) const {
+    return isRoot(node) || n1_set[node];
+  }
+
+  bool isInN1Exactly(HypernodeID node) const {
     return n1_set[node];
   }
 
-  bool isInN2(HypernodeID node) {
+  bool isInN2(HypernodeID node) const {
     return isInN1(node) || n2_set[node];
   }
 
-  bool isInN2Exactly(HypernodeID node) {
+  bool isInN2Exactly(HypernodeID node) const {
     return n2_set[node];
   }
 };
