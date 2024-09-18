@@ -75,7 +75,12 @@ struct Feature {
   }
   Feature(uint64_t value, FeatureType type): value(static_cast<double>(value)), type(type) {
     ALWAYS_ASSERT(type != FeatureType::floatingpoint);
+    if (type == FeatureType::boolean) {
+      ALWAYS_ASSERT(value == 0 || value == 1);
+    }
   }
+  Feature(uint32_t value, FeatureType type): Feature(static_cast<uint64_t>(value), type) { }
+  Feature(uint8_t value, FeatureType type): Feature(static_cast<uint64_t>(value), type) { }
 };
 
 
@@ -265,6 +270,15 @@ struct N1Features {
     ALWAYS_ASSERT(result_1.size() == num_entries, "header info was not properly updated");
     return result_1;
   }
+
+  static std::vector<std::string> header(const char* prefix) {
+    std::string p(prefix);
+    std::vector<std::string> result = header();
+    for (std::string& val: result) {
+      val = p + val;
+    }
+    return result;
+  }
 };
 
 struct N2Features {
@@ -301,6 +315,59 @@ struct N2Features {
     result_1.insert(result_1.end(), degree_header.begin(), degree_header.end());
     result_1.insert(result_1.end(), locality_header.begin(), locality_header.end());
     std::vector<std::string> result_2 {"n2_to_n1n2_edges", "n2_out_edges", "n2_modularity"};
+    result_1.insert(result_1.end(), result_2.begin(), result_2.end());
+    ALWAYS_ASSERT(result_1.size() == num_entries, "header info was not properly updated");
+    return result_1;
+  }
+};
+
+struct EdgeFeatures {
+  static constexpr uint64_t num_entries = 2 * N1Features::num_entries + 8;
+
+  double locality = 0;
+  double jaccard_index = 0;
+  double cosine_similarity = 0;
+  double dice_similarity = 0;
+  double strawman_similarity = 0;
+  // TODO: uint64_t largest_common_clique = 0;
+  N1Features intersect_features;
+  N1Features union_features;
+  // TODO: community overlap?
+  uint8_t comm_0_equal = 0;
+  uint8_t comm_1_equal = 0;
+  uint8_t comm_2_equal = 0;
+
+  std::vector<Feature> featureList() const {
+    std::vector<Feature> result_1 {
+      {locality, FeatureType::floatingpoint},
+      {jaccard_index, FeatureType::floatingpoint},
+      {cosine_similarity, FeatureType::floatingpoint},
+      {dice_similarity, FeatureType::floatingpoint},
+      {strawman_similarity, FeatureType::floatingpoint},
+    };
+    std::vector<Feature> intersect_list = intersect_features.featureList();
+    std::vector<Feature> union_list = union_features.featureList();
+    result_1.insert(result_1.end(), intersect_list.begin(), intersect_list.end());
+    result_1.insert(result_1.end(), union_list.begin(), union_list.end());
+    std::vector<Feature> result_2 {
+      {comm_0_equal, FeatureType::boolean},
+      {comm_1_equal, FeatureType::boolean},
+      {comm_2_equal, FeatureType::boolean},
+    };
+    result_1.insert(result_1.end(), result_2.begin(), result_2.end());
+    ALWAYS_ASSERT(result_1.size() == num_entries, "header info was not properly updated");
+    return result_1;
+  }
+
+  static std::vector<std::string> header() {
+    std::vector<std::string> result_1 {
+      "locality", "jaccard_index", "cosine_similarity", "dice_similarity", "strawman_similarity",
+    };
+    std::vector<std::string> intersect_header = N1Features::header("intersect_");
+    std::vector<std::string> union_header = N1Features::header("union_");
+    result_1.insert(result_1.end(), intersect_header.begin(), intersect_header.end());
+    result_1.insert(result_1.end(), union_header.begin(), union_header.end());
+    std::vector<std::string> result_2 {"comm_0_equal", "comm_1_equal", "comm_2_equal"};
     result_1.insert(result_1.end(), result_2.begin(), result_2.end());
     ALWAYS_ASSERT(result_1.size() == num_entries, "header info was not properly updated");
     return result_1;
@@ -368,23 +435,7 @@ std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const Gra
 
   HypernodeID num_nodes = graph.initialNumNodes();
   HyperedgeID num_edges = Graph::is_graph ? graph.initialNumEdges() / 2 : graph.initialNumEdges();
-  graph.doParallelForAllEdges([&](const HyperedgeID& edge) {
-    ALWAYS_ASSERT(graph.edgeSize(edge) == 2);
-    ALWAYS_ASSERT(graph.edgeWeight(edge) == 1);
-    // TODO: locality, only directed edges
-  });
-
   Statistic degree_stats = createStats(hn_degrees, true);
-  // ASSERT([&]{
-  //   Statistic alt_stats = createStats(hn_degrees, false);
-  //   if (!float_eq(degree_stats.avg, alt_stats.avg)
-  //     || !float_eq(degree_stats.med, alt_stats.med)
-  //     || !float_eq(degree_stats.sd, alt_stats.sd)) {
-  //       return false;
-  //   }
-  //   return true;
-  // }());
-
   features.n = num_nodes;
   features.m = num_edges;
   features.degree_stats = degree_stats;
@@ -410,8 +461,8 @@ N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<uint
   HypernodeID num_nodes = data.n1_list.size();
   result.degree = num_nodes;
   size_t lower = std::lower_bound(global_degrees.begin(), global_degrees.end(), result.degree) - global_degrees.begin();  // always < n
-  size_t upper = std::upper_bound(global_degrees.begin(), global_degrees.end(), result.degree) - global_degrees.begin() - 1;  // always >= 1
-  result.degree_quantile = (static_cast<double>(lower) + static_cast<double>(upper)) / (2 * static_cast<double>(global_degrees.size() - 1));
+  size_t upper = std::upper_bound(global_degrees.begin(), global_degrees.end(), result.degree) - global_degrees.begin();  // always >= 1
+  result.degree_quantile = (static_cast<double>(lower + upper)) / (2 * static_cast<double>(global_degrees.size()) - 1);
 
   // compute degree stats
   std::vector<uint64_t> degrees;
@@ -424,12 +475,12 @@ N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<uint
   // TODO: edges between neighbors are ignored in the same way as in
   // the coarsening heuristic. Is this what we want?
   HyperedgeWeight out_edges = result.degree;
-  HypernodeWeight node_weight = 1;
+  HypernodeWeight node_weight = data.roots[0] == data.roots[1] ? 1 : 2;
   for (HyperedgeID d: degrees) {
     if ((static_cast<HyperedgeWeight>(d) - 2) * node_weight < out_edges) {
       out_edges += d - 2;
       node_weight++;
-    } 
+    }
   }
   result.min_contracted_degree = static_cast<double>(out_edges) / static_cast<double>(node_weight);
   result.min_contracted_degree_size = node_weight;
@@ -504,8 +555,7 @@ N2Features n2FeaturesFromNeighborhood(const Graph& graph, const NeighborhoodResu
   return result;
 }
 
-
-std::vector<std::tuple<HypernodeID, N1Features, N2Features>>  computeNodeFeatures(const Graph& graph, const std::vector<uint64_t>& global_degrees) {
+std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures(const Graph& graph, const std::vector<uint64_t>& global_degrees) {
   std::vector<std::tuple<HypernodeID, N1Features, N2Features>> result;
   result.resize(graph.initialNumNodes());
 
@@ -522,6 +572,65 @@ std::vector<std::tuple<HypernodeID, N1Features, N2Features>>  computeNodeFeature
   return result;
 }
 
+std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatures(const Graph& graph, const std::vector<uint64_t>& global_degrees) {
+  tbb::enumerable_thread_specific<std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>>> result_list;
+  tbb::enumerable_thread_specific<NeighborhoodComputation> base_neighborhood(graph.initialNumNodes());
+  tbb::enumerable_thread_specific<NeighborhoodComputation> result_neighborhood(graph.initialNumNodes());
+  graph.doParallelForAllNodes([&](HypernodeID u) {
+    NeighborhoodComputation& base_compute = base_neighborhood.local();
+    base_compute.reset();
+    NeighborhoodResult u_neighborhood = base_compute.computeNeighborhood(graph, std::array{u}, false);
+
+    for (HyperedgeID edge: graph.incidentEdges(u)) {
+      ALWAYS_ASSERT(graph.edgeSize(edge) == 2);
+      ALWAYS_ASSERT(graph.edgeWeight(edge) == 1);
+      HypernodeID v = graph.edgeTarget(edge);
+      HypernodeID deg_u = graph.nodeDegree(u);
+      HypernodeID deg_v = graph.nodeDegree(v);
+      if (deg_u < deg_v || (deg_u == deg_v && u < v)) {
+        continue;
+      }
+
+      EdgeFeatures result;
+      NeighborhoodComputation& result_compute = result_neighborhood.local();
+      result_compute.reset();
+      NeighborhoodResult union_result = result_compute.computeNeighborhood(graph, std::array{u, v}, false);
+      result.union_features = n1FeaturesFromNeighborhood(graph, global_degrees, union_result);
+      result_compute.reset();
+      // our slightly hacky intersect computation
+      NeighborhoodResult intersect_result = result_compute.computeNeighborhood(graph, std::array{v}, false,
+        [&](HypernodeID node){ return u_neighborhood.isInN1Exactly(node); });
+      intersect_result.roots[0] = u;
+      result.intersect_features = n1FeaturesFromNeighborhood(graph, global_degrees, intersect_result);
+
+      double intersect_size = result.intersect_features.degree;
+      if (deg_u == 1 || deg_v == 1) {
+        result.locality = 1;
+        result.strawman_similarity = 1;
+      } else {
+        result.locality = intersect_size / static_cast<double>(std::min(deg_u, deg_v) - 1);
+        result.strawman_similarity = 1.0 / static_cast<double>((deg_u - 1) * (deg_v - 1));
+      }
+      result.jaccard_index = intersect_size / static_cast<double>(result.union_features.degree);
+      result.cosine_similarity = intersect_size / std::sqrt(deg_u * deg_v);
+      if (result.intersect_features.degree == 0) {
+        result.dice_similarity = 0;
+      } else {
+        HypernodeID dice_divisor = result.intersect_features.degree + result.intersect_features.to_n1_edges + result.intersect_features.to_n2_edges;
+        result.dice_similarity = intersect_size / static_cast<double>(dice_divisor);
+      }
+      result_list.local().emplace_back(u, v, result);
+    }
+  });
+
+  std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> result;
+  for (const auto& list: result_list) {
+    result.insert(result.end(), list.begin(), list.end());
+  }
+  return result;
+}
+
+
 
 // ################    Main   ################
 
@@ -530,6 +639,7 @@ int main(int argc, char* argv[]) {
   Context context;
   std::string global_out;
   std::string nodes_out;
+  std::string edges_out;
 
   po::options_description options("Options");
   options.add_options()
@@ -543,6 +653,9 @@ int main(int argc, char* argv[]) {
           ("nodes,n",
            po::value<std::string>(&nodes_out)->value_name("<string>")->required(),
            "Output file for node features")
+          ("edges,e",
+           po::value<std::string>(&edges_out)->value_name("<string>")->required(),
+           "Output file for edge features")
           ("input-file-format",
             po::value<std::string>()->value_name("<string>")->notifier([&](const std::string& s) {
               if (s == "hmetis") {
@@ -565,6 +678,7 @@ int main(int argc, char* argv[]) {
 
   std::ofstream global(global_out);
   std::ofstream nodes(nodes_out);
+  std::ofstream edges(edges_out);
 
   // Read Hypergraph
   mt_kahypar_hypergraph_t hypergraph =
@@ -573,15 +687,29 @@ int main(int argc, char* argv[]) {
       InstanceType::graph, context.partition.file_format, true);
   Graph& graph = utils::cast<Graph>(hypergraph);
 
-  auto [global_features, degrees] = computeGlobalFeatures(graph);
+  auto [global_features, degrees] = computeGlobalFeatures(graph);  // does not contain locality
+  auto node_features = computeNodeFeatures(graph, degrees);
+  auto edge_features = computeEdgeFeatures(graph, degrees);
+  
+
   tbb::parallel_invoke([&]{
+    // compute locality stats
+    std::vector<double> locality_values;
+    for (auto [u, v, features]: edge_features) {
+      if (graph.nodeDegree(u) > 1 && graph.nodeDegree(v) > 1) {
+        locality_values.push_back(features.locality);
+      }
+    }
+    global_features.locality_stats = createStats(locality_values, true);
+
+    // output global features
     auto header = global_features.header();
     auto features = global_features.featureList();
     ALWAYS_ASSERT(header.size() == features.size());
     printHeader(global, header);
     printFeatures(global, features);
   }, [&]{
-    auto node_features = computeNodeFeatures(graph, degrees);
+    // output node features
     std::vector<std::string> header {"node_id"};
     std::vector<std::string> n1_header = N1Features::header();
     header.insert(header.end(), n1_header.begin(), n1_header.end());
@@ -592,13 +720,30 @@ int main(int argc, char* argv[]) {
     std::vector<Feature> features;
     for (const auto& [id, n1_features, n2_features]: node_features) {
       features.clear();
-      features.emplace_back(static_cast<uint64_t>(id), FeatureType::integer);  // this is not actually a feature
+      features.emplace_back(id, FeatureType::integer);  // (not actually a feature)
       std::vector<Feature> n1 = n1_features.featureList();
       features.insert(features.end(), n1.begin(), n1.end());
       std::vector<Feature> n2 = n2_features.featureList();
       features.insert(features.end(), n2.begin(), n2.end());
       ALWAYS_ASSERT(header.size() == features.size());
       printFeatures(nodes, features);
+    }
+  }, [&]{
+    // output edge features
+    std::vector<std::string> header {"id_high_degree", "id_low_degree"};
+    std::vector<std::string> edge_header = EdgeFeatures::header();
+    header.insert(header.end(), edge_header.begin(), edge_header.end());
+    printHeader(edges, header);
+
+    std::vector<Feature> features;
+    for (const auto& [u, v, e_features]: edge_features) {
+      features.clear();
+      features.emplace_back(u, FeatureType::integer);  // (not actually a feature)
+      features.emplace_back(v, FeatureType::integer);  // (not actually a feature)
+      std::vector<Feature> results = e_features.featureList();
+      features.insert(features.end(), results.begin(), results.end());
+      ALWAYS_ASSERT(header.size() == features.size());
+      printFeatures(edges, features);
     }
   });
   // std::string graph_name = context.partition.graph_filename.substr(

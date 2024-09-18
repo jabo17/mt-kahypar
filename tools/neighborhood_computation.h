@@ -78,6 +78,11 @@ class NeighborhoodComputation {
 
   template<size_t N>
   NeighborhoodResult computeNeighborhood(const Graph& graph, std::array<HypernodeID, N> roots, bool include_two_hop) {
+    return computeNeighborhood(graph, roots, include_two_hop, [](HypernodeID){ return true; });
+  }
+
+  template<size_t N, typename F>
+  NeighborhoodResult computeNeighborhood(const Graph& graph, std::array<HypernodeID, N> roots, bool include_two_hop, F filter) {
     static_assert(N > 0 && N <= 2);
     ALWAYS_ASSERT(n1_list.empty());
     NeighborhoodResult result {{roots[0], roots[0]}, n1_list, n1_set, n2_list, n2_set, include_two_hop};
@@ -88,7 +93,7 @@ class NeighborhoodComputation {
     for (HypernodeID root: roots) {
       for (HyperedgeID edge: graph.incidentEdges(root)) {
         HypernodeID neighbor = graph.edgeTarget(edge);
-        if (!result.isInN1(neighbor)) {
+        if (!result.isInN1(neighbor) && filter(neighbor)) {
           n1_list.push_back(neighbor);
           n1_set.set(neighbor);
         }
@@ -98,7 +103,7 @@ class NeighborhoodComputation {
       for (HypernodeID node: n1_list) {
         for (HyperedgeID edge: graph.incidentEdges(node)) {
           HypernodeID neighbor = graph.edgeTarget(edge);
-          if (!result.isInN2(neighbor)) {
+          if (!result.isInN2(neighbor) && filter(neighbor)) {
             n2_list.push_back(neighbor);
             n2_set.set(neighbor);
           }
