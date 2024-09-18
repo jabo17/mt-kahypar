@@ -35,6 +35,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <type_traits>
+#include <limits>
 
 #include "tbb/parallel_sort.h"
 #include "tbb/enumerable_thread_specific.h"
@@ -109,16 +110,16 @@ struct Invalid {};
 
 template<typename T = Invalid>
 struct Statistic {
-  static constexpr uint64_t num_entries = 7;
+  static constexpr uint64_t num_entries = 8;
 
   double avg = 0.0;
   double sd = 0.0;
+  double skew = 0.0;
   T min = 0;
   T q1 = 0;
   T med = 0;
   T q3 = 0;
   T max = 0;
-  // TODO: skew
   // TODO: chi^2 ?
 
   std::vector<Feature> featureList() const {
@@ -126,6 +127,7 @@ struct Statistic {
     std::vector<Feature> result {
       {avg, FeatureType::floatingpoint},
       {sd, FeatureType::floatingpoint},
+      {skew, FeatureType::floatingpoint},
       {min, type},
       {q1, type},
       {med, type},
@@ -140,6 +142,7 @@ struct Statistic {
     std::vector<std::string> result {
       std::string("avg_") + suffix,
       std::string("sd_") + suffix,
+      std::string("skew_") + suffix,
       std::string("min_") + suffix,
       std::string("q1_") + suffix,
       std::string("med_") + suffix,
@@ -315,10 +318,12 @@ Statistic<T> createStats(std::vector<T>& vec, bool parallel) {
   if (!vec.empty()) {
     double avg = 0;
     double stdev = 0;
+    double skew = 0;
     if (parallel) {
       tbb::parallel_sort(vec.begin(), vec.end());
       avg = utils::parallel_avg(vec, vec.size());
       stdev = utils::parallel_stdev(vec, avg, vec.size());
+      skew = utils::parallel_skew(vec, avg, stdev, vec.size());
     } else {
       std::sort(vec.begin(), vec.end());
       for (auto val: vec) {
@@ -327,8 +332,10 @@ Statistic<T> createStats(std::vector<T>& vec, bool parallel) {
       avg = avg / static_cast<double>(vec.size());
       for (auto val: vec) {
         stdev += (val - avg) * (val - avg);
+        skew += (val - avg) * (val - avg) * (val - avg);
       }
       stdev = std::sqrt(stdev / static_cast<double>(vec.size()));
+      skew = stdev == 0 ? 0.0 : skew / (static_cast<double>(vec.size()) * std::pow(stdev, 3));
     }
     const auto quartiles = kahypar::math::firstAndThirdQuartile(vec);
     stats.min = vec.front();
@@ -338,6 +345,7 @@ Statistic<T> createStats(std::vector<T>& vec, bool parallel) {
     stats.max = vec.back();
     stats.avg = avg;
     stats.sd = stdev;
+    stats.skew = skew;
   }
   return stats;
 }
