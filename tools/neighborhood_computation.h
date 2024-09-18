@@ -71,7 +71,10 @@ struct NeighborhoodResult {
 
 class NeighborhoodComputation {
  public:
-  NeighborhoodComputation() = default;
+  NeighborhoodComputation(HypernodeID num_nodes) {
+    n1_set.setSize(num_nodes);
+    n2_set.setSize(num_nodes);
+  }
 
   template<size_t N>
   NeighborhoodResult computeNeighborhood(const Graph& graph, std::array<HypernodeID, N> roots, bool include_two_hop) {

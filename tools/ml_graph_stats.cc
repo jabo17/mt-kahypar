@@ -34,6 +34,7 @@
 #include <string>
 #include <cstdint>
 #include <iomanip>
+#include <type_traits>
 
 #include "tbb/parallel_sort.h"
 #include "tbb/enumerable_thread_specific.h"
@@ -104,28 +105,32 @@ void printFeatures(std::ostream& os, const std::vector<Feature>& features) {
 
 // ################ Feature Definitions ################
 
+struct Invalid {};
+
+template<typename T = Invalid>
 struct Statistic {
   static constexpr uint64_t num_entries = 7;
 
   double avg = 0.0;
   double sd = 0.0;
-  uint64_t min = 0;
-  uint64_t q1 = 0;
-  uint64_t med = 0;
-  uint64_t q3 = 0;
-  uint64_t max = 0;
+  T min = 0;
+  T q1 = 0;
+  T med = 0;
+  T q3 = 0;
+  T max = 0;
   // TODO: skew
   // TODO: chi^2 ?
 
   std::vector<Feature> featureList() const {
+    FeatureType type = std::is_floating_point_v<T> ? FeatureType::floatingpoint : FeatureType::integer;
     std::vector<Feature> result {
       {avg, FeatureType::floatingpoint},
       {sd, FeatureType::floatingpoint},
-      {min, FeatureType::integer},
-      {q1, FeatureType::integer},
-      {med, FeatureType::integer},
-      {q3, FeatureType::integer},
-      {max, FeatureType::integer},
+      {min, type},
+      {q1, type},
+      {med, type},
+      {q3, type},
+      {max, type},
     };
     ALWAYS_ASSERT(result.size() == num_entries, "header info was not properly updated");
     return result;
@@ -147,14 +152,14 @@ struct Statistic {
 };
 
 struct GlobalFeatures {
-  static constexpr uint64_t num_entries = 2 * Statistic::num_entries + 10;
+  static constexpr uint64_t num_entries = 2 * Statistic<>::num_entries + 10;
 
   uint64_t n = 0;
   uint64_t m = 0;
   double irregularity = 0.0;
   uint64_t exp_median_degree = 0;
-  Statistic degree_stats;  // over nodes
-  Statistic locality_stats;  // over edges
+  Statistic<uint64_t> degree_stats;  // over nodes
+  Statistic<double> locality_stats;  // over edges
   uint64_t n_communities_0 = 0;
   uint64_t n_communities_1 = 0;
   uint64_t n_communities_2 = 0;
@@ -188,8 +193,8 @@ struct GlobalFeatures {
 
   static std::vector<std::string> header() {
     std::vector<std::string> result_1 {"n", "m", "irregularity", "exp_median_degree"};
-    std::vector<std::string> degree_header = Statistic::header("degree");
-    std::vector<std::string> locality_header = Statistic::header("locality");
+    std::vector<std::string> degree_header = Statistic<>::header("degree");
+    std::vector<std::string> locality_header = Statistic<>::header("locality");
     result_1.insert(result_1.end(), degree_header.begin(), degree_header.end());
     result_1.insert(result_1.end(), locality_header.begin(), locality_header.end());
     std::vector<std::string> result_2 {
@@ -203,12 +208,12 @@ struct GlobalFeatures {
 };
 
 struct N1Features {
-  static constexpr uint64_t num_entries = 2 * Statistic::num_entries + 8;
+  static constexpr uint64_t num_entries = 2 * Statistic<>::num_entries + 10;
 
   uint64_t degree = 0;
   double degree_quantile = 0;
-  Statistic degree_stats;  // over nodes
-  Statistic locality_stats;  // over nodes
+  Statistic<uint64_t> degree_stats;  // over nodes
+  Statistic<double> locality_stats;  // over nodes
   uint64_t to_n1_edges = 0;
   uint64_t to_n2_edges = 0;
   uint64_t d1_nodes = 0;
@@ -217,6 +222,7 @@ struct N1Features {
   uint64_t max_modularity_size = 0;
   double min_contracted_degree = 0;
   uint64_t min_contracted_degree_size = 0;
+  // TODO: community overlap?
 
   std::vector<Feature> featureList() const {
     std::vector<Feature> result_1 {
@@ -244,8 +250,8 @@ struct N1Features {
 
   static std::vector<std::string> header() {
     std::vector<std::string> result_1 {"degree", "degree_quantile"};
-    std::vector<std::string> degree_header = Statistic::header("n1_degree");
-    std::vector<std::string> locality_header = Statistic::header("n1_locality");
+    std::vector<std::string> degree_header = Statistic<>::header("n1_degree");
+    std::vector<std::string> locality_header = Statistic<>::header("n1_locality");
     result_1.insert(result_1.end(), degree_header.begin(), degree_header.end());
     result_1.insert(result_1.end(), locality_header.begin(), locality_header.end());
     std::vector<std::string> result_2 {
@@ -259,14 +265,15 @@ struct N1Features {
 };
 
 struct N2Features {
-  static constexpr uint64_t num_entries = 2 * Statistic::num_entries + 4;
+  static constexpr uint64_t num_entries = 2 * Statistic<>::num_entries + 4;
 
   uint64_t size = 0;
-  Statistic degree_stats;  // over nodes
-  Statistic locality_stats;  // over nodes
+  Statistic<uint64_t> degree_stats;  // over nodes
+  Statistic<double> locality_stats;  // over nodes
   uint64_t to_n1n2_edges = 0;
   uint64_t out_edges = 0;
   double modularity = 0;
+  // TODO: community overlap?
 
   std::vector<Feature> featureList() const {
     std::vector<Feature> result_1 { {size, FeatureType::integer} };
@@ -286,8 +293,8 @@ struct N2Features {
 
   static std::vector<std::string> header() {
     std::vector<std::string> result_1 {"n2_size"};
-    std::vector<std::string> degree_header = Statistic::header("n2_degree");
-    std::vector<std::string> locality_header = Statistic::header("n2_locality");
+    std::vector<std::string> degree_header = Statistic<>::header("n2_degree");
+    std::vector<std::string> locality_header = Statistic<>::header("n2_locality");
     result_1.insert(result_1.end(), degree_header.begin(), degree_header.end());
     result_1.insert(result_1.end(), locality_header.begin(), locality_header.end());
     std::vector<std::string> result_2 {"n2_to_n1n2_edges", "n2_out_edges", "n2_modularity"};
@@ -303,8 +310,8 @@ struct N2Features {
 
 
 template <typename T>
-Statistic createStats(std::vector<T>& vec, bool parallel) {
-  Statistic stats;
+Statistic<T> createStats(std::vector<T>& vec, bool parallel) {
+  Statistic<T> stats;
   if (!vec.empty()) {
     double avg = 0;
     double stdev = 0;
@@ -341,10 +348,10 @@ bool float_eq(double left, double right) {
 }
 
 
-std::pair<GlobalFeatures, std::vector<HyperedgeID>> computeGlobalFeatures(const Graph& graph) {
+std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const Graph& graph) {
   GlobalFeatures features;
 
-  std::vector<HyperedgeID> hn_degrees;
+  std::vector<uint64_t> hn_degrees;
   hn_degrees.resize(graph.initialNumNodes());
   graph.doParallelForAllNodes([&](const HypernodeID& node) {
     hn_degrees[node] = graph.nodeDegree(node);
@@ -354,22 +361,21 @@ std::pair<GlobalFeatures, std::vector<HyperedgeID>> computeGlobalFeatures(const 
   HypernodeID num_nodes = graph.initialNumNodes();
   HyperedgeID num_edges = Graph::is_graph ? graph.initialNumEdges() / 2 : graph.initialNumEdges();
   graph.doParallelForAllEdges([&](const HyperedgeID& edge) {
-    // TODO: only directed edges
     ALWAYS_ASSERT(graph.edgeSize(edge) == 2);
     ALWAYS_ASSERT(graph.edgeWeight(edge) == 1);
-    // TODO: locality
+    // TODO: locality, only directed edges
   });
 
   Statistic degree_stats = createStats(hn_degrees, true);
-  ASSERT([&]{
-    Statistic alt_stats = createStats(hn_degrees, false);
-    if (!float_eq(degree_stats.avg, alt_stats.avg)
-      || !float_eq(degree_stats.med, alt_stats.med)
-      || !float_eq(degree_stats.sd, alt_stats.sd)) {
-        return false;
-    }
-    return true;
-  }());
+  // ASSERT([&]{
+  //   Statistic alt_stats = createStats(hn_degrees, false);
+  //   if (!float_eq(degree_stats.avg, alt_stats.avg)
+  //     || !float_eq(degree_stats.med, alt_stats.med)
+  //     || !float_eq(degree_stats.sd, alt_stats.sd)) {
+  //       return false;
+  //   }
+  //   return true;
+  // }());
 
   features.n = num_nodes;
   features.m = num_edges;
@@ -391,21 +397,34 @@ std::pair<GlobalFeatures, std::vector<HyperedgeID>> computeGlobalFeatures(const 
   return {features, hn_degrees};
 }
 
-N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<HyperedgeID>& global_degrees, const NeighborhoodResult& data) {
+N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data) {
   N1Features result;
   HypernodeID num_nodes = data.n1_list.size();
   result.degree = num_nodes;
-  size_t lower = std::lower_bound(global_degrees.begin(), global_degrees.end(), result.degree) - global_degrees.begin();
-  size_t upper = std::upper_bound(global_degrees.begin(), global_degrees.end(), result.degree) - global_degrees.begin();
-  result.degree_quantile = (static_cast<double>(lower) + static_cast<double>(upper)) / (2 * static_cast<double>(global_degrees.size()));
+  size_t lower = std::lower_bound(global_degrees.begin(), global_degrees.end(), result.degree) - global_degrees.begin();  // always < n
+  size_t upper = std::upper_bound(global_degrees.begin(), global_degrees.end(), result.degree) - global_degrees.begin() - 1;  // always >= 1
+  result.degree_quantile = (static_cast<double>(lower) + static_cast<double>(upper)) / (2 * static_cast<double>(global_degrees.size() - 1));
 
   // compute degree stats
-  std::vector<HyperedgeID> degrees;
+  std::vector<uint64_t> degrees;
   degrees.reserve(num_nodes);
   for (HypernodeID node: data.n1_list) {
     degrees.push_back(graph.nodeDegree(node));
   }
-  result.degree_stats = createStats(degrees, num_nodes >= 20000);
+  result.degree_stats = createStats(degrees, degrees.size() >= 20000);
+
+  // TODO: edges between neighbors are ignored in the same way as in
+  // the coarsening heuristic. Is this what we want?
+  HyperedgeWeight out_edges = result.degree;
+  HypernodeWeight node_weight = 1;
+  for (HyperedgeID d: degrees) {
+    if ((static_cast<HyperedgeWeight>(d) - 2) * node_weight < out_edges) {
+      out_edges += d - 2;
+      node_weight++;
+    } 
+  }
+  result.min_contracted_degree = static_cast<double>(out_edges) / static_cast<double>(node_weight);
+  result.min_contracted_degree_size = node_weight;
 
   // compute locality stats and related values
   std::vector<double> locality_values;
@@ -424,13 +443,74 @@ N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<Hype
     HypernodeID node_degree = graph.nodeDegree(node);
     uint64_t divisor = std::min(num_nodes, node_degree) - 1;
     if (divisor != 0) {
-      locality_values.push_back(static_cast<double>(local_n1_edges / divisor));
+      locality_values.push_back(static_cast<double>(local_n1_edges) / static_cast<double>(divisor));
     } else if (node_degree == 1) {
       result.d1_nodes++;
     }
   }
+  result.to_n1_edges /= 2;  // doubly counted
   result.locality_stats = createStats(locality_values, locality_values.size() >= 20000);
-  // TODO: modularity, min_contracted_degree
+  // TODO: modularity, community overlap?
+  return result;
+}
+
+N2Features n2FeaturesFromNeighborhood(const Graph& graph, const NeighborhoodResult& data) {
+  ALWAYS_ASSERT(data.includes_two_hop);
+  N2Features result;
+  HypernodeID num_nodes = data.n2_list.size();
+  result.size = num_nodes;
+
+  // compute degree stats
+  std::vector<uint64_t> degrees;
+  degrees.reserve(num_nodes);
+  for (HypernodeID node: data.n2_list) {
+    degrees.push_back(graph.nodeDegree(node));
+  }
+  result.degree_stats = createStats(degrees, degrees.size() >= 20000);
+
+  // compute locality stats and related values
+  std::vector<double> locality_values;
+  locality_values.reserve(num_nodes);
+  for (HypernodeID node: data.n2_list) {
+    uint64_t local_edges = 0;
+    for (HyperedgeID edge: graph.incidentEdges(node)) {
+      HypernodeID neighbor = graph.edgeTarget(edge);
+      if (data.isInN2(neighbor)) {
+        result.to_n1n2_edges++;
+        local_edges++;
+        if (!data.isInN2Exactly(neighbor)) {
+          result.to_n1n2_edges++;
+        }
+      } else {
+        result.out_edges++;
+      }
+    }
+    HypernodeID node_degree = graph.nodeDegree(node);
+    uint64_t divisor = std::min(num_nodes + static_cast<HypernodeID>(data.n1_list.size()), node_degree);
+    ALWAYS_ASSERT(divisor != 0);
+    locality_values.push_back(static_cast<double>(local_edges) / static_cast<double>(divisor));
+  }
+  result.to_n1n2_edges /= 2;  // doubly counted
+  result.locality_stats = createStats(locality_values, locality_values.size() >= 20000);
+  // TODO: modularity, community overlap?
+  return result;
+}
+
+
+std::vector<std::tuple<HypernodeID, N1Features, N2Features>>  computeNodeFeatures(const Graph& graph, const std::vector<uint64_t>& global_degrees) {
+  std::vector<std::tuple<HypernodeID, N1Features, N2Features>> result;
+  result.resize(graph.initialNumNodes());
+
+  tbb::enumerable_thread_specific<NeighborhoodComputation> computations(graph.initialNumNodes());
+  graph.doParallelForAllNodes([&](HypernodeID node) {
+    NeighborhoodComputation& local_compute = computations.local();
+    local_compute.reset();
+    NeighborhoodResult neighborhood = local_compute.computeNeighborhood(graph, std::array{node}, true);
+    N1Features n1_features = n1FeaturesFromNeighborhood(graph, global_degrees, neighborhood);
+    N2Features n2_features = n2FeaturesFromNeighborhood(graph, neighborhood);
+    result[node] = {node, n1_features, n2_features};
+  });
+
   return result;
 }
 
@@ -440,6 +520,8 @@ N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<Hype
 
 int main(int argc, char* argv[]) {
   Context context;
+  std::string global_out;
+  std::string nodes_out;
 
   po::options_description options("Options");
   options.add_options()
@@ -447,6 +529,12 @@ int main(int argc, char* argv[]) {
           ("hypergraph,h",
            po::value<std::string>(&context.partition.graph_filename)->value_name("<string>")->required(),
            "Graph Filename")
+          ("global,g",
+           po::value<std::string>(&global_out)->value_name("<string>")->required(),
+           "Output file for global features")
+          ("nodes,n",
+           po::value<std::string>(&nodes_out)->value_name("<string>")->required(),
+           "Output file for node features")
           ("input-file-format",
             po::value<std::string>()->value_name("<string>")->notifier([&](const std::string& s) {
               if (s == "hmetis") {
@@ -467,6 +555,9 @@ int main(int argc, char* argv[]) {
   }
   po::notify(cmd_vm);
 
+  std::ofstream global(global_out);
+  std::ofstream nodes(nodes_out);
+
   // Read Hypergraph
   mt_kahypar_hypergraph_t hypergraph =
     mt_kahypar::io::readInputFile(
@@ -475,12 +566,33 @@ int main(int argc, char* argv[]) {
   Graph& graph = utils::cast<Graph>(hypergraph);
 
   auto [global_features, degrees] = computeGlobalFeatures(graph);
+  tbb::parallel_invoke([&]{
+    auto header = global_features.header();
+    auto features = global_features.featureList();
+    ALWAYS_ASSERT(header.size() == features.size());
+    printHeader(global, header);
+    printFeatures(global, features);
+  }, [&]{
+    auto node_features = computeNodeFeatures(graph, degrees);
+    std::vector<std::string> header {"node_id"};
+    std::vector<std::string> n1_header = N1Features::header();
+    header.insert(header.end(), n1_header.begin(), n1_header.end());
+    std::vector<std::string> n2_header = N2Features::header();
+    header.insert(header.end(), n2_header.begin(), n2_header.end());
+    printHeader(nodes, header);
 
-  auto header = global_features.header();
-  auto features = global_features.featureList();
-  ALWAYS_ASSERT(header.size() == features.size());
-  printHeader(std::cout, header);
-  printFeatures(std::cout, features);
+    std::vector<Feature> features;
+    for (const auto& [id, n1_features, n2_features]: node_features) {
+      features.clear();
+      features.emplace_back(static_cast<uint64_t>(id), FeatureType::integer);  // this is not actually a feature
+      std::vector<Feature> n1 = n1_features.featureList();
+      features.insert(features.end(), n1.begin(), n1.end());
+      std::vector<Feature> n2 = n2_features.featureList();
+      features.insert(features.end(), n2.begin(), n2.end());
+      ALWAYS_ASSERT(header.size() == features.size());
+      printFeatures(nodes, features);
+    }
+  });
   // std::string graph_name = context.partition.graph_filename.substr(
   //   context.partition.graph_filename.find_last_of("/") + 1);
 
