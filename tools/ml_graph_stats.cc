@@ -43,6 +43,7 @@
 
 #include "mt-kahypar/macros.h"
 #include "mt-kahypar/datastructures/static_graph.h"
+#include "mt-kahypar/datastructures/sparse_map.h"
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/io/hypergraph_factory.h"
 #include "mt-kahypar/io/hypergraph_io.h"
@@ -377,6 +378,43 @@ struct EdgeFeatures {
 
 
 // ################ Feature Computation ################
+double ScaledEntropyFromOccurenceCounts(const ds::DynamicSparseMap<int64_t, int64_t>& occurence, size_t total) {
+  // collect and sort summands
+  std::vector<double> summands;
+  for (auto& element : occurence) {
+      double p_x = (double)element.value / (double)total;
+      double summand = p_x * log2(p_x);
+      // double summand = (pair.second * log2(pair.second) - pair.second * log2(total)) / total;
+      summands.push_back(summand);
+  }
+  std::sort(summands.begin(), summands.end(), [] (double a, double b) { return abs(a) < abs(b); });
+  // calculate entropy
+  double entropy = 0;
+  for (double summand : summands) {
+      entropy -= summand;
+  }
+  // scale by log of number of categories    
+  return log2(summands.size()) == 0 ? 0 : (double)entropy / log2(summands.size());
+}
+
+double ScaledEntropy(const std::vector<double>& distribution) {
+  ds::DynamicSparseMap<int64_t, int64_t> occurence;
+  for (double value : distribution) {
+    // snap to 3 digits after decimal point
+    int64_t snap = static_cast<int64_t>(std::round(1000 * value));
+    occurence[snap]++;
+  }
+  return ScaledEntropyFromOccurenceCounts(occurence, distribution.size());
+}
+
+double ScaledEntropy(const std::vector<uint64_t>& distribution) {
+  ds::DynamicSparseMap<int64_t, int64_t> occurence;
+  for (auto value : distribution) {
+    occurence[value]++;
+  }
+  return ScaledEntropyFromOccurenceCounts(occurence, distribution.size());
+}
+
 
 
 template <typename T>
@@ -675,6 +713,9 @@ int main(int argc, char* argv[]) {
     exit(0);
   }
   po::notify(cmd_vm);
+
+  // context.shared_memory.num_threads = 1;
+  // TBBInitializer::instance(context.shared_memory.num_threads);
 
   std::ofstream global(global_out);
   std::ofstream nodes(nodes_out);
