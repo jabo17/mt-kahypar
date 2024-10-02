@@ -116,11 +116,12 @@ struct Invalid {};
 
 template<typename T = Invalid>
 struct Statistic {
-  static constexpr uint64_t num_entries = 8;
+  static constexpr uint64_t num_entries = 9;
 
   double avg = 0.0;
   double sd = 0.0;
   double skew = 0.0;
+  double entropy = 0.0;
   T min = 0;
   T q1 = 0;
   T med = 0;
@@ -134,6 +135,7 @@ struct Statistic {
       {avg, FeatureType::floatingpoint},
       {sd, FeatureType::floatingpoint},
       {skew, FeatureType::floatingpoint},
+      {entropy, FeatureType::floatingpoint},
       {min, type},
       {q1, type},
       {med, type},
@@ -149,6 +151,7 @@ struct Statistic {
       std::string("avg_") + suffix,
       std::string("sd_") + suffix,
       std::string("skew_") + suffix,
+      std::string("entropy_") + suffix,
       std::string("min_") + suffix,
       std::string("q1_") + suffix,
       std::string("med_") + suffix,
@@ -378,7 +381,7 @@ struct EdgeFeatures {
 
 
 // ################ Feature Computation ################
-double ScaledEntropyFromOccurenceCounts(const ds::DynamicSparseMap<int64_t, int64_t>& occurence, size_t total) {
+double scaledEntropyFromOccurenceCounts(const ds::DynamicSparseMap<int64_t, int64_t>& occurence, size_t total) {
   // collect and sort summands
   std::vector<double> summands;
   for (auto& element : occurence) {
@@ -397,22 +400,22 @@ double ScaledEntropyFromOccurenceCounts(const ds::DynamicSparseMap<int64_t, int6
   return log2(summands.size()) == 0 ? 0 : (double)entropy / log2(summands.size());
 }
 
-double ScaledEntropy(const std::vector<double>& distribution) {
+double scaledEntropy(const std::vector<double>& distribution) {
   ds::DynamicSparseMap<int64_t, int64_t> occurence;
   for (double value : distribution) {
-    // snap to 3 digits after decimal point
-    int64_t snap = static_cast<int64_t>(std::round(1000 * value));
+    // snap to 2 digits after decimal point
+    int64_t snap = static_cast<int64_t>(std::round(100 * value));
     occurence[snap]++;
   }
-  return ScaledEntropyFromOccurenceCounts(occurence, distribution.size());
+  return scaledEntropyFromOccurenceCounts(occurence, distribution.size());
 }
 
-double ScaledEntropy(const std::vector<uint64_t>& distribution) {
+double scaledEntropy(const std::vector<uint64_t>& distribution) {
   ds::DynamicSparseMap<int64_t, int64_t> occurence;
   for (auto value : distribution) {
     occurence[value]++;
   }
-  return ScaledEntropyFromOccurenceCounts(occurence, distribution.size());
+  return scaledEntropyFromOccurenceCounts(occurence, distribution.size());
 }
 
 
@@ -451,6 +454,7 @@ Statistic<T> createStats(std::vector<T>& vec, bool parallel) {
     stats.avg = avg;
     stats.sd = stdev;
     stats.skew = skew;
+    stats.entropy = scaledEntropy(vec);
   }
   return stats;
 }
