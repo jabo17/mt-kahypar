@@ -27,6 +27,11 @@
 #pragma once
 
 #include <vector>
+#include <algorithm>
+#include <iostream>
+#include <iomanip>
+
+#include <boost/core/span.hpp>
 
 #include "mt-kahypar/macros.h"
 #include "mt-kahypar/definitions.h"
@@ -127,3 +132,123 @@ class NeighborhoodComputation {
   FastResetArray n2_set;
 };
 
+class CliqueComputation {
+ public:
+  CliqueComputation(HypernodeID num_nodes) {
+    local_neighbors.resize(num_nodes);
+    current_set.setSize(num_nodes);
+    tmp_set.setSize(num_nodes);
+    forbidden.setSize(num_nodes);
+  }
+
+  uint64_t computeMaxCliqueSize(const Graph& graph, const std::vector<HypernodeID>& nodes) {
+    current_set.reset();
+    forbidden.reset();
+    list.resize(nodes.size());
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      list[i] = nodes[i];
+    }
+    for (HypernodeID node: list) {
+      current_set.set(node);
+    }
+    for (HypernodeID node: list) {
+      local_neighbors[node].clear();
+      for (HyperedgeID edge: graph.incidentEdges(node)) {
+        HypernodeID neighbor = graph.edgeTarget(edge);
+        if (current_set[neighbor]) {
+          local_neighbors[node].push_back(neighbor);
+        }
+      }
+    }
+    return maxCliqueSizeRecursive(nodes.size(), 0);
+  }
+
+ private:
+  uint64_t maxCliqueSizeRecursive(size_t num_rem, size_t depth) {
+    constexpr size_t BRANCHING_FACTOR = 4;
+
+    if (num_rem == 0) {
+      return 0;
+    } else if (num_rem == 1) {
+      return 1;
+    }
+
+    std::array<std::pair<HypernodeID, HypernodeID>, BRANCHING_FACTOR> candidates;
+    for (size_t i = 0; i < BRANCHING_FACTOR; ++i) {
+      candidates[i] = {kInvalidHypernode, 0};
+    }
+    // compute prioritized candidates
+    for (HypernodeID node: remNodes(num_rem)) {
+      if (forbidden[node]) {
+        // do some symmetry breaking
+        continue;
+      }
+
+      HypernodeID count = 1;
+      for (HypernodeID neighbor: local_neighbors[node]) {
+        if (current_set[neighbor] && !forbidden[neighbor]) {
+          count += 1;
+        }
+      }
+      for (size_t i = 0; i < BRANCHING_FACTOR; ++i) {
+        if (count > candidates[i].second) {
+          auto tmp = std::make_pair(node, count);
+          for (size_t j = i; j < BRANCHING_FACTOR; ++j) {
+            std::swap(tmp, candidates[j]);
+          }
+          break;
+        }
+      }
+    }
+
+    uint64_t best = 0;
+    for (auto [node, count]: candidates) {
+      if (node == kInvalidHypernode) {
+        break;
+      }
+      if (count > best) {
+        // prepare data for recursion
+        tmp_set.reset();
+        for (HypernodeID neighbor: local_neighbors[node]) {
+          tmp_set.set(neighbor);
+        }
+        auto node_list = remNodes(num_rem);
+        auto it_after = std::partition(node_list.begin(), node_list.end(),
+                          [&](HypernodeID curr_node) { return tmp_set[curr_node] && !forbidden[curr_node]; });
+        size_t new_remaining = it_after - node_list.begin();
+        if (new_remaining + 1 > best) {
+          for (HypernodeID excluded: boost::span<HypernodeID>{it_after, node_list.end()}) {
+            current_set.set(excluded, false);
+          }
+          // recursive call
+          uint64_t new_val = maxCliqueSizeRecursive(new_remaining, depth + 1) + 1;
+          best = std::max(best, new_val);
+          // restore data
+          for (HypernodeID excluded: boost::span<HypernodeID>{it_after, node_list.end()}) {
+            current_set.set(excluded, true);
+          }
+        }
+      }
+      // symmetry breaking for next candidates
+      forbidden.set(node, true);
+    }
+    for (auto [node, count]: candidates) {
+      if (node == kInvalidHypernode) {
+        break;
+      }
+      forbidden.set(node, false);
+    }
+    return best;
+  }
+
+  boost::span<HypernodeID> remNodes(size_t num_rem) {
+    ALWAYS_ASSERT(num_rem <= list.size());
+    return boost::span<HypernodeID>{list.data(), num_rem};
+  }
+
+  std::vector<HypernodeID> list;
+  std::vector<std::vector<HypernodeID>> local_neighbors;
+  FastResetArray current_set;
+  FastResetArray tmp_set;
+  FastResetArray forbidden;
+};
