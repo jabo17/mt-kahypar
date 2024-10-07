@@ -36,6 +36,7 @@
 #include <iomanip>
 #include <type_traits>
 #include <limits>
+#include <chrono>
 
 #include "tbb/parallel_sort.h"
 #include "tbb/enumerable_thread_specific.h"
@@ -678,6 +679,8 @@ std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatu
 
 
 int main(int argc, char* argv[]) {
+  auto start = std::chrono::high_resolution_clock::now();
+
   Context context;
   std::string global_out;
   std::string nodes_out;
@@ -732,9 +735,17 @@ int main(int argc, char* argv[]) {
       InstanceType::graph, context.partition.file_format, true);
   Graph& graph = utils::cast<Graph>(hypergraph);
 
+  double time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+  std::cout << "Starting global feature computation [" << time << "s]" << std::endl;
   auto [global_features, degrees] = computeGlobalFeatures(graph);  // does not contain locality
+  time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+  std::cout << "Starting node feature computation [" << time << "s]" << std::endl;
   auto node_features = computeNodeFeatures(graph, degrees);
+  time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+  std::cout << "Starting Edge feature computation [" << time << "s]" << std::endl;
   auto edge_features = computeEdgeFeatures(graph, degrees);
+  time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+  std::cout << "Feature computation complete [" << time << "s]" << std::endl;
   
 
   tbb::parallel_invoke([&]{
@@ -791,6 +802,9 @@ int main(int argc, char* argv[]) {
       printFeatures(edges, features);
     }
   });
+
+  time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+  std::cout << "Done! [" << time << "s]" << std::endl;
   // std::string graph_name = context.partition.graph_filename.substr(
   //   context.partition.graph_filename.find_last_of("/") + 1);
 
