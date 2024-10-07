@@ -27,6 +27,7 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
@@ -139,6 +140,7 @@ class CliqueComputation {
     current_set.setSize(num_nodes);
     tmp_set.setSize(num_nodes);
     forbidden.setSize(num_nodes);
+    child = nullptr;
   }
 
   uint64_t computeMaxCliqueSize(const Graph& graph, const std::vector<HypernodeID>& nodes) {
@@ -160,17 +162,41 @@ class CliqueComputation {
         }
       }
     }
-    return maxCliqueSizeRecursive(nodes.size(), 0);
+    return maxCliqueSizeRecursive<2>(nodes.size(), nodes.size(), 0);
   }
 
  private:
-  uint64_t maxCliqueSizeRecursive(size_t num_rem, size_t depth) {
-    constexpr size_t BRANCHING_FACTOR = 4;
-
+  template<size_t BRANCHING_FACTOR>
+  uint64_t maxCliqueSizeRecursive(size_t original_nodes, size_t num_rem, size_t depth) {
     if (num_rem == 0) {
       return 0;
     } else if (num_rem == 1) {
       return 1;
+    }
+    else if ((depth % 2) == 0 && num_rem < original_nodes / 5 && num_rem >= 50) {
+      if (child == nullptr) {
+        child = std::make_unique<CliqueComputation>(local_neighbors.size());
+      }
+      auto r_nodes = remNodes(num_rem);
+      ALWAYS_ASSERT(r_nodes.size() == num_rem);
+      child->current_set.reset();
+      child->forbidden.reset();
+      child->list.resize(num_rem);
+      for (size_t i = 0; i < r_nodes.size(); ++i) {
+        child->list[i] = r_nodes[i];
+      }
+      for (HypernodeID node: child->list) {
+        child->current_set.set(node);
+      }
+      for (HypernodeID node: child->list) {
+        child->local_neighbors[node].clear();
+        for (HypernodeID neighbor: local_neighbors[node]) {
+          if (child->current_set[neighbor]) {
+            child->local_neighbors[node].push_back(neighbor);
+          }
+        }
+      }
+      return child->maxCliqueSizeRecursive<BRANCHING_FACTOR>(num_rem, num_rem, depth);
     }
 
     std::array<std::pair<HypernodeID, HypernodeID>, BRANCHING_FACTOR> candidates;
@@ -221,7 +247,12 @@ class CliqueComputation {
             current_set.set(excluded, false);
           }
           // recursive call
-          uint64_t new_val = maxCliqueSizeRecursive(new_remaining, depth + 1) + 1;
+          uint64_t new_val;
+          if (depth < 3) {
+            new_val = maxCliqueSizeRecursive<2>(original_nodes, new_remaining, depth + 1) + 1;
+          } else {
+            new_val = maxCliqueSizeRecursive<1>(original_nodes, new_remaining, depth + 1) + 1;
+          }
           best = std::max(best, new_val);
           // restore data
           for (HypernodeID excluded: boost::span<HypernodeID>{it_after, node_list.end()}) {
@@ -251,4 +282,5 @@ class CliqueComputation {
   FastResetArray current_set;
   FastResetArray tmp_set;
   FastResetArray forbidden;
+  std::unique_ptr<CliqueComputation> child;
 };

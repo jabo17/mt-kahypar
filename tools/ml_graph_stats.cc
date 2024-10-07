@@ -221,7 +221,7 @@ struct GlobalFeatures {
 };
 
 struct N1Features {
-  static constexpr uint64_t num_entries = 2 * Statistic<>::num_entries + 10;
+  static constexpr uint64_t num_entries = 2 * Statistic<>::num_entries + 11;
 
   uint64_t degree = 0;
   double degree_quantile = 0;
@@ -235,6 +235,7 @@ struct N1Features {
   uint64_t max_modularity_size = 0;
   double min_contracted_degree = 0;
   uint64_t min_contracted_degree_size = 0;
+  uint64_t max_clique = 0;
   // TODO: community overlap?
 
   std::vector<Feature> featureList() const {
@@ -255,6 +256,7 @@ struct N1Features {
       {max_modularity_size, FeatureType::integer},
       {min_contracted_degree, FeatureType::floatingpoint},
       {min_contracted_degree_size, FeatureType::integer},
+      {max_clique, FeatureType::integer},
     };
     result_1.insert(result_1.end(), result_2.begin(), result_2.end());
     ALWAYS_ASSERT(result_1.size() == num_entries, "header info was not properly updated");
@@ -269,7 +271,7 @@ struct N1Features {
     result_1.insert(result_1.end(), locality_header.begin(), locality_header.end());
     std::vector<std::string> result_2 {
       "n1_to_n1_edges", "n1_to_n2_edges", "n1_d1_nodes", "n1_modularity", "n1_max_modularity",
-      "n1_max_modularity_size", "n1_min_contracted_degree", "n1_min_contracted_degree_size",
+      "n1_max_modularity_size", "n1_min_contracted_degree", "n1_min_contracted_degree_size", "n1_max_clique",
     };
     result_1.insert(result_1.end(), result_2.begin(), result_2.end());
     ALWAYS_ASSERT(result_1.size() == num_entries, "header info was not properly updated");
@@ -499,7 +501,7 @@ std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const Gra
   return {features, hn_degrees};
 }
 
-N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data) {
+N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data, CliqueComputation* c_comp) {
   N1Features result;
   HypernodeID num_nodes = data.n1_list.size();
   result.degree = num_nodes;
@@ -552,6 +554,10 @@ N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<uint
   }
   result.to_n1_edges /= 2;  // doubly counted
   result.locality_stats = createStats(locality_values, locality_values.size() >= 20000);
+
+  if (c_comp != nullptr) {
+    result.max_clique = c_comp->computeMaxCliqueSize(graph, data.n1_list);
+  }
   // TODO: modularity, community overlap?
   return result;
 }
@@ -602,12 +608,13 @@ std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures
   std::vector<std::tuple<HypernodeID, N1Features, N2Features>> result;
   result.resize(graph.initialNumNodes());
 
-  tbb::enumerable_thread_specific<NeighborhoodComputation> computations(graph.initialNumNodes());
+  tbb::enumerable_thread_specific<NeighborhoodComputation> n_comps(graph.initialNumNodes());
+  tbb::enumerable_thread_specific<CliqueComputation> clique_comps(graph.initialNumNodes());
   graph.doParallelForAllNodes([&](HypernodeID node) {
-    NeighborhoodComputation& local_compute = computations.local();
+    NeighborhoodComputation& local_compute = n_comps.local();
     local_compute.reset();
     NeighborhoodResult neighborhood = local_compute.computeNeighborhood(graph, std::array{node}, true);
-    N1Features n1_features = n1FeaturesFromNeighborhood(graph, global_degrees, neighborhood);
+    N1Features n1_features = n1FeaturesFromNeighborhood(graph, global_degrees, neighborhood, &clique_comps.local());
     N2Features n2_features = n2FeaturesFromNeighborhood(graph, neighborhood);
     result[node] = {node, n1_features, n2_features};
   });
@@ -619,6 +626,7 @@ std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatu
   tbb::enumerable_thread_specific<std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>>> result_list;
   tbb::enumerable_thread_specific<NeighborhoodComputation> base_neighborhood(graph.initialNumNodes());
   tbb::enumerable_thread_specific<NeighborhoodComputation> result_neighborhood(graph.initialNumNodes());
+  tbb::enumerable_thread_specific<CliqueComputation> clique_comps(graph.initialNumNodes());
   graph.doParallelForAllNodes([&](HypernodeID u) {
     NeighborhoodComputation& base_compute = base_neighborhood.local();
     base_compute.reset();
@@ -638,13 +646,13 @@ std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatu
       NeighborhoodComputation& result_compute = result_neighborhood.local();
       result_compute.reset();
       NeighborhoodResult union_result = result_compute.computeNeighborhood(graph, std::array{u, v}, false);
-      result.union_features = n1FeaturesFromNeighborhood(graph, global_degrees, union_result);
+      result.union_features = n1FeaturesFromNeighborhood(graph, global_degrees, union_result, nullptr);
       result_compute.reset();
       // our slightly hacky intersect computation
       NeighborhoodResult intersect_result = result_compute.computeNeighborhood(graph, std::array{v}, false,
         [&](HypernodeID node){ return u_neighborhood.isInN1Exactly(node); });
       intersect_result.roots[0] = u;
-      result.intersect_features = n1FeaturesFromNeighborhood(graph, global_degrees, intersect_result);
+      result.intersect_features = n1FeaturesFromNeighborhood(graph, global_degrees, intersect_result, &clique_comps.local());
 
       double intersect_size = result.intersect_features.degree;
       if (deg_u == 1 || deg_v == 1) {
