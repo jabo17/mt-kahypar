@@ -43,7 +43,7 @@
 using namespace mt_kahypar;
 using FastResetArray = kahypar::ds::FastResetFlagArray<>;
 
-using Graph = ds::StaticGraph;
+using StaticGraph = ds::StaticGraph;
 
 struct NeighborhoodResult {
   std::array<HypernodeID, 2> roots;
@@ -83,12 +83,12 @@ class NeighborhoodComputation {
   }
 
   template<size_t N>
-  NeighborhoodResult computeNeighborhood(const Graph& graph, std::array<HypernodeID, N> roots, bool include_two_hop) {
+  NeighborhoodResult computeNeighborhood(const StaticGraph& graph, std::array<HypernodeID, N> roots, bool include_two_hop) {
     return computeNeighborhood(graph, roots, include_two_hop, [](HypernodeID){ return true; });
   }
 
   template<size_t N, typename F>
-  NeighborhoodResult computeNeighborhood(const Graph& graph, std::array<HypernodeID, N> roots, bool include_two_hop, F filter) {
+  NeighborhoodResult computeNeighborhood(const StaticGraph& graph, std::array<HypernodeID, N> roots, bool include_two_hop, F filter) {
     static_assert(N > 0 && N <= 2);
     ALWAYS_ASSERT(n1_list.empty());
     NeighborhoodResult result {{roots[0], roots[0]}, n1_list, n1_set, n2_list, n2_set, include_two_hop};
@@ -143,7 +143,7 @@ class CliqueComputation {
     child = nullptr;
   }
 
-  uint64_t computeMaxCliqueSize(const Graph& graph, const std::vector<HypernodeID>& nodes) {
+  uint64_t computeMaxCliqueSize(const StaticGraph& graph, const std::vector<HypernodeID>& nodes) {
     current_set.reset();
     forbidden.reset();
     list.resize(nodes.size());

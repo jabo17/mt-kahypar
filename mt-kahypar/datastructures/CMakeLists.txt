@@ -47,7 +47,8 @@ set(ToolsDatastructureSources
       dynamic_graph.cpp
       dynamic_graph_factory.cpp
       dynamic_adjacency_array.cpp
-      fixed_vertex_support.cpp)
+      fixed_vertex_support.cpp
+      graph.cpp)
 
 foreach(modtarget IN LISTS TOOLS_TARGETS)
   target_sources(${modtarget} PRIVATE ${ToolsDatastructureSources})

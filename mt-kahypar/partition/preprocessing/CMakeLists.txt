@@ -5,3 +5,7 @@ set(PreprocessingSources
 foreach(modtarget IN LISTS PARTITIONING_SUITE_TARGETS)
     target_sources(${modtarget} PRIVATE ${PreprocessingSources})
 endforeach()
+
+foreach(modtarget IN LISTS TOOLS_TARGETS)
+    target_sources(${modtarget} PRIVATE ${PreprocessingSources})
+endforeach()

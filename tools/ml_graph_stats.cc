@@ -48,6 +48,7 @@
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/io/hypergraph_factory.h"
 #include "mt-kahypar/io/hypergraph_io.h"
+#include "mt-kahypar/partition/preprocessing/community_detection/parallel_louvain.h"
 #include "mt-kahypar/utils/cast.h"
 #include "mt-kahypar/utils/delete.h"
 #include "mt-kahypar/utils/hypergraph_statistics.h"
@@ -59,8 +60,8 @@
 using namespace mt_kahypar;
 namespace po = boost::program_options;
 
-using Graph = ds::StaticGraph;
-
+using StaticGraph = ds::StaticGraph;
+using LouvainGraph = ds::Graph<ds::StaticGraph>;
 
 enum class FeatureType {
   floatingpoint,
@@ -468,7 +469,8 @@ bool float_eq(double left, double right) {
 }
 
 
-std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const Graph& graph) {
+std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const StaticGraph& graph,
+    std::vector<std::pair<ds::Clustering, double>>& community_stack) {
   GlobalFeatures features;
 
   std::vector<uint64_t> hn_degrees;
@@ -479,7 +481,7 @@ std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const Gra
   });
 
   HypernodeID num_nodes = graph.initialNumNodes();
-  HyperedgeID num_edges = Graph::is_graph ? graph.initialNumEdges() / 2 : graph.initialNumEdges();
+  HyperedgeID num_edges = StaticGraph::is_graph ? graph.initialNumEdges() / 2 : graph.initialNumEdges();
   Statistic degree_stats = createStats(hn_degrees, true);
   features.n = num_nodes;
   features.m = num_edges;
@@ -497,11 +499,33 @@ std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const Gra
     }
   }
 
-  // TODO: modularity
+  // modularity features
+  ds::DynamicSparseMap<PartitionID, uint32_t> comm_set;
+  auto modularity_features = [&](size_t i) {
+    const auto& [clustering, modularity] = community_stack.at(community_stack.size() - i - 1);
+    comm_set.clear();
+    for (PartitionID c: clustering) {
+      comm_set[c] = 0;
+    }
+    uint64_t n_comms = 0;
+    for (auto _: comm_set) {
+      n_comms++;
+    }
+    return std::make_pair(n_comms, modularity);
+  };
+  std::tie(features.n_communities_0, features.modularity_0) = modularity_features(0);
+  std::tie(features.n_communities_1, features.modularity_1) = modularity_features(1);
+  std::tie(features.n_communities_2, features.modularity_2) = modularity_features(2);
+  if (community_stack.size() > 3 && features.n_communities_1 < 2 * features.n_communities_0) {
+    // small hack to get more meaningful features
+    std::tie(features.n_communities_1, features.modularity_1) = modularity_features(2);
+    std::tie(features.n_communities_2, features.modularity_2) = modularity_features(3);
+  }
+
   return {features, hn_degrees};
 }
 
-N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data, CliqueComputation* c_comp) {
+N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data, CliqueComputation* c_comp) {
   N1Features result;
   HypernodeID num_nodes = data.n1_list.size();
   result.degree = num_nodes;
@@ -562,7 +586,7 @@ N1Features n1FeaturesFromNeighborhood(const Graph& graph, const std::vector<uint
   return result;
 }
 
-N2Features n2FeaturesFromNeighborhood(const Graph& graph, const NeighborhoodResult& data) {
+N2Features n2FeaturesFromNeighborhood(const StaticGraph& graph, const NeighborhoodResult& data) {
   ALWAYS_ASSERT(data.includes_two_hop);
   N2Features result;
   HypernodeID num_nodes = data.n2_list.size();
@@ -604,7 +628,7 @@ N2Features n2FeaturesFromNeighborhood(const Graph& graph, const NeighborhoodResu
   return result;
 }
 
-std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures(const Graph& graph, const std::vector<uint64_t>& global_degrees) {
+std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees) {
   std::vector<std::tuple<HypernodeID, N1Features, N2Features>> result;
   result.resize(graph.initialNumNodes());
 
@@ -622,7 +646,8 @@ std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures
   return result;
 }
 
-std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatures(const Graph& graph, const std::vector<uint64_t>& global_degrees) {
+std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatures(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees,
+                                                                                    const std::vector<std::pair<ds::Clustering, double>>& community_stack) {
   tbb::enumerable_thread_specific<std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>>> result_list;
   tbb::enumerable_thread_specific<NeighborhoodComputation> base_neighborhood(graph.initialNumNodes());
   tbb::enumerable_thread_specific<NeighborhoodComputation> result_neighborhood(graph.initialNumNodes());
@@ -670,6 +695,16 @@ std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatu
         HypernodeID dice_divisor = result.intersect_features.degree + result.intersect_features.to_n1_edges + result.intersect_features.to_n2_edges;
         result.dice_similarity = intersect_size / static_cast<double>(dice_divisor);
       }
+
+      // community detection
+      auto equal_communities = [&](size_t i) {
+        const auto& [clustering, _] = community_stack.at(community_stack.size() - i - 1);
+        return clustering[u] == clustering[v];
+      };
+      result.comm_0_equal = equal_communities(0);
+      result.comm_1_equal = equal_communities(1);
+      result.comm_2_equal = equal_communities(2);
+
       result_list.local().emplace_back(u, v, result);
     }
   });
@@ -719,7 +754,15 @@ int main(int argc, char* argv[]) {
             })->default_value("metis"),
             "Input file format: \n"
             " - hmetis : hMETIS hypergraph file format \n"
-            " - metis : METIS graph file format");
+            " - metis : METIS graph file format")
+            ("p-louvain-min-vertex-move-fraction",
+             po::value<long double>(&context.preprocessing.community_detection.min_vertex_move_fraction)->value_name(
+                     "<long double>")->default_value(0.01),
+             "Louvain pass terminates if less than that fraction of nodes moves during a pass")
+            ("p-max-louvain-pass-iterations",
+             po::value<uint32_t>(&context.preprocessing.community_detection.max_pass_iterations)->value_name(
+                     "<uint32_t>")->default_value(5),
+             "Maximum number of iterations over all nodes of one louvain pass");
 
   po::variables_map cmd_vm;
   po::store(po::parse_command_line(argc, argv, options), cmd_vm);
@@ -741,17 +784,23 @@ int main(int argc, char* argv[]) {
     mt_kahypar::io::readInputFile(
       context.partition.graph_filename, PresetType::default_preset,
       InstanceType::graph, context.partition.file_format, true);
-  Graph& graph = utils::cast<Graph>(hypergraph);
+  StaticGraph& graph = utils::cast<StaticGraph>(hypergraph);
 
   double time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Starting global feature computation [" << time << "s]" << std::endl;
-  auto [global_features, degrees] = computeGlobalFeatures(graph);  // does not contain locality
+  LouvainGraph louvain_graph(graph, LouvainEdgeWeight::uniform, StaticGraph::is_graph);
+  auto community_stack = community_detection::run_parallel_louvain(louvain_graph, context);
+  ALWAYS_ASSERT(community_stack.size() > 0);
+  while (community_stack.size() < 3) {
+    community_stack.insert(community_stack.begin(), community_stack.front());
+  }
+  auto [global_features, degrees] = computeGlobalFeatures(graph, community_stack);  // does not contain locality
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Starting node feature computation [" << time << "s]" << std::endl;
   auto node_features = computeNodeFeatures(graph, degrees);
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Starting Edge feature computation [" << time << "s]" << std::endl;
-  auto edge_features = computeEdgeFeatures(graph, degrees);
+  auto edge_features = computeEdgeFeatures(graph, degrees, community_stack);
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Feature computation complete [" << time << "s]" << std::endl;
   
