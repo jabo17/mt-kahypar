@@ -469,7 +469,7 @@ bool float_eq(double left, double right) {
 }
 
 
-std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const StaticGraph& graph,
+std::tuple<GlobalFeatures, std::vector<uint64_t>, bool> computeGlobalFeatures(const StaticGraph& graph,
     std::vector<std::pair<ds::Clustering, double>>& community_stack) {
   GlobalFeatures features;
 
@@ -513,6 +513,7 @@ std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const Sta
     }
     return std::make_pair(n_comms, modularity);
   };
+  bool skip_comm_1 = false;
   std::tie(features.n_communities_0, features.modularity_0) = modularity_features(0);
   std::tie(features.n_communities_1, features.modularity_1) = modularity_features(1);
   std::tie(features.n_communities_2, features.modularity_2) = modularity_features(2);
@@ -520,9 +521,10 @@ std::pair<GlobalFeatures, std::vector<uint64_t>> computeGlobalFeatures(const Sta
     // small hack to get more meaningful features
     std::tie(features.n_communities_1, features.modularity_1) = modularity_features(2);
     std::tie(features.n_communities_2, features.modularity_2) = modularity_features(3);
+    skip_comm_1 = true;
   }
 
-  return {features, hn_degrees};
+  return {features, hn_degrees, skip_comm_1};
 }
 
 N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data, CliqueComputation* c_comp) {
@@ -647,7 +649,7 @@ std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures
 }
 
 std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatures(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees,
-                                                                                    const std::vector<std::pair<ds::Clustering, double>>& community_stack) {
+                                                                                    const std::vector<std::pair<ds::Clustering, double>>& community_stack, bool skip_comm_1) {
   tbb::enumerable_thread_specific<std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>>> result_list;
   tbb::enumerable_thread_specific<NeighborhoodComputation> base_neighborhood(graph.initialNumNodes());
   tbb::enumerable_thread_specific<NeighborhoodComputation> result_neighborhood(graph.initialNumNodes());
@@ -702,8 +704,13 @@ std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatu
         return clustering[u] == clustering[v];
       };
       result.comm_0_equal = equal_communities(0);
-      result.comm_1_equal = equal_communities(1);
-      result.comm_2_equal = equal_communities(2);
+      if (skip_comm_1) {
+        result.comm_1_equal = equal_communities(2);
+        result.comm_2_equal = equal_communities(3);
+      } else {
+        result.comm_1_equal = equal_communities(1);
+        result.comm_2_equal = equal_communities(2);
+      }
 
       result_list.local().emplace_back(u, v, result);
     }
@@ -794,13 +801,13 @@ int main(int argc, char* argv[]) {
   while (community_stack.size() < 3) {
     community_stack.insert(community_stack.begin(), community_stack.front());
   }
-  auto [global_features, degrees] = computeGlobalFeatures(graph, community_stack);  // does not contain locality
+  auto [global_features, degrees, skip_comm_1] = computeGlobalFeatures(graph, community_stack);  // does not contain locality
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Starting node feature computation [" << time << "s]" << std::endl;
   auto node_features = computeNodeFeatures(graph, degrees);
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Starting Edge feature computation [" << time << "s]" << std::endl;
-  auto edge_features = computeEdgeFeatures(graph, degrees, community_stack);
+  auto edge_features = computeEdgeFeatures(graph, degrees, community_stack, skip_comm_1);
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Feature computation complete [" << time << "s]" << std::endl;
   
