@@ -290,7 +290,7 @@ struct N1Features {
 };
 
 struct N2Features {
-  static constexpr uint64_t num_entries = 2 * Statistic<>::num_entries + 4;
+  static constexpr uint64_t num_entries = 2 * Statistic<>::num_entries + 6;
 
   uint64_t size = 0;
   Statistic<uint64_t> degree_stats;  // over nodes
@@ -298,6 +298,8 @@ struct N2Features {
   uint64_t to_n1n2_edges = 0;
   uint64_t out_edges = 0;
   double modularity = 0;
+  double max_modularity = 0;
+  uint64_t max_modularity_size = 0;
   // TODO: community overlap?
 
   std::vector<Feature> featureList() const {
@@ -310,6 +312,8 @@ struct N2Features {
       {to_n1n2_edges, FeatureType::integer},
       {out_edges, FeatureType::integer},
       {modularity, FeatureType::floatingpoint},
+      {max_modularity, FeatureType::floatingpoint},
+      {max_modularity_size, FeatureType::integer},
     };
     result_1.insert(result_1.end(), result_2.begin(), result_2.end());
     ALWAYS_ASSERT(result_1.size() == num_entries, "header info was not properly updated");
@@ -322,7 +326,7 @@ struct N2Features {
     std::vector<std::string> locality_header = Statistic<>::header("n2_locality");
     result_1.insert(result_1.end(), degree_header.begin(), degree_header.end());
     result_1.insert(result_1.end(), locality_header.begin(), locality_header.end());
-    std::vector<std::string> result_2 {"n2_to_n1n2_edges", "n2_out_edges", "n2_modularity"};
+    std::vector<std::string> result_2 {"n2_to_n1n2_edges", "n2_out_edges", "n2_modularity", "n2_max_modularity", "n2_max_modularity_size"};
     result_1.insert(result_1.end(), result_2.begin(), result_2.end());
     ALWAYS_ASSERT(result_1.size() == num_entries, "header info was not properly updated");
     return result_1;
@@ -337,7 +341,6 @@ struct EdgeFeatures {
   double cosine_similarity = 0;
   double dice_similarity = 0;
   double strawman_similarity = 0;
-  // TODO: uint64_t largest_common_clique = 0;
   N1Features intersect_features;
   N1Features union_features;
   // TODO: community overlap?
@@ -527,7 +530,60 @@ std::tuple<GlobalFeatures, std::vector<uint64_t>, bool> computeGlobalFeatures(co
   return {features, hn_degrees, skip_comm_1};
 }
 
-N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data, CliqueComputation* c_comp) {
+// modularity, max_modularity, n_removed
+std::tuple<double, double, uint64_t> maxModularitySubset(const StaticGraph& graph, uint64_t internal_edges, uint64_t all_edges,
+                                                         FastResetArray& membership, const std::vector<HypernodeID>& node_list) {
+  if (node_list.empty()) {
+    return {0, 0, 0};
+  }
+
+  double factor = 1.0 / static_cast<double>(graph.initialNumEdges());
+  uint64_t curr_internal_edges = internal_edges;
+  uint64_t curr_all_edges = all_edges;
+  double best = static_cast<double>(curr_internal_edges) - factor * all_edges * all_edges;
+  int64_t n_removed = 0;
+  const double modularity = best / static_cast<double>(all_edges);
+  bool changed = true;
+  for (size_t round = 0; changed && round < 5; ++round) {
+    changed = false;
+    for (HypernodeID node: node_list) {
+      uint64_t local_edges = 0;
+      for (HyperedgeID edge: graph.incidentEdges(node)) {
+        if (membership[graph.edgeTarget(edge)]) {
+          local_edges++;
+        }
+      }
+      uint64_t updated_internal;
+      uint64_t updated_all;
+      if (membership[node]) {
+        updated_internal = curr_internal_edges - 2 * local_edges;
+        updated_all = curr_all_edges - graph.nodeDegree(node);
+      } else {
+        updated_internal = curr_internal_edges + 2 * local_edges;
+        updated_all = curr_all_edges + graph.nodeDegree(node);
+      }
+      double updated_best = static_cast<double>(updated_internal) - factor * updated_all * updated_all;
+      if (updated_best > best) {
+        best = updated_best;
+        curr_internal_edges = updated_internal;
+        curr_all_edges = updated_all;
+        n_removed += membership[node] ? 1 : -1;
+        membership.set(node, !membership[node]);
+        changed = true;
+      }
+    }
+  }
+  ALWAYS_ASSERT(n_removed >= 0);
+  return {modularity, best / static_cast<double>(all_edges), n_removed};
+}
+
+N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data,
+                                      CliqueComputation* c_comp, HyperedgeID duplicated_degree, FastResetArray& membership) {
+  membership.reset();
+  for (HypernodeID root: data.roots) {
+    membership.set(root);
+  }
+
   N1Features result;
   HypernodeID num_nodes = data.n1_list.size();
   result.degree = num_nodes;
@@ -540,6 +596,7 @@ N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const std::vecto
   degrees.reserve(num_nodes);
   for (HypernodeID node: data.n1_list) {
     degrees.push_back(graph.nodeDegree(node));
+    membership.set(node);
   }
   result.degree_stats = createStats(degrees, degrees.size() >= 20000);
 
@@ -584,12 +641,30 @@ N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const std::vecto
   if (c_comp != nullptr) {
     result.max_clique = c_comp->computeMaxCliqueSize(graph, data.n1_list);
   }
-  // TODO: modularity, community overlap?
+
+  // modularity computations
+  uint64_t internal_edges = 2 * (result.degree + duplicated_degree + result.to_n1_edges);
+  uint64_t all_edges = internal_edges + result.to_n2_edges;
+  auto [modularity, max_modularity, n_removed] = maxModularitySubset(graph, internal_edges, all_edges, membership, data.n1_list);
+  result.modularity = modularity;
+  result.max_modularity = max_modularity;
+  result.max_modularity_size = result.degree - n_removed;
+
+  // TODO: community overlap?
   return result;
 }
 
-N2Features n2FeaturesFromNeighborhood(const StaticGraph& graph, const NeighborhoodResult& data) {
+N2Features n2FeaturesFromNeighborhood(const StaticGraph& graph, const NeighborhoodResult& data, const N1Features& n1_data,
+                                     HyperedgeID duplicated_degree, FastResetArray& membership) {
   ALWAYS_ASSERT(data.includes_two_hop);
+  membership.reset();
+  for (HypernodeID root: data.roots) {
+    membership.set(root);
+  }
+  for (HypernodeID node: data.n1_list) {
+    membership.set(node);
+  }
+
   N2Features result;
   HypernodeID num_nodes = data.n2_list.size();
   result.size = num_nodes;
@@ -599,6 +674,7 @@ N2Features n2FeaturesFromNeighborhood(const StaticGraph& graph, const Neighborho
   degrees.reserve(num_nodes);
   for (HypernodeID node: data.n2_list) {
     degrees.push_back(graph.nodeDegree(node));
+    membership.set(node);
   }
   result.degree_stats = createStats(degrees, degrees.size() >= 20000);
 
@@ -626,7 +702,18 @@ N2Features n2FeaturesFromNeighborhood(const StaticGraph& graph, const Neighborho
   }
   result.to_n1n2_edges /= 2;  // doubly counted
   result.locality_stats = createStats(locality_values, locality_values.size() >= 20000);
-  // TODO: modularity, community overlap?
+
+  // modularity computations
+  uint64_t internal_edges = 2 * (n1_data.degree + duplicated_degree + n1_data.to_n1_edges + result.to_n1n2_edges);
+  uint64_t all_edges = internal_edges + result.out_edges;
+  std::vector<HypernodeID> combined_neighborhood(data.n2_list);
+  combined_neighborhood.insert(combined_neighborhood.end(), data.n1_list.cbegin(), data.n1_list.cend());
+  auto [modularity, max_modularity, n_removed] = maxModularitySubset(graph, internal_edges, all_edges, membership, combined_neighborhood);
+  result.modularity = modularity;
+  result.max_modularity = max_modularity;
+  result.max_modularity_size = data.n1_list.size() + result.size - n_removed;
+
+  // TODO: community overlap?
   return result;
 }
 
@@ -636,12 +723,13 @@ std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures
 
   tbb::enumerable_thread_specific<NeighborhoodComputation> n_comps(graph.initialNumNodes());
   tbb::enumerable_thread_specific<CliqueComputation> clique_comps(graph.initialNumNodes());
+  tbb::enumerable_thread_specific<FastResetArray> membership_buffer(graph.initialNumNodes());
   graph.doParallelForAllNodes([&](HypernodeID node) {
     NeighborhoodComputation& local_compute = n_comps.local();
     local_compute.reset();
     NeighborhoodResult neighborhood = local_compute.computeNeighborhood(graph, std::array{node}, true);
-    N1Features n1_features = n1FeaturesFromNeighborhood(graph, global_degrees, neighborhood, &clique_comps.local());
-    N2Features n2_features = n2FeaturesFromNeighborhood(graph, neighborhood);
+    N1Features n1_features = n1FeaturesFromNeighborhood(graph, global_degrees, neighborhood, &clique_comps.local(), 0, membership_buffer.local());
+    N2Features n2_features = n2FeaturesFromNeighborhood(graph, neighborhood, n1_features, 0, membership_buffer.local());
     result[node] = {node, n1_features, n2_features};
   });
 
@@ -654,6 +742,7 @@ std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatu
   tbb::enumerable_thread_specific<NeighborhoodComputation> base_neighborhood(graph.initialNumNodes());
   tbb::enumerable_thread_specific<NeighborhoodComputation> result_neighborhood(graph.initialNumNodes());
   tbb::enumerable_thread_specific<CliqueComputation> clique_comps(graph.initialNumNodes());
+  tbb::enumerable_thread_specific<FastResetArray> membership_buffer(graph.initialNumNodes());
   graph.doParallelForAllNodes([&](HypernodeID u) {
     NeighborhoodComputation& base_compute = base_neighborhood.local();
     base_compute.reset();
@@ -673,13 +762,14 @@ std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatu
       NeighborhoodComputation& result_compute = result_neighborhood.local();
       result_compute.reset();
       NeighborhoodResult union_result = result_compute.computeNeighborhood(graph, std::array{u, v}, false);
-      result.union_features = n1FeaturesFromNeighborhood(graph, global_degrees, union_result, nullptr);
+      result.union_features = n1FeaturesFromNeighborhood(graph, global_degrees, union_result, nullptr,
+                                                         graph.nodeDegree(u) + graph.nodeDegree(v) - union_result.n1_list.size(), membership_buffer.local());
       result_compute.reset();
       // our slightly hacky intersect computation
       NeighborhoodResult intersect_result = result_compute.computeNeighborhood(graph, std::array{v}, false,
         [&](HypernodeID node){ return u_neighborhood.isInN1Exactly(node); });
       intersect_result.roots[0] = u;
-      result.intersect_features = n1FeaturesFromNeighborhood(graph, global_degrees, intersect_result, &clique_comps.local());
+      result.intersect_features = n1FeaturesFromNeighborhood(graph, global_degrees, intersect_result, &clique_comps.local(), 0, membership_buffer.local());
 
       double intersect_size = result.intersect_features.degree;
       if (deg_u == 1 || deg_v == 1) {
