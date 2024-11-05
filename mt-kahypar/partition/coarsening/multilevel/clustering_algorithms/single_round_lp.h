@@ -52,9 +52,7 @@ class SingleRoundLP {
                          const parallel::scalable_vector<HypernodeID>& node_mapping,
                          const DegreeSimilarityPolicy& similarity_policy,
                          ClusteringContext<Hypergraph>& cc,
-                         std::function<double (HypernodeID)> weight_ratio_for_node_fn = [](const HypernodeID) { return 1.0; },
-                         int pass_nr = 0) {
-    unused(pass_nr);
+                         std::function<double (HypernodeID)> weight_ratio_for_node_fn = [](const HypernodeID) { return 1.0; }) {
     unused(weight_ratio_for_node_fn);  // parameter only exists for compatibility with TwoHopClustering
 
     // We iterate in parallel over all vertices of the hypergraph and compute its contraction partner.

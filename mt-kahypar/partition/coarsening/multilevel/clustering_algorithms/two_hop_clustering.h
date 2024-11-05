@@ -73,8 +73,7 @@ class TwoHopClustering {
                          const parallel::scalable_vector<HypernodeID>& node_mapping,
                          const DegreeSimilarityPolicy& similarity_policy,
                          ClusteringContext<Hypergraph>& cc,
-                         F weight_ratio_for_node_fn,
-                         int pass_nr = 0) {
+                         F weight_ratio_for_node_fn) {
     _degree_one_map.reserve_for_estimated_number_of_insertions(cc.currentNumNodes() / 3);
 
     auto fill_incidence_map_for_node = [&](auto& incidence_map, const HypernodeID hn, bool& too_many_accesses) {
@@ -174,16 +173,6 @@ class TwoHopClustering {
     });
 
     _degree_one_map.clearParallel();
-
-    if (_context.type == ContextType::main) {
-      utils::Stats& stats = utils::Utilities::instance().getStats(_context.utility_id);
-      auto report = [&](auto name, HypernodeID val) {
-        std::stringstream ss;
-        ss << "level_" << pass_nr << "_" << name;
-        stats.add_stat<int32_t>(ss.str(), val);
-      };
-      report("matched_d1", matched_d1_nodes.combine(std::plus<HypernodeID>()));
-    }
   }
 
  private:
