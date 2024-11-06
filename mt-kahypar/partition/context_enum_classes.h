@@ -145,6 +145,7 @@ enum class GuidedEdgeScaling : uint8_t {
   none,
   linear,
   quadratic,
+  cubic,
   UNDEFINED
 };
 
