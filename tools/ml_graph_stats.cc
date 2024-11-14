@@ -779,7 +779,7 @@ std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatu
         result.locality = intersect_size / static_cast<double>(std::min(deg_u, deg_v) - 1);
         result.strawman_similarity = 1.0 / static_cast<double>((deg_u - 1) * (deg_v - 1));
       }
-      result.jaccard_index = intersect_size / static_cast<double>(result.union_features.degree);
+      result.jaccard_index = (result.union_features.degree == 0) ? 1 : intersect_size / static_cast<double>(result.union_features.degree);
       result.cosine_similarity = intersect_size / std::sqrt(deg_u * deg_v);
       if (result.intersect_features.degree == 0) {
         result.dice_similarity = 0;
