@@ -908,8 +908,7 @@ int main(int argc, char* argv[]) {
   auto node_features = computeNodeFeatures(graph, global_features, degrees);
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Starting Edge feature computation [" << time << "s]" << std::endl;
-  std::vector<std::tuple<HypernodeID, HyperedgeID, EdgeFeatures>> edge_features;
-  // auto edge_features = computeEdgeFeatures(graph, degrees, community_stack, skip_comm_1);
+  auto edge_features = computeEdgeFeatures(graph, global_features, degrees, community_stack, skip_comm_1);
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Feature computation complete [" << time << "s]" << std::endl;
   
