@@ -222,7 +222,7 @@ struct GlobalFeatures {
 };
 
 struct N1Features {
-  static constexpr uint64_t num_entries = 2 * Statistic<>::num_entries + 11;
+  static constexpr uint64_t num_entries = 2 * Statistic<>::num_entries + 13;
 
   uint64_t degree = 0;
   double degree_quantile = 0;
@@ -236,6 +236,8 @@ struct N1Features {
   uint64_t max_modularity_size = 0;
   double min_contracted_degree = 0;
   uint64_t min_contracted_degree_size = 0;
+  double clustering_coefficient = 0;
+  double chi_squared_degree_deviation = 0;
   uint64_t max_clique = 0;
   // TODO: community overlap?
 
@@ -257,6 +259,8 @@ struct N1Features {
       {max_modularity_size, FeatureType::integer},
       {min_contracted_degree, FeatureType::floatingpoint},
       {min_contracted_degree_size, FeatureType::integer},
+      {clustering_coefficient, FeatureType::floatingpoint},
+      {chi_squared_degree_deviation, FeatureType::floatingpoint},
       {max_clique, FeatureType::integer},
     };
     result_1.insert(result_1.end(), result_2.begin(), result_2.end());
@@ -272,7 +276,8 @@ struct N1Features {
     result_1.insert(result_1.end(), locality_header.begin(), locality_header.end());
     std::vector<std::string> result_2 {
       "n1_to_n1_edges", "n1_to_n2_edges", "n1_d1_nodes", "n1_modularity", "n1_max_modularity",
-      "n1_max_modularity_size", "n1_min_contracted_degree", "n1_min_contracted_degree_size", "n1_max_clique",
+      "n1_max_modularity_size", "n1_min_contracted_degree", "n1_min_contracted_degree_size", "n1_clustering_coefficient",
+      "chi_squared_degree_deviation", "n1_max_clique",
     };
     result_1.insert(result_1.end(), result_2.begin(), result_2.end());
     ALWAYS_ASSERT(result_1.size() == num_entries, "header info was not properly updated");
@@ -577,7 +582,7 @@ std::tuple<double, double, uint64_t> maxModularitySubset(const StaticGraph& grap
   return {modularity, best / static_cast<double>(all_edges), n_removed};
 }
 
-N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data,
+N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const GlobalFeatures& global, const std::vector<uint64_t>& global_degrees, const NeighborhoodResult& data,
                                       CliqueComputation* c_comp, HyperedgeID duplicated_degree, FastResetArray& membership) {
   membership.reset();
   for (HypernodeID root: data.roots) {
@@ -599,6 +604,11 @@ N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const std::vecto
     membership.set(node);
   }
   result.degree_stats = createStats(degrees, degrees.size() >= 20000);
+  double chi_sq = 0.0;
+  for (uint64_t d: degrees) {
+    chi_sq += (static_cast<double>(d) - global.degree_stats.avg) * (static_cast<double>(d) - global.degree_stats.avg) / global.degree_stats.avg;
+  }
+  result.chi_squared_degree_deviation = chi_sq;
 
   // TODO: edges between neighbors are ignored in the same way as in
   // the coarsening heuristic. Is this what we want?
@@ -636,6 +646,7 @@ N1Features n1FeaturesFromNeighborhood(const StaticGraph& graph, const std::vecto
     }
   }
   result.to_n1_edges /= 2;  // doubly counted
+  result.clustering_coefficient = (result.degree <= 1) ? 0 : static_cast<double>(2 * result.to_n1_edges) / static_cast<double>(result.degree * (result.degree -1));
   result.locality_stats = createStats(locality_values, locality_values.size() >= 20000);
 
   if (c_comp != nullptr) {
@@ -717,7 +728,7 @@ N2Features n2FeaturesFromNeighborhood(const StaticGraph& graph, const Neighborho
   return result;
 }
 
-std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees) {
+std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures(const StaticGraph& graph, const GlobalFeatures& global, const std::vector<uint64_t>& global_degrees) {
   std::vector<std::tuple<HypernodeID, N1Features, N2Features>> result;
   result.resize(graph.initialNumNodes());
 
@@ -728,7 +739,7 @@ std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures
     NeighborhoodComputation& local_compute = n_comps.local();
     local_compute.reset();
     NeighborhoodResult neighborhood = local_compute.computeNeighborhood(graph, std::array{node}, true);
-    N1Features n1_features = n1FeaturesFromNeighborhood(graph, global_degrees, neighborhood, &clique_comps.local(), 0, membership_buffer.local());
+    N1Features n1_features = n1FeaturesFromNeighborhood(graph, global, global_degrees, neighborhood, &clique_comps.local(), 0, membership_buffer.local());
     N2Features n2_features = n2FeaturesFromNeighborhood(graph, neighborhood, n1_features, 0, membership_buffer.local());
     result[node] = {node, n1_features, n2_features};
   });
@@ -736,7 +747,7 @@ std::vector<std::tuple<HypernodeID, N1Features, N2Features>> computeNodeFeatures
   return result;
 }
 
-std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatures(const StaticGraph& graph, const std::vector<uint64_t>& global_degrees,
+std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatures(const StaticGraph& graph, const GlobalFeatures& global, const std::vector<uint64_t>& global_degrees,
                                                                                     const std::vector<std::pair<ds::Clustering, double>>& community_stack, bool skip_comm_1) {
   tbb::enumerable_thread_specific<std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>>> result_list;
   tbb::enumerable_thread_specific<NeighborhoodComputation> base_neighborhood(graph.initialNumNodes());
@@ -762,14 +773,14 @@ std::vector<std::tuple<HypernodeID, HypernodeID, EdgeFeatures>> computeEdgeFeatu
       NeighborhoodComputation& result_compute = result_neighborhood.local();
       result_compute.reset();
       NeighborhoodResult union_result = result_compute.computeNeighborhood(graph, std::array{u, v}, false);
-      result.union_features = n1FeaturesFromNeighborhood(graph, global_degrees, union_result, nullptr,
+      result.union_features = n1FeaturesFromNeighborhood(graph, global, global_degrees, union_result, nullptr,
                                                          graph.nodeDegree(u) + graph.nodeDegree(v) - union_result.n1_list.size(), membership_buffer.local());
       result_compute.reset();
       // our slightly hacky intersect computation
       NeighborhoodResult intersect_result = result_compute.computeNeighborhood(graph, std::array{v}, false,
         [&](HypernodeID node){ return u_neighborhood.isInN1Exactly(node); });
       intersect_result.roots[0] = u;
-      result.intersect_features = n1FeaturesFromNeighborhood(graph, global_degrees, intersect_result, &clique_comps.local(), 0, membership_buffer.local());
+      result.intersect_features = n1FeaturesFromNeighborhood(graph, global, global_degrees, intersect_result, &clique_comps.local(), 0, membership_buffer.local());
 
       double intersect_size = result.intersect_features.degree;
       if (deg_u == 1 || deg_v == 1) {
@@ -894,10 +905,11 @@ int main(int argc, char* argv[]) {
   auto [global_features, degrees, skip_comm_1] = computeGlobalFeatures(graph, community_stack);  // does not contain locality
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Starting node feature computation [" << time << "s]" << std::endl;
-  auto node_features = computeNodeFeatures(graph, degrees);
+  auto node_features = computeNodeFeatures(graph, global_features, degrees);
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Starting Edge feature computation [" << time << "s]" << std::endl;
-  auto edge_features = computeEdgeFeatures(graph, degrees, community_stack, skip_comm_1);
+  std::vector<std::tuple<HypernodeID, HyperedgeID, EdgeFeatures>> edge_features;
+  // auto edge_features = computeEdgeFeatures(graph, degrees, community_stack, skip_comm_1);
   time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
   std::cout << "Feature computation complete [" << time << "s]" << std::endl;
   
