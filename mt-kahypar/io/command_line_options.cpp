@@ -269,6 +269,9 @@ namespace mt_kahypar {
             ("c-max-shrink-factor",
              po::value<double>(&context.coarsening.maximum_shrink_factor)->value_name("<double>")->default_value(2.5),
              "Maximum factor a hypergraph is allowed to shrink in a clustering pass")
+             ("c-lp-iterations",
+             po::value<size_t>(&context.coarsening.lp_iterations)->value_name("<int>")->default_value(5),
+             "Maximum number of LP iterations for KaMinPar. Only used for experimental coarsener.")
             ("c-rating-score",
              po::value<std::string>()->value_name("<string>")->notifier(
                      [&](const std::string& rating_score) {

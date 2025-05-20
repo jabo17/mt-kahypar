@@ -162,6 +162,7 @@ namespace mt_kahypar {
     switch (algo) {
       case CoarseningAlgorithm::multilevel_coarsener: return os << "multilevel_coarsener";
       case CoarseningAlgorithm::deterministic_multilevel_coarsener: return os << "deterministic_multilevel_coarsener";
+      case CoarseningAlgorithm::experimental_coarsener: return os << "experimental_coarsener";
       case CoarseningAlgorithm::nlevel_coarsener: return os << "nlevel_coarsener";
       case CoarseningAlgorithm::do_nothing_coarsener: return os << "do_nothing";
       case CoarseningAlgorithm::UNDEFINED: return os << "UNDEFINED";
@@ -361,6 +362,8 @@ namespace mt_kahypar {
       return CoarseningAlgorithm::multilevel_coarsener;
     } else if (type == "nlevel_coarsener") {
       return CoarseningAlgorithm::nlevel_coarsener;
+    } else if (type == "experimental_coarsener") {
+      return CoarseningAlgorithm::experimental_coarsener;
     } else if (type == "deterministic_multilevel_coarsener") {
       return CoarseningAlgorithm::deterministic_multilevel_coarsener;
     } else if (type == "do_nothing_coarsener") {

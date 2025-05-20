@@ -43,6 +43,7 @@ if (NOT DEFINED BUILD_SHARED_LIBS AND NOT WIN32)
   set(BUILD_SHARED_LIBS ON)
 endif()
 
+
 #################################################################
 ## Meta targets                                               ##
 #################################################################
@@ -383,6 +384,15 @@ if(NOT KAHYPAR_DISABLE_HWLOC)
   endif()
   target_link_libraries(MtKaHyPar-Include INTERFACE HWLOC::hwloc)
 endif()
+
+# Find KaMinPar Library
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+#set(KAMINPAR_ENABLE_HEAP_PROFILING OFF)
+set(KaMinPar_PATH external/KaMinPar)
+add_subdirectory(${KaMinPar_PATH})
+#set_property(TARGET MtKaHyPar-BuildSources PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(MtKaHyPar-BuildSources PUBLIC KaMinPar::KaMinPar)
+target_include_directories(MtKaHyPar-BuildSources PUBLIC ${KaMinPar_PATH})
 
 
 #################################################################
