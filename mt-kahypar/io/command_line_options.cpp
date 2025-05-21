@@ -272,6 +272,12 @@ namespace mt_kahypar {
              ("c-lp-iterations",
              po::value<size_t>(&context.coarsening.lp_iterations)->value_name("<int>")->default_value(5),
              "Maximum number of LP iterations for KaMinPar. Only used for experimental coarsener.")
+            ("c-lp-sort",
+             po::value<bool>(&context.coarsening.lp_sort)->value_name("<bool>")->default_value(true),
+             "Sort vertices in graph with degree buckets when passed to LP of KaMinPar.")
+            ("c-penalize-edge-size",
+             po::value<bool>(&context.coarsening.penalize_edge_size)->value_name("<bool>")->default_value(false),
+             "Devide edge weights by hyperedge size when building graph representation for LP of KaMinPar.")
             ("c-rating-score",
              po::value<std::string>()->value_name("<string>")->notifier(
                      [&](const std::string& rating_score) {

@@ -122,6 +122,8 @@ struct CoarseningParameters {
   size_t vertex_degree_sampling_threshold = std::numeric_limits<size_t>::max();
   size_t num_sub_rounds_deterministic = 16;
   size_t lp_iterations = 5;
+  bool lp_sort = true;
+  bool penalize_edge_size = false;
 
   // Those will be determined dynamically
   HypernodeWeight max_allowed_node_weight = 0;

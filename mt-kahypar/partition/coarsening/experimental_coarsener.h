@@ -50,6 +50,8 @@
 #include <kaminpar-common/datastructures/static_array.h>
 #include <kaminpar-shm/coarsening/clustering/lp_clusterer.h>
 #include <kaminpar-shm/coarsening/max_cluster_weights.h>
+#include "kaminpar-common/random.h"
+#include "kaminpar-shm/graphutils/permutator.h"
 
 #pragma pop_macro("DBGC")
 #pragma pop_macro("DBG")
@@ -137,81 +139,7 @@ private:
         &Base::currentPartitionedHypergraph()), PartitionedHypergraph::TYPE };
   }
 
-  std::unique_ptr<kaminpar::shm::CSRGraph> buildBipartiteGraphRep() {
-      using namespace kaminpar;
-      using namespace kaminpar::shm;
-
-      const Hypergraph& hg = Base::currentHypergraph();
-      const HypernodeID num_nodes = hg.initialNumNodes();
-
-      const NodeID n = num_nodes + hg.initialNumEdges();
-      const EdgeID m = 2 * hg.initialNumPins();
-      // scale edge weights to approximate float division
-      constexpr EdgeWeight SCALE_EDGE_WEIGHT = 2 << 8;
-
-      StaticArray<EdgeID> nodes(n + 1);
-      StaticArray<NodeID> edges(m);
-      StaticArray<NodeWeight> node_weights(n);
-      StaticArray<EdgeWeight> edge_weights(m);
-
-      // set node weights and node degrees
-      nodes[0] = 0;
-      tbb::parallel_invoke([&] {
-                               tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
-                                   NodeID u = _current_vertices[id];
-                                   node_weights[u] = hg.nodeWeight(id);
-                                   nodes[u + 1] = hg.nodeDegree(id);
-                               });
-                           }, [&]() {
-                               tbb::parallel_for<NodeID>(num_nodes, n, [&](const NodeID u) {
-                                   node_weights[u] = 0;
-                                   nodes[u + 1] = hg.edgeSize(u - num_nodes);
-                               });
-                           });
-      ASSERT(node_weights[_current_vertices[0]]==hg.nodeWeight(0));
-      ASSERT(nodes[_current_vertices[0]+1] == hg.nodeDegree(0));
-      ASSERT(node_weights[num_nodes] == 0);
-      ASSERT(nodes[num_nodes+1] == hg.edgeSize(0));
-      ASSERT(nodes[n] == hg.edgeSize(hg.initialNumEdges()-1));
-      // compute offset of neighborhoods in edge array
-      parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
-
-      // obtain edge weight for edge of the graph
-      auto graphEdgeWeight = [](const Hypergraph &hypergraph, const HyperedgeID he) {
-          return hypergraph.edgeWeight(he) * SCALE_EDGE_WEIGHT / hypergraph.edgeSize(he);
-      };
-
-      // set edges and edge weights
-      tbb::parallel_invoke([&]() {
-                               // neighborhoods representing incident nets
-                               tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
-                                   NodeID u = _current_vertices[id];
-                                   EdgeID counter = 0;
-                                   for (const HyperedgeID &he: hg.incidentEdges(id)) {
-                                       ASSERT(hg.edgeSize(he) >= 2, "Empty or single nets encountered.");
-                                       edges[nodes[u] + counter] = he + num_nodes;
-                                       // hyperedges are shifted by num_nodes
-                                       edge_weights[nodes[u] + counter] = graphEdgeWeight(hg, he);
-                                       ++counter;
-                                   }
-                               });
-                           }, [&]() {
-                               // neighborhoods representing pins
-                               tbb::parallel_for<NodeID>(UL(0), hg.initialNumEdges(), [&](const NodeID he) {
-                                   EdgeID counter = 0;
-                                   const EdgeWeight edge_weight = graphEdgeWeight(hg, he);
-                                   for (const HypernodeID &hv: hg.pins(he)) {
-                                       edges[nodes[he+num_nodes] + counter] = _current_vertices[hv]; // hypervertex ids remain identical
-                                       edge_weights[nodes[he+num_nodes] + counter] = edge_weight;
-                                       ++counter;
-                                   }
-                               });
-                           });
-
-      constexpr bool neighborhood_sorted = false;
-      return std::make_unique<kaminpar::shm::CSRGraph>(std::move(nodes), std::move(edges), std::move(node_weights), std::move(edge_weights),
-                      neighborhood_sorted);
-  }
+  std::unique_ptr<kaminpar::shm::CSRGraph> buildBipartiteGraphRep();
 
 
   using Base = MultilevelCoarsenerBase<TypeTraits>;
