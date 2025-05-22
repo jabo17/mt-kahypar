@@ -154,15 +154,15 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
     graph = kaminpar::shm::graph::rearrange_by_degree_buckets(graph.csr_graph());
   }
 
-  // apply LPClustering (from KaMinPar)
+  // configure LPClustering
   auto ctx = kaminpar::shm::create_default_context();
   ctx.parallel.num_threads = _context.shared_memory.num_threads;
   ctx.partition.setup(graph, _context.partition.k, _context.partition.epsilon);
-
-  kaminpar::Random::reseed(_context.partition.seed + _pass_nr);
-  kaminpar::shm::LPClustering lp_clustering(ctx.coarsening);
   ctx.coarsening.clustering.lp.num_iterations = _context.coarsening.lp_iterations;
+    kaminpar::Random::reseed(_context.partition.seed + _pass_nr);
 
+  // initialize and set config for LPClustering
+  kaminpar::shm::LPClustering lp_clustering(ctx.coarsening);
   lp_clustering.set_max_cluster_weight(kaminpar::shm::compute_max_cluster_weight<kaminpar::shm::NodeWeight>(
     ctx.coarsening, ctx.partition, graph.n(), graph.total_node_weight()));
   lp_clustering.set_desired_cluster_count(0);
@@ -249,6 +249,7 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
 
   timer.stop_timer("coarsening_pass");
   ++_pass_nr;
+  DBG << V(num_nodes_before_pass / num_nodes);
   if (num_nodes_before_pass / num_nodes <= _context.coarsening.minimum_shrink_factor) {
     return false;
   }
