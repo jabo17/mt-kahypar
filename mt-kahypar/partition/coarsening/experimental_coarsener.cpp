@@ -98,7 +98,7 @@ static constexpr bool enable_heavy_assert = true;
                                    for (const HyperedgeID &he: hg.incidentEdges(id)) {
                                        ASSERT(hg.edgeSize(he) >= 2, "Empty or single nets encountered.");
                                        edges[pos] = he + num_nodes; // hyperedges are shifted by num_nodes
-                                       edge_weights[pos] = graphEdgeWeight(hg, he);
+                                       edge_weights[pos] = graphEdgeWeight(he);
                                        ++pos;
                                    }
                                });
@@ -106,7 +106,7 @@ static constexpr bool enable_heavy_assert = true;
                                // neighborhoods representing pins
                                tbb::parallel_for<NodeID>(UL(0), hg.initialNumEdges(), [&](const NodeID he) {
                                    EdgeID pos = nodes[he+num_nodes];
-                                   const EdgeWeight edge_weight = graphEdgeWeight(hg, he);
+                                   const EdgeWeight edge_weight = graphEdgeWeight(he);
                                    for (const HypernodeID &hv: hg.pins(he)) {
                                        edges[pos] = _current_vertices[hv]; // hypervertex ids remain identical
                                        edge_weights[pos] = edge_weight;
