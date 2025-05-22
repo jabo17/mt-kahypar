@@ -76,13 +76,15 @@ static constexpr bool enable_heavy_assert = true;
       parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
 
       // obtain edge weight for edge of the graph
-      auto graphEdgeWeight = [penalize_edge_size=_context.coarsening.penalize_edge_size](const Hypergraph &hypergraph, const HyperedgeID he) {
-          EdgeWeight edge_weight = hypergraph.edgeWeight(he);
+      auto graphEdgeWeight = [penalize_edge_size=_context.coarsening.penalize_edge_size, SCALE_EDGE_WEIGHT = static_cast<EdgeWeight>(hg.maxEdgeSize())*10, &hg](const HyperedgeID he) {
+          EdgeWeight edge_weight = hg.edgeWeight(he);
           if ( penalize_edge_size ) {
             // scale edge weights to approximate float division
-            constexpr EdgeWeight SCALE_EDGE_WEIGHT = 1 << 8;
+            if (he < 3) {
+              DBG << (hg.maxEdgeSize()) << V(SCALE_EDGE_WEIGHT);
+            }
 
-            return (edge_weight * SCALE_EDGE_WEIGHT) / static_cast<EdgeWeight>(hypergraph.edgeSize(he));
+            return (edge_weight * SCALE_EDGE_WEIGHT) / static_cast<EdgeWeight>(hg.edgeSize(he));
           }
           return edge_weight;
       };
@@ -159,7 +161,7 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
   ctx.parallel.num_threads = _context.shared_memory.num_threads;
   ctx.partition.setup(graph, _context.partition.k, _context.partition.epsilon);
   ctx.coarsening.clustering.lp.num_iterations = _context.coarsening.lp_iterations;
-    kaminpar::Random::reseed(_context.partition.seed + _pass_nr);
+  kaminpar::Random::reseed(_context.partition.seed + _pass_nr);
 
   // initialize and set config for LPClustering
   kaminpar::shm::LPClustering lp_clustering(ctx.coarsening);
