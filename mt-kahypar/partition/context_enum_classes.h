@@ -117,6 +117,19 @@ enum class CoarseningAlgorithm : uint8_t {
   UNDEFINED
 };
 
+enum class GraphRepresentation : uint8_t {
+  bipartite,
+  cycle_matching,
+  UNDEFINED
+};
+
+enum class GraphRepEdgeWeight : uint8_t {
+  unit,
+  hyperedge_weight,
+  normalized_hyperedge_weight,
+  UNDEFINED
+};
+
 enum class RatingFunction : uint8_t {
   heavy_edge,
   ENABLE_EXPERIMENTAL_FEATURES(sameness COMMA)
@@ -208,6 +221,10 @@ std::ostream & operator<< (std::ostream& os, const SimiliarNetCombinerStrategy& 
 
 std::ostream & operator<< (std::ostream& os, const CoarseningAlgorithm& algo);
 
+std::ostream & operator<< (std::ostream& os, const GraphRepresentation& rep);
+
+std::ostream & operator<< (std::ostream& os, const GraphRepEdgeWeight& rep);
+
 std::ostream & operator<< (std::ostream& os, const HeavyNodePenaltyPolicy& heavy_hn_policy);
 
 std::ostream & operator<< (std::ostream& os, const AcceptancePolicy& acceptance_policy);
@@ -241,6 +258,10 @@ LouvainEdgeWeight louvainEdgeWeightFromString(const std::string& type);
 SimiliarNetCombinerStrategy similiarNetCombinerStrategyFromString(const std::string& type);
 
 CoarseningAlgorithm coarseningAlgorithmFromString(const std::string& type);
+
+GraphRepresentation graphRepresentationFromString(const std::string& rep);
+
+GraphRepEdgeWeight graphRepEdgeWeightFromString(const std::string& rep);
 
 HeavyNodePenaltyPolicy heavyNodePenaltyFromString(const std::string& penalty);
 

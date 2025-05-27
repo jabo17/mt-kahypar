@@ -26,6 +26,7 @@
 
 #include "experimental_coarsener.h"
 
+#include <oneapi/tbb/parallel_sort.h>
 #include <tbb/parallel_reduce.h>
 
 #include "mt-kahypar/definitions.h"
@@ -76,13 +77,12 @@ static constexpr bool enable_heavy_assert = true;
       parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
 
       // obtain edge weight for edge of the graph
-      auto graphEdgeWeight = [penalize_edge_size=_context.coarsening.penalize_edge_size, SCALE_EDGE_WEIGHT = static_cast<EdgeWeight>(hg.maxEdgeSize())*10, &hg](const HyperedgeID he) {
+      auto graphEdgeWeight = [SCALE_EDGE_WEIGHT = static_cast<EdgeWeight>(hg.maxEdgeSize())*10, &hg, rep_edge_weight=_context.coarsening.rep_edge_weight](const HyperedgeID he) {
+          if ( rep_edge_weight == GraphRepEdgeWeight::unit) {
+            return 1;
+          }
           EdgeWeight edge_weight = hg.edgeWeight(he);
-          if ( penalize_edge_size ) {
-            // scale edge weights to approximate float division
-            if (he < 3) {
-              DBG << (hg.maxEdgeSize()) << V(SCALE_EDGE_WEIGHT);
-            }
+          if ( rep_edge_weight == GraphRepEdgeWeight::normalized_hyperedge_weight ) {
 
             return (edge_weight * SCALE_EDGE_WEIGHT) / static_cast<EdgeWeight>(hg.edgeSize(he));
           }
@@ -120,7 +120,170 @@ static constexpr bool enable_heavy_assert = true;
                       neighborhood_sorted);
   }
 
-template<typename TypeTraits>
+  template<typename TypeTraits>
+  std::unique_ptr<kaminpar::shm::CSRGraph> ExperimentalCoarsener<TypeTraits>::buildCycleMatchingRep() {
+    using namespace kaminpar;
+    using namespace kaminpar::shm;
+
+    const Hypergraph& hg = Base::currentHypergraph();
+    const HypernodeID num_nodes = hg.initialNumNodes();
+
+    const NodeID n = num_nodes;
+    const EdgeID m = 6 * hg.initialNumPins();
+
+    StaticArray<EdgeID> nodes(n + 1);
+    StaticArray<EdgeID> nodes_agg(n + 1);
+    StaticArray<NodeID> edges(m);
+    StaticArray<NodeID> edges_agg(m);
+    StaticArray<NodeWeight> node_weights(n);
+    StaticArray<EdgeWeight> edge_weights(m);
+    StaticArray<EdgeWeight> edge_weights_agg(m);
+
+    nodes[0] = 0;
+    nodes_agg[0] = 0;
+    tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
+      NodeID u = _current_vertices[id];
+      node_weights[u] = hg.nodeWeight(id);
+      nodes[u + 1] = 3 * hg.nodeDegree(id);
+    });
+    parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
+
+    auto countEdgesForExpansion = [](HyperedgeID edge_size) {
+      ASSERT(edge_size >= 2);
+      EdgeID edges_in_expansion = 1;
+      if (edge_size == 3) {
+        edges_in_expansion = 3;
+      } else {
+        edges_in_expansion = edge_size + (edge_size / 2);
+      }
+      return edges_in_expansion;
+    };
+
+    EdgeWeight scale_edge_weight = 1;
+    if (_context.coarsening.rep_edge_weight == GraphRepEdgeWeight::normalized_hyperedge_weight) {
+      EdgeID max_edges_in_expansion = countEdgesForExpansion(hg.maxEdgeSize());
+      if (max_edges_in_expansion == 3) {
+        scale_edge_weight = static_cast<EdgeWeight>(max_edges_in_expansion)*2;
+      } else if (max_edges_in_expansion >= 4) {
+        scale_edge_weight = static_cast<EdgeWeight>(max_edges_in_expansion)*10;
+      }
+    }
+
+    auto graphEdgeWeight = [SCALE_EDGE_WEIGHT=scale_edge_weight, &hg, &countEdgesForExpansion, rep_edge_weight=_context.coarsening.rep_edge_weight](const HyperedgeID he) {
+      if (rep_edge_weight == GraphRepEdgeWeight::unit) {
+        return 1;
+      }
+
+      EdgeWeight edge_weight = hg.edgeWeight(he);
+      EdgeWeight edge_size = hg.edgeSize(he);
+
+      EdgeWeight edges_in_expansion = 1;
+      if (rep_edge_weight == GraphRepEdgeWeight::normalized_hyperedge_weight) {
+        edges_in_expansion = countEdgesForExpansion(edge_size);
+      }
+
+      return edge_weight * SCALE_EDGE_WEIGHT / edges_in_expansion;
+    };
+
+
+    tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
+        const NodeID u = _current_vertices[id];
+        EdgeID pos = nodes[u];
+
+        // expand hyperedges
+        for (const HyperedgeID &he: hg.incidentEdges(id)) {
+            const HyperedgeID edge_size = hg.edgeSize(he);
+            auto pins = hg.pins(he);
+            const HypernodeID rank = std::distance(pins.begin(), std::find(pins.begin(), pins.end(), id));
+            ASSERT(rank < edge_size);
+            const EdgeWeight weight = graphEdgeWeight(he);
+
+            // cycle edges
+            ASSERT(*(pins.begin() + ((rank+1) % edge_size)) < num_nodes);
+            edges[pos] = _current_vertices[*(pins.begin() + ((rank+1) % edge_size))];
+            edge_weights[pos] = weight;
+            ++pos;
+
+            if (edge_size >= 3) {
+              ASSERT(*(pins.begin() + ((rank+edge_size-1) % edge_size)) < num_nodes);
+              edges[pos] = _current_vertices[*(pins.begin() + ((rank+edge_size-1) % edge_size))];
+              edge_weights[pos] = weight;
+              ++pos;
+            }
+            if (edge_size >= 4) {
+              if ((edge_size & 1) == 0 || rank+1 < edge_size) {
+                // edge_size is even or rank < edge_size-1
+                EdgeID edge_size_half = edge_size / 2;
+                if (rank >= edge_size_half) {
+                  ASSERT(*(pins.begin() + (rank-edge_size_half)) < num_nodes);
+                  edges[pos] = _current_vertices[*(pins.begin() + (rank-edge_size_half))];
+                }else {
+                  ASSERT(*(pins.begin() + (rank+edge_size_half)) < num_nodes);
+                  edges[pos] = _current_vertices[*(pins.begin() + (rank+edge_size_half))];
+                }
+
+                edge_weights[pos] = weight;
+                ++pos;
+              }
+            }
+
+            ASSERT(edge_size >= 2, "Empty or single nets encountered.");
+        }
+        ASSERT(pos <= nodes[u+1]);
+
+        // sort neighborhood to filter duplicates
+        std::iota(edges_agg.begin()+nodes[u], edges_agg.begin()+pos, nodes[u]);
+        if (pos > nodes[u]) {
+          ASSERT(*(edges_agg.begin()+nodes[u]) == nodes[u]);
+          ASSERT(*(edges_agg.begin()+(pos-1)) == (pos-1));
+        }
+
+        std::sort(edges_agg.begin()+nodes[u], edges_agg.begin()+pos, [&](EdgeID first, EdgeID second){return edges[first] < edges[second];});
+
+        // agg duplicates
+        NodeID last_target = n;
+        EdgeID new_pos = nodes[u];
+        for (EdgeID i = nodes[u]; i < pos; ++i) {
+            EdgeID edge = edges_agg[i];
+            NodeID target = edges[edge];
+            if (last_target != target) {
+              ASSERT(last_target == n || last_target < target, "edges are not sorted by target");
+              last_target = target;
+              edges_agg[new_pos] = target;
+              edge_weights_agg[new_pos] = edge_weights[edge];
+              ++new_pos;
+            }else {
+              edge_weights_agg[new_pos-1] += edge_weights[edge];
+            }
+        }
+        // compute node degree
+        nodes_agg[u+1]=new_pos-nodes[u];
+
+    });
+
+    // determine positions of agg. neighborhood
+    parallel_prefix_sum(nodes_agg.begin()+1, nodes_agg.end(), nodes_agg.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
+
+    using std::swap;
+    // store non-flattened agg. neighborhood in edges
+    swap(edges, edges_agg);
+    swap(edge_weights, edge_weights_agg);
+
+    // flatten agg. neighborhoods
+    tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID u) {
+      for (EdgeID i = nodes_agg[u]; i < nodes_agg[u+1]; ++i) {
+          const EdgeID i_old = i - nodes_agg[u] + nodes[u];
+          edges_agg[i] = edges[i_old];
+          edge_weights_agg[i] = edge_weights[i_old];
+      }
+    });
+
+    constexpr bool neighborhood_sorted = true;
+    return std::make_unique<kaminpar::shm::CSRGraph>(std::move(nodes_agg), std::move(edges_agg), std::move(node_weights), std::move(edge_weights_agg),
+              neighborhood_sorted);
+  }
+
+  template<typename TypeTraits>
 bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
   auto& timer = utils::Utilities::instance().getTimer(_context.utility_id);
   const auto pass_start_time = std::chrono::high_resolution_clock::now();
@@ -151,7 +314,17 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
 
   // build graph representation
   // all graph representation have in common that hypervertices have identical IDs in representation
-  kaminpar::shm::Graph graph(buildBipartiteGraphRep());
+  kaminpar::shm::Graph graph([&]() {
+    switch (_context.coarsening.rep) {
+      case GraphRepresentation::bipartite:
+        return buildBipartiteGraphRep();
+      case GraphRepresentation::cycle_matching:
+        return buildCycleMatchingRep();
+      case GraphRepresentation::UNDEFINED:
+        throw std::runtime_error("Undefined representation");
+    }
+    return std::unique_ptr<kaminpar::shm::CSRGraph>(nullptr);
+  }());
   if (_context.coarsening.lp_sort) {
     graph = kaminpar::shm::graph::rearrange_by_degree_buckets(graph.csr_graph());
   }

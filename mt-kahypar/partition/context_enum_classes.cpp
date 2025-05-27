@@ -171,6 +171,34 @@ namespace mt_kahypar {
     return os << static_cast<uint8_t>(algo);
   }
 
+  std::ostream & operator<<(std::ostream &os, const GraphRepresentation &rep) {
+      switch (rep) {
+        case GraphRepresentation::bipartite:
+          return os << "bipartite";
+        case GraphRepresentation::cycle_matching:
+          return os << "cycle_matching";
+        case GraphRepresentation::UNDEFINED:
+          return os << "UNDEFINED";
+          // omit default case to trigger compiler warning for missing cases
+      }
+    return os << static_cast<uint8_t>(rep);
+  }
+
+  std::ostream & operator<<(std::ostream &os, const GraphRepEdgeWeight &rep) {
+      switch (rep) {
+        case GraphRepEdgeWeight::unit:
+          return os << "unit";
+        case GraphRepEdgeWeight::hyperedge_weight:
+          return os << "hyperedge_weight";
+        case GraphRepEdgeWeight::normalized_hyperedge_weight:
+          return os << "normalized_hyperedge_weight";
+        case GraphRepEdgeWeight::UNDEFINED:
+          return os << "UNDEFINED";
+          // omit default case to trigger compiler warning for missing cases
+      }
+    return os << static_cast<uint8_t>(rep);
+  }
+
   std::ostream & operator<< (std::ostream& os, const HeavyNodePenaltyPolicy& heavy_hn_policy) {
     switch (heavy_hn_policy) {
       case HeavyNodePenaltyPolicy::no_penalty: return os << "no_penalty";
@@ -371,6 +399,26 @@ namespace mt_kahypar {
     }
     throw InvalidParameterException("Illegal option: " + type);
     return CoarseningAlgorithm::UNDEFINED;
+  }
+
+  GraphRepresentation graphRepresentationFromString(const std::string &rep) {
+    if (rep == "bipartite") {
+      return GraphRepresentation::bipartite;
+    }else if (rep == "cycle_matching") {
+      return GraphRepresentation::cycle_matching;
+    }
+    throw InvalidParameterException("Illegal option: " + rep);
+  }
+
+  GraphRepEdgeWeight graphRepEdgeWeightFromString(const std::string &rep) {
+    if (rep == "unit" ) {
+      return GraphRepEdgeWeight::unit;
+    }else if (rep == "hyperedge_weight") {
+      return GraphRepEdgeWeight::hyperedge_weight;
+    }else if (rep == "normalized_hyperedge_weight") {
+      return GraphRepEdgeWeight::normalized_hyperedge_weight;
+    }
+    throw InvalidParameterException("Illegal option: " + rep);
   }
 
   HeavyNodePenaltyPolicy heavyNodePenaltyFromString(const std::string& penalty) {

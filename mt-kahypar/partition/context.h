@@ -123,7 +123,8 @@ struct CoarseningParameters {
   size_t num_sub_rounds_deterministic = 16;
   size_t lp_iterations = 5;
   bool lp_sort = true;
-  bool penalize_edge_size = false;
+  GraphRepresentation rep = GraphRepresentation::UNDEFINED;
+  GraphRepEdgeWeight rep_edge_weight = GraphRepEdgeWeight::UNDEFINED;
 
   // Those will be determined dynamically
   HypernodeWeight max_allowed_node_weight = 0;

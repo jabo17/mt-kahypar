@@ -141,6 +141,9 @@ private:
 
   std::unique_ptr<kaminpar::shm::CSRGraph> buildBipartiteGraphRep();
 
+  std::unique_ptr<kaminpar::shm::CSRGraph> buildCycleMatchingRep();
+
+
 
   using Base = MultilevelCoarsenerBase<TypeTraits>;
   using Base::_hg;

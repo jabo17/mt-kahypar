@@ -275,9 +275,25 @@ namespace mt_kahypar {
             ("c-lp-sort",
              po::value<bool>(&context.coarsening.lp_sort)->value_name("<bool>")->default_value(true),
              "Sort vertices in graph with degree buckets when passed to LP of KaMinPar.")
-            ("c-penalize-edge-size",
-             po::value<bool>(&context.coarsening.penalize_edge_size)->value_name("<bool>")->default_value(false),
-             "Devide edge weights by hyperedge size when building graph representation for LP of KaMinPar.")
+            ("c-graph-rep",
+             po::value<std::string>()->value_name("<string>")->notifier(
+                     [&](const std::string& rep) {
+                       context.coarsening.rep = mt_kahypar::graphRepresentationFromString(rep);
+                     })->default_value("bipartite"),
+             "Graph Representation:\n"
+             " - bipartite"
+             " - cycle_matching"
+             )
+            ("c-graph-rep-edge-weight",
+             po::value<std::string>()->value_name("<string>")->notifier(
+                     [&](const std::string& rep) {
+                       context.coarsening.rep_edge_weight = mt_kahypar::graphRepEdgeWeightFromString(rep);
+                     })->default_value("normalized_hyperedge_weight"),
+             "Graph Representation Edge Weight:\n"
+             " - unit"
+             " - hyperedge_weight"
+             " - normalized_hyperedge_weight"
+             )
             ("c-rating-score",
              po::value<std::string>()->value_name("<string>")->notifier(
                      [&](const std::string& rating_score) {

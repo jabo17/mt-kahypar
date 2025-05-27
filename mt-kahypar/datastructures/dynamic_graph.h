@@ -286,6 +286,10 @@ class DynamicGraph {
       return copy;
     }
 
+    PinIterator operator+(const difference_type& n) const {
+      return PinIterator(_source, _target, _iteration_count+n);
+    }
+
     bool operator!= (const PinIterator& rhs) {
       return _iteration_count != rhs._iteration_count ||
              _source != rhs._source || _target != rhs._target;
