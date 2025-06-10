@@ -283,6 +283,7 @@ namespace mt_kahypar {
              "Graph Representation:\n"
              " - bipartite"
              " - cycle_matching"
+             " - cycle_random_matching"
              )
             ("c-graph-rep-edge-weight",
              po::value<std::string>()->value_name("<string>")->notifier(

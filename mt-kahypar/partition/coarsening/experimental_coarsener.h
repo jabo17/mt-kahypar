@@ -142,6 +142,9 @@ private:
   std::unique_ptr<kaminpar::shm::CSRGraph> buildBipartiteGraphRep();
 
   std::unique_ptr<kaminpar::shm::CSRGraph> buildCycleMatchingRep();
+  
+  std::unique_ptr<kaminpar::shm::CSRGraph> buildCycleRandomMatchingRep();
+
 
 
 

@@ -120,6 +120,7 @@ enum class CoarseningAlgorithm : uint8_t {
 enum class GraphRepresentation : uint8_t {
   bipartite,
   cycle_matching,
+  cycle_random_matching,
   UNDEFINED
 };
 
