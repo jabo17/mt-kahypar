@@ -26,6 +26,7 @@
 
 #include "experimental_coarsener.h"
 
+#include <algorithm>
 #include <oneapi/tbb/parallel_sort.h>
 #include <tbb/parallel_reduce.h>
 
@@ -77,19 +78,7 @@ static constexpr bool enable_heavy_assert = true;
       // compute offset of neighborhoods in edge array
       parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
 
-      // obtain edge weight for edge of the graph
-      auto graphEdgeWeight = [SCALE_EDGE_WEIGHT = static_cast<EdgeWeight>(hg.maxEdgeSize())*10, &hg, rep_edge_weight=_context.coarsening.rep_edge_weight](const HyperedgeID he) {
-          if ( rep_edge_weight == GraphRepEdgeWeight::unit) {
-            return 1;
-          }
-          EdgeWeight edge_weight = hg.edgeWeight(he);
-          if ( rep_edge_weight == GraphRepEdgeWeight::normalized_hyperedge_weight ) {
-
-            return (edge_weight * SCALE_EDGE_WEIGHT) / static_cast<EdgeWeight>(hg.edgeSize(he));
-          }
-          return edge_weight;
-      };
-
+      const EdgeID max_edges_in_expansion = hg.maxEdgeSize();
       // set edges and edge weights
       tbb::parallel_invoke([&]() {
                                // neighborhoods representing incident nets
@@ -99,7 +88,7 @@ static constexpr bool enable_heavy_assert = true;
                                    for (const HyperedgeID &he: hg.incidentEdges(id)) {
                                        ASSERT(hg.edgeSize(he) >= 2, "Empty or single nets encountered.");
                                        edges[pos] = he + num_nodes; // hyperedges are shifted by num_nodes
-                                       edge_weights[pos] = graphEdgeWeight(he);
+                                       edge_weights[pos] = getExpandedEdgeWeight(he, hg.edgeSize(he), max_edges_in_expansion);
                                        ++pos;
                                    }
                                });
@@ -107,7 +96,7 @@ static constexpr bool enable_heavy_assert = true;
                                // neighborhoods representing pins
                                tbb::parallel_for<NodeID>(UL(0), hg.initialNumEdges(), [&](const NodeID he) {
                                    EdgeID pos = nodes[he+num_nodes];
-                                   const EdgeWeight edge_weight = graphEdgeWeight(he);
+                                   const EdgeWeight edge_weight = getExpandedEdgeWeight(he, hg.edgeSize(he), max_edges_in_expansion);
                                    for (const HypernodeID &hv: hg.pins(he)) {
                                        edges[pos] = _current_vertices[hv]; // hypervertex ids remain identical
                                        edge_weights[pos] = edge_weight;
@@ -149,43 +138,7 @@ static constexpr bool enable_heavy_assert = true;
     });
     parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
 
-    auto countEdgesForExpansion = [](HyperedgeID edge_size) {
-      ASSERT(edge_size >= 2);
-      EdgeID edges_in_expansion = 1;
-      if (edge_size == 3) {
-        edges_in_expansion = 3;
-      } else {
-        edges_in_expansion = edge_size + (edge_size / 2);
-      }
-      return edges_in_expansion;
-    };
-
-    EdgeWeight scale_edge_weight = 1;
-    if (_context.coarsening.rep_edge_weight == GraphRepEdgeWeight::normalized_hyperedge_weight) {
-      EdgeID max_edges_in_expansion = countEdgesForExpansion(hg.maxEdgeSize());
-      if (max_edges_in_expansion == 3) {
-        scale_edge_weight = static_cast<EdgeWeight>(max_edges_in_expansion)*2;
-      } else if (max_edges_in_expansion >= 4) {
-        scale_edge_weight = static_cast<EdgeWeight>(max_edges_in_expansion)*10;
-      }
-    }
-
-    auto graphEdgeWeight = [SCALE_EDGE_WEIGHT=scale_edge_weight, &hg, &countEdgesForExpansion, rep_edge_weight=_context.coarsening.rep_edge_weight](const HyperedgeID he) {
-      if (rep_edge_weight == GraphRepEdgeWeight::unit) {
-        return 1;
-      }
-
-      EdgeWeight edge_weight = hg.edgeWeight(he);
-      EdgeWeight edge_size = hg.edgeSize(he);
-
-      EdgeWeight edges_in_expansion = 1;
-      if (rep_edge_weight == GraphRepEdgeWeight::normalized_hyperedge_weight) {
-        edges_in_expansion = countEdgesForExpansion(edge_size);
-      }
-
-      return edge_weight * SCALE_EDGE_WEIGHT / edges_in_expansion;
-    };
-
+    EdgeWeight max_edges_in_expansion = countEdgesInEexpansion(hg.maxEdgeSize());
 
     tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
         const NodeID u = _current_vertices[id];
@@ -197,7 +150,7 @@ static constexpr bool enable_heavy_assert = true;
             auto pins = hg.pins(he);
             const HypernodeID rank = std::distance(pins.begin(), std::find(pins.begin(), pins.end(), id));
             ASSERT(rank < edge_size);
-            const EdgeWeight weight = graphEdgeWeight(he);
+            const EdgeWeight weight = getExpandedEdgeWeight(he, countEdgesInEexpansion(hg.edgeSize(he)), max_edges_in_expansion);
 
             // cycle edges
             ASSERT(*(pins.begin() + ((rank+1) % edge_size)) < num_nodes);
@@ -297,6 +250,10 @@ template<typename TypeTraits>
     const NodeID n = num_nodes;
     const EdgeID m = 3 * hg.initialNumPins();
 
+    tbb::parallel_for<HyperedgeID>(UL(0), num_edges, [&](HyperedgeID he){
+
+  })
+
     StaticArray<EdgeID> nodes(n + 1);
     StaticArray<EdgeID> nodes_agg(n + 1);
     StaticArray<NodeID> edges(m);
@@ -314,42 +271,7 @@ template<typename TypeTraits>
     });
     parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
 
-    auto countEdgesForExpansion = [](HyperedgeID edge_size) {
-      ASSERT(edge_size >= 2);
-      EdgeID edges_in_expansion = 1;
-      if (edge_size == 3) {
-        edges_in_expansion = 3;
-      } else {
-        edges_in_expansion = edge_size + (edge_size / 2);
-      }
-      return edges_in_expansion;
-    };
-
-    EdgeWeight scale_edge_weight = 1;
-    if (_context.coarsening.rep_edge_weight == GraphRepEdgeWeight::normalized_hyperedge_weight) {
-      EdgeID max_edges_in_expansion = countEdgesForExpansion(hg.maxEdgeSize());
-      if (max_edges_in_expansion == 3) {
-        scale_edge_weight = static_cast<EdgeWeight>(max_edges_in_expansion)*2;
-      } else if (max_edges_in_expansion >= 4) {
-        scale_edge_weight = static_cast<EdgeWeight>(max_edges_in_expansion)*10;
-      }
-    }
-
-    auto graphEdgeWeight = [SCALE_EDGE_WEIGHT=scale_edge_weight, &hg, &countEdgesForExpansion, rep_edge_weight=_context.coarsening.rep_edge_weight](const HyperedgeID he) {
-      if (rep_edge_weight == GraphRepEdgeWeight::unit) {
-        return 1;
-      }
-
-      EdgeWeight edge_weight = hg.edgeWeight(he);
-      EdgeWeight edge_size = hg.edgeSize(he);
-
-      EdgeWeight edges_in_expansion = 1;
-      if (rep_edge_weight == GraphRepEdgeWeight::normalized_hyperedge_weight) {
-        edges_in_expansion = countEdgesForExpansion(edge_size);
-      }
-
-      return edge_weight * SCALE_EDGE_WEIGHT / edges_in_expansion;
-    };
+    EdgeWeight max_edges_in_expansion = countEdgesInEexpansion(hg.maxEdgeSize());
 
     const NodeID NO_EDGE = std::numeric_limits<NodeID>::max();
     tbb::parallel_for<NodeID>(UL(0), num_edges, [&](const EdgeID he) {
@@ -360,8 +282,7 @@ template<typename TypeTraits>
         return std::distance(hg.incidentEdges(v).begin(), std::find(hg.incidentEdges(v).begin(), hg.incidentEdges(v).end(), he));
       };
 
-
-      const EdgeWeight weight = graphEdgeWeight(he);
+      const EdgeWeight weight = getExpandedEdgeWeight(he, countEdgesInEexpansion(hg.edgeSize(he)), max_edges_in_expansion)
 
       // based on D. Seemaier's implementation
       ASSERT(edge_size >= 2);
@@ -382,7 +303,6 @@ template<typename TypeTraits>
         return;
       }
       if (edge_size == 3) {
-
 
         for (std::size_t current = 0; current < edge_size; ++current) {
           std::size_t next = (current + 1) % edge_size;
@@ -513,6 +433,108 @@ template<typename TypeTraits>
   }
 
 
+template<typename TypeTraits>
+  std::unique_ptr<kaminpar::shm::CSRGraph> ExperimentalCoarsener<TypeTraits>::buildCliqueRep() {
+    using namespace kaminpar;
+    using namespace kaminpar::shm;
+
+
+    const Hypergraph& hg = Base::currentHypergraph();
+    const HypernodeID num_nodes = hg.initialNumNodes();
+    const HypernodeID num_edges = hg.initialNumEdges();
+
+    const NodeID n = num_nodes;
+    StaticArray<EdgeID> nodes(n + 1);
+    StaticArray<EdgeID> nodes_agg(n + 1);
+    StaticArray<NodeWeight> node_weights(n);
+
+    // upper bound for m
+    const EdgeID m = tbb::parallel_reduce(tbb::blocked_range<HyperedgeID>(UL(0), num_edges), 0,
+      [&](const tbb::blocked_range<HyperedgeID>& range, HyperedgeID init) -> HyperedgeID {
+        for (HyperedgeID he = range.begin(); he != range.end(); ++i) {
+          init += countEdgesInEexpansion(hg.edgeSize(he));
+        }
+        return init;
+    }, std::plus<HyperedgeID>());
+   
+    nodes[0] = 0;
+    nodes_agg[0] = 0;
+    tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
+      NodeID u = _current_vertices[id];
+      node_weights[u] = hg.nodeWeight(id);
+      nodes[u + 1] = 0;
+      for(auto& he: hg.edges(id)) {
+        nodes[u+1] += hg.edgeSize(he)-1;
+      }
+    });
+    parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
+
+    StaticArray<NodeID> edges(m);
+    StaticArray<NodeID> edges_agg(m);
+    StaticArray<EdgeWeight> edge_weights(m);
+    StaticArray<EdgeWeight> edge_weights_agg(m);
+
+    const EdgeWeight max_edges_in_expansion = countEdgesInEexpansion(hg.maxEdgeSize());
+    const NodeID NO_EDGE = std::numeric_limits<NodeID>::max();
+
+    tbb::parallel_for<HypernodeID>(UL(0), num_nodes, [&](const HyperedgeID hn) {
+      
+      const NodeID u = _current_vertices[hn];
+      EdgeID pos = num_nodes[u];
+      for(const HyperedgeID he: hg.edges(hn)) {
+          EdgeWeight weight = getExpandedEdgeWeight(he, countEdgesInEexpansion(hg.maxEdgeSize()), max_num_edges_in_expansion);
+          for(const HypernodeID pin: hg.pins(he)) {
+              if(pin!=hn){
+                edges[pos] = _current_vertices[pin];
+                edge_weights[pos++] = weight;
+              }
+          }
+      }
+      ASSERT(num_nodes[u] + pos == num_nodes[u+1]);
+      std::iota(edges_agg.begin()+num_nodes[u], edges_agg.begin()+num_nodes[u+1], 0);
+      std::sort(edges_agg.begin()+num_nodes[u], edges_agg.begin()+num_nodes[u+1], [&](NodeID first, NodeID second){return edges[first] < edges[second];});
+      
+      pos = num_nodes[u];
+      while(pos < num_nodes[u+1]){
+         edge_weights_agg[pos] = edge_weights[edges_agg[pos]]
+         edges_agg[pos] = edges[edges_agg[pos]]
+
+         std::size_t pos2 = pos+1; 
+         // while there are edges with the same target
+         while(pos2 < num_nodes[u+1] && edges_agg[pos] == edges[edges_agg[pos2]]) {
+            edge_weights_agg[pos] += edge_weights[edges_agg[pos2]]
+            ++pos2;
+         }
+         pos = pos2;
+      }
+      nodes_agg[u+1] = pos - num_nodes[u];
+    }
+      
+    // determine positions of agg. neighborhood
+    parallel_prefix_sum(nodes_agg.begin()+1, nodes_agg.end(), nodes_agg.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
+
+    using std::swap;
+    // store non-flattened agg. neighborhood in edges
+    swap(edges, edges_agg);
+    swap(edge_weights, edge_weights_agg);
+
+    // flatten agg. neighborhoods
+    tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID u) {
+      for (EdgeID i = nodes_agg[u]; i < nodes_agg[u+1]; ++i) {
+          const EdgeID i_old = i - nodes_agg[u] + nodes[u];
+          edges_agg[i] = edges[i_old];
+          edge_weights_agg[i] = edge_weights[i_old];
+      }
+    });
+    edges_agg.resize(nodes_agg[n+1]);
+    edge_weights_agg.resize(nodes_agg[n+1]);
+
+    constexpr bool neighborhood_sorted = true;
+    return std::make_unique<kaminpar::shm::CSRGraph>(std::move(nodes_agg), std::move(edges_agg), std::move(node_weights), std::move(edge_weights_agg),
+              neighborhood_sorted);
+  }
+
+
   template<typename TypeTraits>
 bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
   auto& timer = utils::Utilities::instance().getTimer(_context.utility_id);
@@ -527,7 +549,7 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
       << V(hg.initialNumPins());
 
   size_t num_nodes = Base::currentNumNodes();
-  tbb::parallel_for<HypernodeID>(UL(0), num_nodes, [&](const HypernodeID u) {
+  tbb::parallel_for<HypernodeID>(UL(0), num_nodes, [&]([[maybe_unused]] const HypernodeID u) {
       ASSERT(hg.nodeIsEnabled(u));
   });
  
@@ -540,19 +562,14 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
     _current_vertices[u] = u;
   });
 
-  //DisableRandomization();
   if ( _enable_randomization ) {
     utils::Randomize::instance().parallelShuffleVector( _current_vertices, UL(0), _current_vertices.size());
   }
 
-  // START implementation of actual coarsening
-
   // build graph representation
-  // all graph representation have in common that hypervertices have identical IDs in representation
   kaminpar::shm::Graph graph([&]() {
     switch (_context.coarsening.rep) {
       case GraphRepresentation::bipartite:
-        DBG << "Build bipartite rep"; 
         return buildBipartiteGraphRep();
       case GraphRepresentation::cycle_matching:
         return buildCycleMatchingRep();
@@ -566,9 +583,6 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
   if (_context.coarsening.lp_sort) {
     graph = kaminpar::shm::graph::rearrange_by_degree_buckets(graph.csr_graph());
   }
-
-
-  DBG << "Starting KaMinPar"; 
 
   // configure LPClustering
   auto ctx = kaminpar::shm::create_default_context();
@@ -623,7 +637,7 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
     });
   }
 
-  // reduce number of cluster containing hypervertices
+  // reduce number of clusters containing hypervertices
   num_nodes = tbb::parallel_reduce(tbb::blocked_range<HypernodeID>(UL(0), num_nodes), 0,
     [&](const tbb::blocked_range<HypernodeID>& range, HypernodeID init) -> HypernodeID {
     for (HypernodeID i = range.begin(); i != range.end(); ++i) {
