@@ -31,6 +31,7 @@
 #include <tbb/parallel_reduce.h>
 
 #include "mt-kahypar/definitions.h"
+#include "mt-kahypar/partition/context_enum_classes.h"
 #include "mt-kahypar/utils/randomize.h"
 
 namespace mt_kahypar {
@@ -250,10 +251,6 @@ template<typename TypeTraits>
     const NodeID n = num_nodes;
     const EdgeID m = 3 * hg.initialNumPins();
 
-    tbb::parallel_for<HyperedgeID>(UL(0), num_edges, [&](HyperedgeID he){
-
-  })
-
     StaticArray<EdgeID> nodes(n + 1);
     StaticArray<EdgeID> nodes_agg(n + 1);
     StaticArray<NodeID> edges(m);
@@ -451,7 +448,7 @@ template<typename TypeTraits>
     // upper bound for m
     const EdgeID m = tbb::parallel_reduce(tbb::blocked_range<HyperedgeID>(UL(0), num_edges), 0,
       [&](const tbb::blocked_range<HyperedgeID>& range, HyperedgeID init) -> HyperedgeID {
-        for (HyperedgeID he = range.begin(); he != range.end(); ++i) {
+        for (HyperedgeID he = range.begin(); he != range.end(); ++he) {
           init += countEdgesInEexpansion(hg.edgeSize(he));
         }
         return init;
@@ -463,7 +460,7 @@ template<typename TypeTraits>
       NodeID u = _current_vertices[id];
       node_weights[u] = hg.nodeWeight(id);
       nodes[u + 1] = 0;
-      for(auto& he: hg.edges(id)) {
+      for(const HyperedgeID he: hg.incidentEdges(id)) {
         nodes[u+1] += hg.edgeSize(he)-1;
       }
     });
@@ -475,14 +472,12 @@ template<typename TypeTraits>
     StaticArray<EdgeWeight> edge_weights_agg(m);
 
     const EdgeWeight max_edges_in_expansion = countEdgesInEexpansion(hg.maxEdgeSize());
-    const NodeID NO_EDGE = std::numeric_limits<NodeID>::max();
-
     tbb::parallel_for<HypernodeID>(UL(0), num_nodes, [&](const HyperedgeID hn) {
       
       const NodeID u = _current_vertices[hn];
-      EdgeID pos = num_nodes[u];
-      for(const HyperedgeID he: hg.edges(hn)) {
-          EdgeWeight weight = getExpandedEdgeWeight(he, countEdgesInEexpansion(hg.maxEdgeSize()), max_num_edges_in_expansion);
+      EdgeID pos = nodes[u];
+      for(const HyperedgeID he: hg.incidentEdges(hn)) {
+          EdgeWeight weight = getExpandedEdgeWeight(he, countEdgesInEexpansion(hg.maxEdgeSize()), max_edges_in_expansion);
           for(const HypernodeID pin: hg.pins(he)) {
               if(pin!=hn){
                 edges[pos] = _current_vertices[pin];
@@ -490,25 +485,25 @@ template<typename TypeTraits>
               }
           }
       }
-      ASSERT(num_nodes[u] + pos == num_nodes[u+1]);
-      std::iota(edges_agg.begin()+num_nodes[u], edges_agg.begin()+num_nodes[u+1], 0);
-      std::sort(edges_agg.begin()+num_nodes[u], edges_agg.begin()+num_nodes[u+1], [&](NodeID first, NodeID second){return edges[first] < edges[second];});
+      ASSERT(nodes[u] + pos == nodes[u+1]);
+      std::iota(edges_agg.begin()+nodes[u], edges_agg.begin()+nodes[u+1], 0);
+      std::sort(edges_agg.begin()+nodes[u], edges_agg.begin()+nodes[u+1], [&](NodeID first, NodeID second){return edges[first] < edges[second];});
       
-      pos = num_nodes[u];
-      while(pos < num_nodes[u+1]){
-         edge_weights_agg[pos] = edge_weights[edges_agg[pos]]
-         edges_agg[pos] = edges[edges_agg[pos]]
+      pos = nodes[u];
+      while(pos < nodes[u+1]){
+         edge_weights_agg[pos] = edge_weights[edges_agg[pos]];
+         edges_agg[pos] = edges[edges_agg[pos]];
 
          std::size_t pos2 = pos+1; 
          // while there are edges with the same target
-         while(pos2 < num_nodes[u+1] && edges_agg[pos] == edges[edges_agg[pos2]]) {
-            edge_weights_agg[pos] += edge_weights[edges_agg[pos2]]
+         while(pos2 < nodes[u+1] && edges_agg[pos] == edges[edges_agg[pos2]]) {
+            edge_weights_agg[pos] += edge_weights[edges_agg[pos2]];
             ++pos2;
          }
          pos = pos2;
       }
-      nodes_agg[u+1] = pos - num_nodes[u];
-    }
+      nodes_agg[u+1] = pos - nodes[u];
+    });
       
     // determine positions of agg. neighborhood
     parallel_prefix_sum(nodes_agg.begin()+1, nodes_agg.end(), nodes_agg.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
@@ -575,6 +570,8 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
         return buildCycleMatchingRep();
       case GraphRepresentation::cycle_random_matching:
         return buildCycleRandomMatchingRep();
+      case GraphRepresentation::clique:
+        return buildCliqueRep();
       case GraphRepresentation::UNDEFINED:
         throw std::runtime_error("Undefined representation");
     }

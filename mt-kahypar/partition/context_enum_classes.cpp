@@ -179,7 +179,7 @@ namespace mt_kahypar {
           return os << "cycle_matching";
         case GraphRepresentation::cycle_random_matching:
           return os << "cycle_random_matching";
-        case mt_kahypar::clique:
+        case GraphRepresentation::clique:
           return os << "clique";
         case GraphRepresentation::UNDEFINED:
           return os << "UNDEFINED";

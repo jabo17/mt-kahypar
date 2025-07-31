@@ -145,42 +145,16 @@ private:
   std::unique_ptr<kaminpar::shm::CSRGraph> buildCycleMatchingRep();
   
   std::unique_ptr<kaminpar::shm::CSRGraph> buildCycleRandomMatchingRep();
-
-  [[nodiscard]] kaminpar::shm::EdgeID countEdgesInEexpansion(HyperedgeID he_size) {
-    const GraphRepresentation rep = _context.coarsening.rep;
-    ASSERT(he_size >= 2);
-    if (he_size <= 3) {
-      return 3;
-    }
-    else if (rep == GraphRepresentation::bipartite) {
-      return he_size;
-    }
-    else if (rep == GraphRepresentation::clique) {
-      return (he_size-1)*he_size/2;
-    }else {
-      ASSERT(rep == GraphRepresentation::cycle_matching || rep == GraphRepresentation::cycle_random_matching)
-      return he_size + (he_size/2);
-    }
-  }
   
-  [[nodiscard]] kaminpar::shm::EdgeWeight getExpandedEdgeWeight(const HyperedgeID he, const kaminpar::shm::EdgeID num_edges_in_expansion,  const kaminpar::shm::EdgeID max_num_edges_in_expansion) {
-    using namespace kaminpar::shm;
-    const Hypergraph& hg = Base::currentHypergraph();
-    const GraphRepEdgeWeight rep = _context.coarsening.rep_edge_weight;
+  std::unique_ptr<kaminpar::shm::CSRGraph> buildCliqueRep();
 
-    if(rep == GraphRepEdgeWeight::unit) {
-      return 1;
-    }
-    else {
-      EdgeWeight edge_weight = hg.edgeWeight(he);
+  [[nodiscard]] kaminpar::shm::EdgeID
+  countEdgesInEexpansion(HyperedgeID he_size);
 
-      if (rep == GraphRepEdgeWeight::normalized_hyperedge_weight) {
-        edge_weight = edge_weight * SCALE_EDGE_WEIGHT / max_num_edges_in_expansion;
-      }
-      return edge_weight;
-    }
-  }
-
+  [[nodiscard]] kaminpar::shm::EdgeWeight
+  getExpandedEdgeWeight(const HyperedgeID he,
+                        const kaminpar::shm::EdgeID num_edges_in_expansion,
+                        const kaminpar::shm::EdgeID max_num_edges_in_expansion);
 
   using Base = MultilevelCoarsenerBase<TypeTraits>;
   using Base::_hg;
@@ -195,4 +169,43 @@ private:
 
   parallel::scalable_vector<HypernodeID> _current_vertices;
 };
+template <typename TypeTraits>
+inline kaminpar::shm::EdgeWeight
+ExperimentalCoarsener<TypeTraits>::getExpandedEdgeWeight(
+    const HyperedgeID he, const kaminpar::shm::EdgeID num_edges_in_expansion,
+    const kaminpar::shm::EdgeID max_num_edges_in_expansion) {
+  using namespace kaminpar::shm;
+  const Hypergraph &hg = Base::currentHypergraph();
+  const GraphRepEdgeWeight rep = _context.coarsening.rep_edge_weight;
+
+  if (rep == GraphRepEdgeWeight::unit) {
+    return 1;
+  } else {
+    EdgeWeight edge_weight = hg.edgeWeight(he);
+    const EdgeWeight SCALE_EDGE_WEIGHT = max_num_edges_in_expansion * 10;
+
+    if (rep == GraphRepEdgeWeight::normalized_hyperedge_weight) {
+      edge_weight = edge_weight * SCALE_EDGE_WEIGHT / num_edges_in_expansion;
+    }
+    return edge_weight;
+  }
+}
+
+template <typename TypeTraits>
+inline kaminpar::shm::EdgeID
+ExperimentalCoarsener<TypeTraits>::countEdgesInEexpansion(HyperedgeID he_size) {
+  const GraphRepresentation rep = _context.coarsening.rep;
+  ASSERT(he_size >= 2);
+  if (he_size <= 3) {
+    return 3;
+  } else if (rep == GraphRepresentation::bipartite) {
+    return he_size;
+  } else if (rep == GraphRepresentation::clique) {
+    return (he_size - 1) * he_size / 2;
+  } else {
+    ASSERT(rep == GraphRepresentation::cycle_matching ||
+           rep == GraphRepresentation::cycle_random_matching)
+    return he_size + (he_size / 2);
+  }
+}
 }
