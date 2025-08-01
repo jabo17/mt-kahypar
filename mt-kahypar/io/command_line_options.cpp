@@ -245,6 +245,7 @@ namespace mt_kahypar {
              " - multilevel_coarsener"
              " - nlevel_coarsener"
              " - deterministic_multilevel_coarsener"
+             " - experimental_coarsener"
              " - do_nothing"
              )
             ("c-use-adaptive-edge-size",
@@ -284,6 +285,7 @@ namespace mt_kahypar {
              " - bipartite"
              " - cycle_matching"
              " - cycle_random_matching"
+             " - clique"
              )
             ("c-graph-rep-edge-weight",
              po::value<std::string>()->value_name("<string>")->notifier(
