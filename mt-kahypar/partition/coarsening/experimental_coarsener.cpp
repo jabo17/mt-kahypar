@@ -279,7 +279,7 @@ template<typename TypeTraits>
         return std::distance(hg.incidentEdges(v).begin(), std::find(hg.incidentEdges(v).begin(), hg.incidentEdges(v).end(), he));
       };
 
-      const EdgeWeight weight = getExpandedEdgeWeight(he, countEdgesInEexpansion(hg.edgeSize(he)), max_edges_in_expansion)
+      const EdgeWeight weight = getExpandedEdgeWeight(he, countEdgesInEexpansion(hg.edgeSize(he)), max_edges_in_expansion);
 
       // based on D. Seemaier's implementation
       ASSERT(edge_size >= 2);
@@ -406,6 +406,7 @@ template<typename TypeTraits>
         nodes_agg[u+1]=new_pos-nodes[u];
 
     });
+    nodes_agg[0]=0;
 
     // determine positions of agg. neighborhood
     parallel_prefix_sum(nodes_agg.begin()+1, nodes_agg.end(), nodes_agg.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
@@ -438,21 +439,11 @@ template<typename TypeTraits>
 
     const Hypergraph& hg = Base::currentHypergraph();
     const HypernodeID num_nodes = hg.initialNumNodes();
-    const HypernodeID num_edges = hg.initialNumEdges();
 
     const NodeID n = num_nodes;
     StaticArray<EdgeID> nodes(n + 1);
     StaticArray<EdgeID> nodes_agg(n + 1);
     StaticArray<NodeWeight> node_weights(n);
-
-    // upper bound for m
-    const EdgeID m = tbb::parallel_reduce(tbb::blocked_range<HyperedgeID>(UL(0), num_edges), 0,
-      [&](const tbb::blocked_range<HyperedgeID>& range, HyperedgeID init) -> HyperedgeID {
-        for (HyperedgeID he = range.begin(); he != range.end(); ++he) {
-          init += countEdgesInEexpansion(hg.edgeSize(he));
-        }
-        return init;
-    }, std::plus<HyperedgeID>());
    
     nodes[0] = 0;
     nodes_agg[0] = 0;
@@ -464,8 +455,10 @@ template<typename TypeTraits>
         nodes[u+1] += hg.edgeSize(he)-1;
       }
     });
-    parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
 
+    parallel_prefix_sum(nodes.begin()+1, nodes.end(), nodes.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
+    
+    const EdgeID m = nodes[n];
     StaticArray<NodeID> edges(m);
     StaticArray<NodeID> edges_agg(m);
     StaticArray<EdgeWeight> edge_weights(m);
@@ -474,10 +467,12 @@ template<typename TypeTraits>
     const EdgeWeight max_edges_in_expansion = countEdgesInEexpansion(hg.maxEdgeSize());
     tbb::parallel_for<HypernodeID>(UL(0), num_nodes, [&](const HyperedgeID hn) {
       
+
+      // build neighborhood
       const NodeID u = _current_vertices[hn];
       EdgeID pos = nodes[u];
       for(const HyperedgeID he: hg.incidentEdges(hn)) {
-          EdgeWeight weight = getExpandedEdgeWeight(he, countEdgesInEexpansion(hg.maxEdgeSize()), max_edges_in_expansion);
+          EdgeWeight weight = getExpandedEdgeWeight(he, countEdgesInEexpansion(hg.edgeSize(he)), max_edges_in_expansion);
           for(const HypernodeID pin: hg.pins(he)) {
               if(pin!=hn){
                 edges[pos] = _current_vertices[pin];
@@ -485,26 +480,33 @@ template<typename TypeTraits>
               }
           }
       }
-      ASSERT(nodes[u] + pos == nodes[u+1]);
-      std::iota(edges_agg.begin()+nodes[u], edges_agg.begin()+nodes[u+1], 0);
-      std::sort(edges_agg.begin()+nodes[u], edges_agg.begin()+nodes[u+1], [&](NodeID first, NodeID second){return edges[first] < edges[second];});
-      
-      pos = nodes[u];
-      while(pos < nodes[u+1]){
-         edge_weights_agg[pos] = edge_weights[edges_agg[pos]];
-         edges_agg[pos] = edges[edges_agg[pos]];
+      ASSERT(pos == nodes[u+1], pos << " " << nodes[u+1]);
 
-         std::size_t pos2 = pos+1; 
-         // while there are edges with the same target
-         while(pos2 < nodes[u+1] && edges_agg[pos] == edges[edges_agg[pos2]]) {
-            edge_weights_agg[pos] += edge_weights[edges_agg[pos2]];
-            ++pos2;
-         }
-         pos = pos2;
-      }
-      nodes_agg[u+1] = pos - nodes[u];
-    });
+      // find permutation under which neighbors are sorted
+      std::iota(edges_agg.begin()+nodes[u], edges_agg.begin()+nodes[u+1], nodes[u]);
+      std::sort(edges_agg.begin()+nodes[u], edges_agg.begin()+nodes[u+1], [&](EdgeID first, EdgeID second){return edges[first] < edges[second];});
       
+      // agg multi edges
+      EdgeID i = nodes[u];
+      std::size_t current = i;
+      while(i < nodes[u+1]){
+      	 EdgeID edge_id = edges_agg[i];
+         edge_weights_agg[current] = edge_weights[edge_id];
+         edges_agg[current] = edges[edge_id];
+
+         EdgeID j = i+1; 
+         // while there are edges with the same target
+         while(j < nodes[u+1] && edges_agg[current] == edges[edges_agg[j]]) {
+            edge_weights_agg[current] += edge_weights[edges_agg[j]];
+            ++j;
+         }
+         i = j;
+	 ++current;
+      }
+      nodes_agg[u+1] = current - nodes[u];
+    });
+    nodes_agg[0] = 0;
+
     // determine positions of agg. neighborhood
     parallel_prefix_sum(nodes_agg.begin()+1, nodes_agg.end(), nodes_agg.begin()+1, [&](EdgeID x, EdgeID y) { return x + y; }, 0);
 
@@ -513,16 +515,17 @@ template<typename TypeTraits>
     swap(edges, edges_agg);
     swap(edge_weights, edge_weights_agg);
 
-    // flatten agg. neighborhoods
-    tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID u) {
+    // flatten agg. neighborhoods with respect to nodes_agg
+    tbb::parallel_for<NodeID>(UL(0), n, [&](const NodeID u) {
       for (EdgeID i = nodes_agg[u]; i < nodes_agg[u+1]; ++i) {
           const EdgeID i_old = i - nodes_agg[u] + nodes[u];
           edges_agg[i] = edges[i_old];
           edge_weights_agg[i] = edge_weights[i_old];
       }
     });
-    edges_agg.resize(nodes_agg[n+1]);
-    edge_weights_agg.resize(nodes_agg[n+1]);
+
+    edges_agg.resize(nodes_agg[n]);
+    edge_weights_agg.resize(nodes_agg[n]);
 
     constexpr bool neighborhood_sorted = true;
     return std::make_unique<kaminpar::shm::CSRGraph>(std::move(nodes_agg), std::move(edges_agg), std::move(node_weights), std::move(edge_weights_agg),
@@ -545,7 +548,7 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
 
   size_t num_nodes = Base::currentNumNodes();
   tbb::parallel_for<HypernodeID>(UL(0), num_nodes, [&]([[maybe_unused]] const HypernodeID u) {
-      ASSERT(hg.nodeIsEnabled(u));
+      //ASSERT(hg.nodeIsEnabled(u));
   });
  
   const double num_nodes_before_pass = num_nodes;
@@ -557,7 +560,9 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
     _current_vertices[u] = u;
   });
 
+  DisableRandomization();
   if ( _enable_randomization ) {
+    ASSERT(num_nodes == _current_vertices.size());
     utils::Randomize::instance().parallelShuffleVector( _current_vertices, UL(0), _current_vertices.size());
   }
 
@@ -581,6 +586,12 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
     graph = kaminpar::shm::graph::rearrange_by_degree_buckets(graph.csr_graph());
   }
 
+  DBG << "expanded graph:"
+	<< V(graph.n())	
+	<< V(graph.m()) 
+	<< V(graph.csr_graph().max_degree());
+
+
   // configure LPClustering
   auto ctx = kaminpar::shm::create_default_context();
   ctx.parallel.num_threads = _context.shared_memory.num_threads;
@@ -598,53 +609,60 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
   kaminpar::StaticArray<kaminpar::shm::NodeID> remap_clusters(graph.n());
   lp_clustering.compute_clustering(graph_clustering, graph, false);
 
-
-  DBG << "Copying Cluster Labels"; 
-
+  // compute cluster for hypernodes with clustering for the expanded graph
   if (_context.coarsening.lp_sort) {
     auto perm = graph.csr_graph().take_raw_permutation();
     // remap cluster labels to hypervertices as representatives
     tbb::parallel_for(UL(0), num_nodes, [&](const HypernodeID id) {
         const HypernodeID u = perm[_current_vertices[id]];
-        const kaminpar::shm::NodeID root_u = graph_clustering[u];
-        remap_clusters[root_u] = id;
+        const kaminpar::shm::NodeID label_u = graph_clustering[u];
+        __atomic_store_n(&remap_clusters[label_u], id, __ATOMIC_RELAXED);
     });
 
     // set cluster
     tbb::parallel_for(UL(0), num_nodes, [&](const HypernodeID id) {
           const HypernodeID u = perm[_current_vertices[id]];
-          const kaminpar::shm::NodeID root_u = graph_clustering[u];
-          ASSERT(remap_clusters[root_u] < num_nodes);
-          clusters[id] = remap_clusters[root_u];
+          const kaminpar::shm::NodeID label_u = graph_clustering[u];
+          ASSERT(remap_clusters[label_u] < num_nodes);
+          clusters[id] = remap_clusters[label_u];
     });
   }else {
     // remap cluster labels to hypervertices as representatives
     tbb::parallel_for(UL(0), num_nodes, [&](const HypernodeID id) {
         const HypernodeID u = _current_vertices[id];
-        const kaminpar::shm::NodeID root_u = graph_clustering[u];
-        remap_clusters[root_u] = id;
+        const kaminpar::shm::NodeID label_u = graph_clustering[u];
+        __atomic_store_n(&remap_clusters[label_u], id, __ATOMIC_RELAXED);
     });
 
     // set cluster
     tbb::parallel_for(UL(0), num_nodes, [&](const HypernodeID id) {
           const HypernodeID u = _current_vertices[id];
-          const kaminpar::shm::NodeID root_u = graph_clustering[u];
-          ASSERT(remap_clusters[root_u] < num_nodes);
-          clusters[id] = remap_clusters[root_u];
+          const kaminpar::shm::NodeID label_u = graph_clustering[u];
+          ASSERT(remap_clusters[label_u] < num_nodes);
+          clusters[id] = remap_clusters[label_u];
     });
   }
 
+  HEAVY_COARSENING_ASSERT([&] {
+	for(NodeID i = 0; i < num_nodes; ++i){
+		const auto rep = clustering[i];
+		const auto rrep = clustering[rep];
+		if(rep != i && rrep != rep) {
+			return false;
+		}
+	}
+	return true;
+  }(), "clustering is no flat clustering");
+
   // reduce number of clusters containing hypervertices
-  num_nodes = tbb::parallel_reduce(tbb::blocked_range<HypernodeID>(UL(0), num_nodes), 0,
+  HypernodeID new_num_nodes = tbb::parallel_reduce(tbb::blocked_range<HypernodeID>(UL(0), num_nodes), 0,
     [&](const tbb::blocked_range<HypernodeID>& range, HypernodeID init) -> HypernodeID {
     for (HypernodeID i = range.begin(); i != range.end(); ++i) {
-      init += clusters[i] == i;
+      init += (clusters[i] == i);
     }
     return init;
   }, std::plus<HypernodeID>());
-
-
-  DBG << "Finished Coarsening step"; 
+  num_nodes = new_num_nodes;
 
   // END implementation of actual coarsening
 

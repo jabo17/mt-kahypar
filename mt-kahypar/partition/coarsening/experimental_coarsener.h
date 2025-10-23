@@ -182,7 +182,7 @@ ExperimentalCoarsener<TypeTraits>::getExpandedEdgeWeight(
     return 1;
   } else {
     EdgeWeight edge_weight = hg.edgeWeight(he);
-    const EdgeWeight SCALE_EDGE_WEIGHT = max_num_edges_in_expansion * 10;
+    const EdgeWeight SCALE_EDGE_WEIGHT = max_num_edges_in_expansion * 100;
 
     if (rep == GraphRepEdgeWeight::normalized_hyperedge_weight) {
       edge_weight = edge_weight * SCALE_EDGE_WEIGHT / num_edges_in_expansion;
@@ -204,7 +204,7 @@ ExperimentalCoarsener<TypeTraits>::countEdgesInEexpansion(HyperedgeID he_size) {
     return (he_size - 1) * he_size / 2;
   } else {
     ASSERT(rep == GraphRepresentation::cycle_matching ||
-           rep == GraphRepresentation::cycle_random_matching)
+           rep == GraphRepresentation::cycle_random_matching);
     return he_size + (he_size / 2);
   }
 }
