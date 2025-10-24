@@ -12,8 +12,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ *all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -26,9 +26,10 @@
 
 #pragma once
 
+#include "i_coarsener.h"
+#include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/partition/context_enum_classes.h"
 #include "multilevel_coarsener_base.h"
-#include "i_coarsener.h"
 
 #pragma push_macro("DBGC")
 #pragma push_macro("DBG")
@@ -47,12 +48,12 @@
 #undef GREEN
 #undef CYAN
 
-#include <kaminpar.h>
 #include <kaminpar-common/datastructures/static_array.h>
+#include <kaminpar-common/random.h>
 #include <kaminpar-shm/coarsening/clustering/lp_clusterer.h>
 #include <kaminpar-shm/coarsening/max_cluster_weights.h>
-#include "kaminpar-common/random.h"
-#include "kaminpar-shm/graphutils/permutator.h"
+#include <kaminpar-shm/graphutils/permutator.h>
+#include <kaminpar.h>
 
 #pragma pop_macro("DBGC")
 #pragma pop_macro("DBG")
@@ -65,42 +66,41 @@
 
 #include "include/mtkahypartypes.h"
 
-#include "mt-kahypar/utils/utilities.h"
-#include "mt-kahypar/utils/progress_bar.h"
 #include "mt-kahypar/utils/cast.h"
+#include "mt-kahypar/utils/progress_bar.h"
+#include "mt-kahypar/utils/utilities.h"
 
 namespace mt_kahypar {
 
-template<typename TypeTraits>
-class ExperimentalCoarsener :  public ICoarsener,
-                                          private MultilevelCoarsenerBase<TypeTraits> {
+template <typename TypeTraits>
+class ExperimentalCoarsener : public ICoarsener,
+                              private MultilevelCoarsenerBase<TypeTraits> {
   using Hypergraph = typename TypeTraits::Hypergraph;
   using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
 public:
   ExperimentalCoarsener(mt_kahypar_hypergraph_t hypergraph,
-                        const Context& context,
-                        uncoarsening_data_t* uncoarseningData) :
-    Base(utils::cast<Hypergraph>(hypergraph),
-         context,
-         uncoarsening::to_reference<TypeTraits>(uncoarseningData)),
-    _initial_num_nodes(utils::cast<Hypergraph>(hypergraph).initialNumNodes()),
-    _pass_nr(0),
-    _progress_bar(utils::cast<Hypergraph>(hypergraph).initialNumNodes(), 0, false),
-    _enable_randomization(true),
-    _current_vertices(utils::cast<Hypergraph>(hypergraph).initialNumNodes())
-  {
-  }
+                        const Context &context,
+                        uncoarsening_data_t *uncoarseningData)
+      : Base(utils::cast<Hypergraph>(hypergraph), context,
+             uncoarsening::to_reference<TypeTraits>(uncoarseningData)),
+        _initial_num_nodes(
+            utils::cast<Hypergraph>(hypergraph).initialNumNodes()),
+        _pass_nr(0),
+        _progress_bar(utils::cast<Hypergraph>(hypergraph).initialNumNodes(), 0,
+                      false),
+        _enable_randomization(true),
+        _current_vertices(
+            utils::cast<Hypergraph>(hypergraph).initialNumNodes()) {}
 
-  ~ExperimentalCoarsener() { }
+  ~ExperimentalCoarsener() {}
 
-  void DisableRandomization() {
-    _enable_randomization = false;
-  }
+  void DisableRandomization() { _enable_randomization = false; }
 
 private:
   void initializeImpl() override {
-    if ( _context.partition.verbose_output && _context.partition.enable_progress_bar ) {
+    if (_context.partition.verbose_output &&
+        _context.partition.enable_progress_bar) {
       _progress_bar.enable();
     }
   }
@@ -112,16 +112,18 @@ private:
   }
 
   void terminateImpl() override {
-    _progress_bar += (_initial_num_nodes - _progress_bar.count());   // fill to 100%
+    _progress_bar +=
+        (_initial_num_nodes - _progress_bar.count()); // fill to 100%
     _progress_bar.disable();
     _uncoarseningData.finalizeCoarsening();
   }
 
   HypernodeID currentLevelContractionLimit() {
-    const auto& hg = Base::currentHypergraph();
-    return std::max( _context.coarsening.contraction_limit,
-               static_cast<HypernodeID>(
-                    (hg.initialNumNodes() - hg.numRemovedHypernodes()) / _context.coarsening.maximum_shrink_factor) );
+    const auto &hg = Base::currentHypergraph();
+    return std::max(_context.coarsening.contraction_limit,
+                    static_cast<HypernodeID>(
+                        (hg.initialNumNodes() - hg.numRemovedHypernodes()) /
+                        _context.coarsening.maximum_shrink_factor));
   }
 
   HypernodeID currentNumberOfNodesImpl() const override {
@@ -129,36 +131,63 @@ private:
   }
 
   mt_kahypar_hypergraph_t coarsestHypergraphImpl() override {
-    return mt_kahypar_hypergraph_t {
-      reinterpret_cast<mt_kahypar_hypergraph_s*>(
-        &Base::currentHypergraph()), Hypergraph::TYPE };
+    return mt_kahypar_hypergraph_t{
+        reinterpret_cast<mt_kahypar_hypergraph_s *>(&Base::currentHypergraph()),
+        Hypergraph::TYPE};
   }
 
-  mt_kahypar_partitioned_hypergraph_t coarsestPartitionedHypergraphImpl() override {
-    return mt_kahypar_partitioned_hypergraph_t {
-      reinterpret_cast<mt_kahypar_partitioned_hypergraph_s*>(
-        &Base::currentPartitionedHypergraph()), PartitionedHypergraph::TYPE };
+  mt_kahypar_partitioned_hypergraph_t
+  coarsestPartitionedHypergraphImpl() override {
+    return mt_kahypar_partitioned_hypergraph_t{
+        reinterpret_cast<mt_kahypar_partitioned_hypergraph_s *>(
+            &Base::currentPartitionedHypergraph()),
+        PartitionedHypergraph::TYPE};
   }
 
   std::unique_ptr<kaminpar::shm::CSRGraph> buildBipartiteGraphRep();
 
   std::unique_ptr<kaminpar::shm::CSRGraph> buildCycleMatchingRep();
-  
+
   std::unique_ptr<kaminpar::shm::CSRGraph> buildCycleRandomMatchingRep();
-  
+
   std::unique_ptr<kaminpar::shm::CSRGraph> buildCliqueRep();
 
   [[nodiscard]] kaminpar::shm::EdgeID
-  countEdgesInEexpansion(HyperedgeID he_size);
+  countEdgesInEexpansion(HyperedgeID he_size) const;
+
+  [[nodiscard]] double getExpandedEdgeWeight(
+      const HyperedgeID he, const kaminpar::shm::EdgeID num_edges_in_expansion,
+      const kaminpar::shm::EdgeID max_num_edges_in_expansion);
 
   [[nodiscard]] kaminpar::shm::EdgeWeight
-  getExpandedEdgeWeight(const HyperedgeID he,
-                        const kaminpar::shm::EdgeID num_edges_in_expansion,
-                        const kaminpar::shm::EdgeID max_num_edges_in_expansion);
+  toEdgeWeight(const double edge_weight) const {
+    return static_cast<kaminpar::shm::EdgeWeight>(edge_weight);
+  }
+
+  std::unique_ptr<kaminpar::shm::CSRGraph> construct_graph_model_from_buffers(
+    const parallel::scalable_vector<kaminpar::shm::EdgeID> &nodes,
+    const parallel::scalable_vector<kaminpar::shm::NodeID> &edges,
+    const parallel::scalable_vector<double> &edge_weights,
+    const bool neighborhood_sorted);
+
+  void defragment_neighborhoods(
+      const parallel::scalable_vector<kaminpar::shm::EdgeID> &nodes_old,
+      const parallel::scalable_vector<kaminpar::shm::NodeID> &edges_old,
+      const parallel::scalable_vector<double> &edge_weights_old,
+      const parallel::scalable_vector<kaminpar::shm::NodeID> &nodes_new,
+      parallel::scalable_vector<kaminpar::shm::EdgeID> &edges_new,
+      parallel::scalable_vector<double> &edge_weights_new);
+
+  kaminpar::shm::EdgeID merge_multiedges_in_neighborhood(
+      std::size_t from, std::size_t to,
+      const parallel::scalable_vector<kaminpar::shm::EdgeID> &edges,
+      const parallel::scalable_vector<double> &edge_weights,
+      parallel::scalable_vector<kaminpar::shm::EdgeID> &merged_edges,
+      parallel::scalable_vector<double> &merged_edge_weights);
 
   using Base = MultilevelCoarsenerBase<TypeTraits>;
-  using Base::_hg;
   using Base::_context;
+  using Base::_hg;
   using Base::_timer;
   using Base::_uncoarseningData;
 
@@ -168,10 +197,21 @@ private:
   bool _enable_randomization;
 
   parallel::scalable_vector<HypernodeID> _current_vertices;
+
+  static constexpr auto kNoEdge = std::numeric_limits<kaminpar::shm::NodeID>::max();
+
+  // buffers for the model
+  //
+  parallel::scalable_vector<kaminpar::shm::EdgeID> _nodes_buf;
+  parallel::scalable_vector<kaminpar::shm::EdgeID> _nodes_buf2;
+  parallel::scalable_vector<kaminpar::shm::NodeID> _edges_buf;
+  parallel::scalable_vector<kaminpar::shm::NodeID> _edges_buf2;
+  parallel::scalable_vector<double> _edge_weights_buf;
+  parallel::scalable_vector<double> _edge_weights_buf2;
 };
+
 template <typename TypeTraits>
-inline kaminpar::shm::EdgeWeight
-ExperimentalCoarsener<TypeTraits>::getExpandedEdgeWeight(
+inline double ExperimentalCoarsener<TypeTraits>::getExpandedEdgeWeight(
     const HyperedgeID he, const kaminpar::shm::EdgeID num_edges_in_expansion,
     const kaminpar::shm::EdgeID max_num_edges_in_expansion) {
   using namespace kaminpar::shm;
@@ -179,10 +219,10 @@ ExperimentalCoarsener<TypeTraits>::getExpandedEdgeWeight(
   const GraphRepEdgeWeight rep = _context.coarsening.rep_edge_weight;
 
   if (rep == GraphRepEdgeWeight::unit) {
-    return 1;
+    return 1.0;
   } else {
-    EdgeWeight edge_weight = hg.edgeWeight(he);
-    const EdgeWeight SCALE_EDGE_WEIGHT = max_num_edges_in_expansion * 100;
+    auto edge_weight = static_cast<double>(hg.edgeWeight(he));
+    const EdgeWeight SCALE_EDGE_WEIGHT = max_num_edges_in_expansion * 100.0;
 
     if (rep == GraphRepEdgeWeight::normalized_hyperedge_weight) {
       edge_weight = edge_weight * SCALE_EDGE_WEIGHT / num_edges_in_expansion;
@@ -193,7 +233,8 @@ ExperimentalCoarsener<TypeTraits>::getExpandedEdgeWeight(
 
 template <typename TypeTraits>
 inline kaminpar::shm::EdgeID
-ExperimentalCoarsener<TypeTraits>::countEdgesInEexpansion(HyperedgeID he_size) {
+ExperimentalCoarsener<TypeTraits>::countEdgesInEexpansion(
+    HyperedgeID he_size) const {
   const GraphRepresentation rep = _context.coarsening.rep;
   ASSERT(he_size >= 2);
   if (he_size <= 3) {
@@ -208,4 +249,4 @@ ExperimentalCoarsener<TypeTraits>::countEdgesInEexpansion(HyperedgeID he_size) {
     return he_size + (he_size / 2);
   }
 }
-}
+} // namespace mt_kahypar
