@@ -51,9 +51,8 @@ ExperimentalCoarsener<TypeTraits>::construct_graph_model_from_buffers(
   using namespace kaminpar::shm;
 
   const auto &hg = Base::currentHypergraph();
-  ASSERT(nodes_buf.size() >= 1,
-         "Node buffer must contain at least one entry.");
-  const NodeID n = nodes_buf.size()-1;
+  ASSERT(nodes_buf.size() >= 1, "Node buffer must contain at least one entry.");
+  const NodeID n = nodes_buf.size() - 1;
 
   // buffers for graph model
   StaticArray<EdgeID> nodes(n + 1);
@@ -65,9 +64,8 @@ ExperimentalCoarsener<TypeTraits>::construct_graph_model_from_buffers(
   tbb::parallel_for<NodeID>(
       UL(0), n + 1, [&](const NodeID id) { nodes[id] = nodes_buf[id]; });
 
-  tbb::parallel_for<NodeID>(UL(0), edges.size(), [&](const EdgeID e) {
-    edges[e] = edges_buf[e];
-  });
+  tbb::parallel_for<NodeID>(UL(0), edges.size(),
+                            [&](const EdgeID e) { edges[e] = edges_buf[e]; });
 
   // convert edge weights to edge_weights
   tbb::parallel_for<NodeID>(UL(0), edge_weights.size(), [&](const EdgeID e) {
@@ -79,8 +77,9 @@ ExperimentalCoarsener<TypeTraits>::construct_graph_model_from_buffers(
     node_weights[u] = hg.nodeWeight(id);
   });
 
-  return std::make_unique<CSRGraph>(std::move(nodes), std::move(edges),
-                                 std::move(node_weights), std::move(edge_weights), neighborhood_sorted);
+  return std::make_unique<CSRGraph>(
+      std::move(nodes), std::move(edges), std::move(node_weights),
+      std::move(edge_weights), neighborhood_sorted);
 }
 
 template <typename TypeTraits>
@@ -95,12 +94,13 @@ void ExperimentalCoarsener<TypeTraits>::defragment_neighborhoods(
   using namespace kaminpar::shm;
   ASSERT(nodes_old.size() == nodes_new.size(),
          "Node array sizes do not match.");
-  tbb::parallel_for<NodeID>(UL(0), nodes_new.size()-1, [&](const NodeID u) {
+  tbb::parallel_for<NodeID>(UL(0), nodes_new.size() - 1, [&](const NodeID u) {
     const EdgeID begin = nodes_new[u];
     const EdgeID end = nodes_new[u + 1];
     EdgeID read_pos = nodes_old[u];
     for (EdgeID i = begin; i < end; ++i) {
-      ASSERT(edges_old[read_pos] < nodes_old.size()-1, V(edges_old[read_pos]));
+      ASSERT(edges_old[read_pos] < nodes_old.size() - 1,
+             V(edges_old[read_pos]));
       edges_new[i] = edges_old[read_pos];
       edge_weights_new[i] = edge_weights_old[read_pos];
       ++read_pos;
@@ -125,19 +125,21 @@ ExperimentalCoarsener<TypeTraits>::merge_multiedges_in_neighborhood(
             [&](EdgeID l, EdgeID r) {
               // sort by target node, then by edge weight
               // this way, sums of doubles are deterministic
-              return edges[l] < edges[r] || (edges[l] == edges[r] && edge_weights[l] < edge_weights[r]);
+              return edges[l] < edges[r] || (edges[l] == edges[r] &&
+                                             edge_weights[l] < edge_weights[r]);
             });
 
   // merge multi edges
   EdgeID i = from;
   std::size_t current = i;
   while (i < to) {
-    ASSERT(i>=current);
+    ASSERT(i >= current);
     const EdgeID edge_id = merged_edges[i];
     const NodeID target = edges[edge_id];
     if (target == kNoEdge) {
       // after kNoEdges do not follow any other valid edge
-      static_assert(kNoEdge == std::numeric_limits<kaminpar::shm::NodeID>::max());
+      static_assert(kNoEdge ==
+                    std::numeric_limits<kaminpar::shm::NodeID>::max());
       break;
     }
     merged_edge_weights[current] = edge_weights[edge_id];
@@ -145,7 +147,7 @@ ExperimentalCoarsener<TypeTraits>::merge_multiedges_in_neighborhood(
 
     // while there are edges with the same target
     ++i;
-    for (;i < to; ++i) {
+    for (; i < to; ++i) {
       const auto next_edge_id = merged_edges[i];
       if (target != edges[next_edge_id]) {
         break;
@@ -291,24 +293,21 @@ ExperimentalCoarsener<TypeTraits>::buildCycleMatchingRep() {
       // cycle edges
       // rank -> rank+1
       {
-        const auto target_rank = rank==edge_size-1 ? 0 : rank+1;
+        const auto target_rank = rank == edge_size - 1 ? 0 : rank + 1;
         ASSERT(*(pins.begin() + target_rank) < num_nodes);
-        _edges_buf[pos] =
-            _current_vertices[*(pins.begin() + target_rank)];
+        _edges_buf[pos] = _current_vertices[*(pins.begin() + target_rank)];
         _edge_weights_buf[pos] = weight;
         ++pos;
       }
 
       if (edge_size >= 3) {
         // rank -> rank-1
-        const auto target_rank = rank==0 ? edge_size-1 : rank-1;
-        ASSERT(*(pins.begin() + target_rank) <
-               num_nodes);
-        _edges_buf[pos] = _current_vertices[*(
-            pins.begin() + target_rank)];
+        const auto target_rank = rank == 0 ? edge_size - 1 : rank - 1;
+        ASSERT(*(pins.begin() + target_rank) < num_nodes);
+        _edges_buf[pos] = _current_vertices[*(pins.begin() + target_rank)];
         _edge_weights_buf[pos] = weight;
         ++pos;
-      } 
+      }
       if (edge_size >= 4) {
         if ((edge_size & 1) == 0 || rank + 1 < edge_size) {
 
@@ -334,8 +333,8 @@ ExperimentalCoarsener<TypeTraits>::buildCycleMatchingRep() {
 
     // compute node degree
     _nodes_buf2[u + 1] = merge_multiedges_in_neighborhood(
-        _nodes_buf[u], pos, _edges_buf, _edge_weights_buf,
-        _edges_buf2, _edge_weights_buf2);
+        _nodes_buf[u], pos, _edges_buf, _edge_weights_buf, _edges_buf2,
+        _edge_weights_buf2);
   });
   using std::swap;
   swap(_nodes_buf2, _nodes_buf);
@@ -413,7 +412,8 @@ ExperimentalCoarsener<TypeTraits>::buildCycleRandomMatchingRep() {
             edge_rank(*(pins.begin() + current)) * 3;
 
         ASSERT(edge_displ + 2 < _edges_buf.size());
-        ASSERT(edge_displ + 2 < _nodes_buf[_current_vertices[*(pins.begin() + current)] + 1]);
+        ASSERT(edge_displ + 2 <
+               _nodes_buf[_current_vertices[*(pins.begin() + current)] + 1]);
         _edges_buf[edge_displ] = _current_vertices[*(pins.begin() + next)];
         _edges_buf[edge_displ + 1] = kNoEdge;
         _edges_buf[edge_displ + 2] = kNoEdge;
@@ -427,14 +427,15 @@ ExperimentalCoarsener<TypeTraits>::buildCycleRandomMatchingRep() {
     if (edge_size == 3) {
 
       for (std::size_t current = 0; current < edge_size; ++current) {
-        std::size_t next = (current + 1 == edge_size ) ? 0 : current + 1;
+        std::size_t next = (current + 1 == edge_size) ? 0 : current + 1;
         std::size_t prev = (current == 0) ? edge_size - 1 : current - 1;
 
         std::size_t edge_displ =
             _nodes_buf[_current_vertices[*(pins.begin() + current)]] +
             edge_rank(*(pins.begin() + current)) * 3;
         ASSERT(edge_displ + 2 < _edges_buf.size());
-        ASSERT(edge_displ + 2 < _nodes_buf[_current_vertices[*(pins.begin() + current)] + 1]);
+        ASSERT(edge_displ + 2 <
+               _nodes_buf[_current_vertices[*(pins.begin() + current)] + 1]);
 
         _edges_buf[edge_displ] = _current_vertices[*(pins.begin() + next)];
         _edges_buf[edge_displ + 1] = _current_vertices[*(pins.begin() + prev)];
@@ -455,7 +456,7 @@ ExperimentalCoarsener<TypeTraits>::buildCycleRandomMatchingRep() {
     std::vector<HypernodeID> matched_pins(edge_size);
 
     for (std::size_t current = 0; current < edge_size; ++current) {
-      std::size_t next = (current + 1 == edge_size ) ? 0 : current + 1;
+      std::size_t next = (current + 1 == edge_size) ? 0 : current + 1;
       std::size_t prev = (current == 0) ? edge_size - 1 : current - 1;
 
       if (!matched[current]) {
@@ -485,7 +486,8 @@ ExperimentalCoarsener<TypeTraits>::buildCycleRandomMatchingRep() {
       }
 
       const auto id = *(pins.begin() + current);
-      std::size_t edge_displ = _nodes_buf[_current_vertices[id]] + edge_rank(id) * 3;
+      std::size_t edge_displ =
+          _nodes_buf[_current_vertices[id]] + edge_rank(id) * 3;
       ASSERT(edge_displ + 2 < _edges_buf.size());
       ASSERT(edge_displ + 2 < _nodes_buf[_current_vertices[id] + 1]);
       _edges_buf[edge_displ] = _current_vertices[*(pins.begin() + next)];
@@ -512,9 +514,9 @@ ExperimentalCoarsener<TypeTraits>::buildCycleRandomMatchingRep() {
   tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
     const NodeID u = _current_vertices[id];
 
-    for(std::size_t i = _nodes_buf[u]; i < _nodes_buf[u + 1]; ++i) {
-      ASSERT (_edges_buf[i] == kNoEdge || _edges_buf[i] < num_nodes,
-              "Invalid edge detected in neighborhood.");
+    for (std::size_t i = _nodes_buf[u]; i < _nodes_buf[u + 1]; ++i) {
+      ASSERT(_edges_buf[i] == kNoEdge || _edges_buf[i] < num_nodes,
+             "Invalid edge detected in neighborhood.");
     }
 
     // compute node degree
@@ -536,7 +538,7 @@ ExperimentalCoarsener<TypeTraits>::buildCycleRandomMatchingRep() {
   // defragment agg. neighborhoods with respect to nodes_agg
   defragment_neighborhoods(_nodes_buf2, _edges_buf2, _edge_weights_buf2,
                            _nodes_buf, _edges_buf, _edge_weights_buf);
-  
+
   constexpr bool neighborhood_sorted = true;
   return construct_graph_model_from_buffers(
       _nodes_buf, _edges_buf, _edge_weights_buf, neighborhood_sorted);
@@ -554,7 +556,7 @@ ExperimentalCoarsener<TypeTraits>::buildCliqueRep() {
   const NodeID n = num_nodes;
   _nodes_buf.resize(n + 1);
   _nodes_buf2.resize(n + 1);
-  
+
   _nodes_buf[0] = 0;
   tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
     NodeID u = _current_vertices[id];
@@ -573,8 +575,9 @@ ExperimentalCoarsener<TypeTraits>::buildCliqueRep() {
   _edges_buf2.resize(m);
   _edge_weights_buf.resize(m);
   _edge_weights_buf2.resize(m);
- 
-  const EdgeWeight max_edges_in_expansion = countEdgesInEexpansion(hg.maxEdgeSize());
+
+  const EdgeWeight max_edges_in_expansion =
+      countEdgesInEexpansion(hg.maxEdgeSize());
   tbb::parallel_for<HypernodeID>(UL(0), num_nodes, [&](const HyperedgeID hn) {
     // build neighborhood
     const NodeID u = _current_vertices[hn];
@@ -592,8 +595,8 @@ ExperimentalCoarsener<TypeTraits>::buildCliqueRep() {
     ASSERT(pos == _nodes_buf[u + 1], pos << " " << _nodes_buf[u + 1]);
 
     _nodes_buf2[u + 1] = merge_multiedges_in_neighborhood(
-        _nodes_buf[u], _nodes_buf[u + 1], _edges_buf, _edge_weights_buf, _edges_buf2,
-        _edge_weights_buf2);
+        _nodes_buf[u], _nodes_buf[u + 1], _edges_buf, _edge_weights_buf,
+        _edges_buf2, _edge_weights_buf2);
   });
   _nodes_buf2[0] = 0;
 
@@ -606,8 +609,8 @@ ExperimentalCoarsener<TypeTraits>::buildCliqueRep() {
   swap(_nodes_buf, _nodes_buf2);
 
   // defragment agg. neighborhoods with respect to nodes_agg
-  defragment_neighborhoods(_nodes_buf2, _edges_buf2, _edge_weights_buf2, _nodes_buf,
-                           _edges_buf, _edge_weights_buf);
+  defragment_neighborhoods(_nodes_buf2, _edges_buf2, _edge_weights_buf2,
+                           _nodes_buf, _edges_buf, _edge_weights_buf);
 
   constexpr bool neighborhood_sorted = true;
   return construct_graph_model_from_buffers(
@@ -685,9 +688,8 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
           ctx.coarsening, ctx.partition, graph.n(), graph.total_node_weight()));
   std::size_t desired_num_clusters = 0;
   if (_context.coarsening.rep != GraphRepresentation::bipartite) {
-    desired_num_clusters =
-      static_cast<std::size_t>(graph.n() /
-                               _context.coarsening.maximum_shrink_factor);
+    desired_num_clusters = static_cast<std::size_t>(
+        graph.n() / _context.coarsening.maximum_shrink_factor);
   }
   lp_clustering.set_desired_cluster_count(desired_num_clusters);
 
@@ -757,7 +759,6 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
       },
       std::plus<HypernodeID>());
   num_nodes = new_num_nodes;
-
 
   // END implementation of actual coarsening
 
