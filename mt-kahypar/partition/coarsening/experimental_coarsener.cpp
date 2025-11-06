@@ -687,10 +687,10 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
       kaminpar::shm::compute_max_cluster_weight<kaminpar::shm::NodeWeight>(
           ctx.coarsening, ctx.partition, graph.n(), graph.total_node_weight()));
   std::size_t desired_num_clusters = 0;
-  if (_context.coarsening.rep != GraphRepresentation::bipartite) {
+  /*if (_context.coarsening.rep != GraphRepresentation::bipartite) {
     desired_num_clusters = static_cast<std::size_t>(
         graph.n() / _context.coarsening.maximum_shrink_factor);
-  }
+  }*/
   lp_clustering.set_desired_cluster_count(desired_num_clusters);
 
   kaminpar::StaticArray<kaminpar::shm::NodeID> graph_clustering(graph.n());
