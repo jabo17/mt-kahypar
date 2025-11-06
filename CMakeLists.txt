@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.26)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
 # define the project version
-set(MT_KAHYPAR_VERSION "1.5")
+set(MT_KAHYPAR_VERSION "1.5.1")
 string(SUBSTRING "${MT_KAHYPAR_VERSION}" 0 1 MT_KAHYPAR_SO_VERSION)
 set(MTKAHYPAR_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
@@ -93,7 +93,9 @@ option(KAHYPAR_BUILD_DEBIAN_PACKAGE "Provide a target to build a debian package.
 # dependencies
 option(KAHYPAR_DOWNLOAD_BOOST "Download boost automatically and compile required libraries." OFF)
 option(KAHYPAR_DOWNLOAD_TBB "Download TBB automatically." OFF)
-option(KAHYPAR_DISABLE_HWLOC "Exclude components requiring hwloc. Might impact performance on NUMA platforms." OFF)
+option(KAHYPAR_DISABLE_HWLOC "Exclude components requiring hwloc. Might impact running time on NUMA platforms." OFF)
+option(KAHYPAR_DISABLE_GROWT "Remove the growt dependency. Might significantly impact running time of the Steiner tree metric." OFF)
+option(KAHYPAR_DISABLE_PARLAY "Remove the parlay dependency. Might impact running time of deterministic mode on some instances." OFF)
 
 # specific compile features/build properties
 option(KAHYPAR_USE_64_BIT_IDS "Enables 64-bit vertex and hyperedge IDs." OFF)
@@ -248,6 +250,85 @@ if(KAHYPAR_DISABLE_HWLOC)
   target_compile_definitions(MtKaHyPar-BuildFlags INTERFACE KAHYPAR_DISABLE_HWLOC)
 endif()
 
+if(KAHYPAR_DISABLE_PARLAY)
+  target_compile_definitions(MtKaHyPar-BuildFlags INTERFACE KAHYPAR_DISABLE_PARLAY)
+endif()
+
+
+#################################################################
+## Compile options and specialized builds                      ##
+#################################################################
+
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
+    set(KAHYPAR_X86 TRUE)
+else()
+    set(KAHYPAR_X86 FALSE)
+endif()
+
+# Add compile flags that enable warnings
+target_compile_options(MtKaHyPar-BuildFlags INTERFACE
+  -W -Wall -Wextra -Wunused -Wuninitialized -Wfatal-errors -Wcast-qual -Woverloaded-virtual
+  -Wredundant-decls -Wno-unused-function -Winit-self -pedantic -DPARANOID -Wno-unused-function)
+
+if(KAHYPAR_USE_GCOV)
+  # add coverage anaylsis compile and link flags
+  target_compile_options(MtKaHyPar-BuildFlags INTERFACE -fprofile-arcs -ftest-coverage -fprofile-update=atomic)
+  target_link_options(MtKaHyPar-BuildFlags INTERFACE -lgcov --coverage)
+endif(KAHYPAR_USE_GCOV)
+
+# lld is way faster than ld. If you have it, use it!
+find_program(LLD_BIN lld)
+if (LLD_BIN AND KAHYPAR_X86)
+  message(STATUS "Found and will use LLVM linker " ${LLD_BIN})
+  target_link_options(MtKaHyPar-BuildFlags INTERFACE -fuse-ld=lld)
+endif()
+
+target_compile_options(MtKaHyPar-BuildFlags INTERFACE $<$<CONFIG:RELEASE>:-O3>
+                                                      $<$<CONFIG:RELWITHDEBINFO>:-g3 -UNDEBUG>  # keep assertions activated
+                                                      $<$<CONFIG:DEBUG>:-g3 -fno-omit-frame-pointer>)
+target_link_options(MtKaHyPar-BuildFlags INTERFACE $<$<CONFIG:DEBUG>:-fno-omit-frame-pointer>)
+
+if(UNIX AND NOT WIN32)
+  target_compile_options(MtKaHyPar-BuildFlags INTERFACE $<$<CONFIG:DEBUG>:-fsanitize=undefined>)
+  target_link_options(MtKaHyPar-BuildFlags INTERFACE $<$<CONFIG:DEBUG>:-fsanitize=undefined>)
+endif()
+
+if (KAHYPAR_X86 AND KAHYPAR_ENABLE_EXTENDED_INSTRUCTIONS)
+  include(CheckCXXCompilerFlag)
+  include(CheckSSE4_2)
+  block()
+    set(CMAKE_REQUIRED_QUIET TRUE)
+    check_cxx_compiler_flag(-mcrc32 KAHYPAR_HAS_CRC32)
+  endblock()
+
+  target_compile_options(MtKaHyPar-BuildFlags INTERFACE -mcx16)
+  if(KAHYPAR_HAS_CRC32)
+    target_compile_options(MtKaHyPar-BuildFlags INTERFACE -mcrc32)
+  endif()
+  if(BUILTIN_POPCNT)
+    target_compile_options(MtKaHyPar-BuildFlags INTERFACE -msse4.2)
+  endif()
+endif()
+
+# check this after include(CheckSSE4_2) so BUILTIN_POPCNT is available
+if (NOT KAHYPAR_DISABLE_GROWT AND KAHYPAR_ENABLE_STEINER_TREE_METRIC
+    AND KAHYPAR_X86 AND KAHYPAR_ENABLE_EXTENDED_INSTRUCTIONS AND BUILTIN_POPCNT)
+    # growt requires SSE instructions
+    set(KAHYPAR_USE_GROWT TRUE)
+else()
+    set(KAHYPAR_USE_GROWT FALSE)
+endif()
+
+if(KAHYPAR_ENABLE_ARCH_COMPILE_OPTIMIZATIONS)
+  target_compile_options(MtKaHyPar-BuildFlags INTERFACE $<$<CONFIG:RELEASE>:-mtune=native -march=native>
+                                                        $<$<CONFIG:RELWITHDEBINFO>:-mtune=native -march=native>)
+endif()
+
+if(KAHYPAR_USE_ADDRESS_SANITIZER AND (NOT KAHYPAR_CI_BUILD))
+  target_compile_options(MtKaHyPar-BuildFlags INTERFACE $<$<CONFIG:DEBUG>:-fsanitize=address>)
+  target_link_options(MtKaHyPar-BuildFlags INTERFACE $<$<CONFIG:DEBUG>:-fsanitize=address>)
+endif()
+
 
 #################################################################
 ## Setup of dependencies                                       ##
@@ -255,8 +336,9 @@ endif()
 
 include(FetchContent)
 set(KAHYPAR_SHARED_RESOURCES_TAG 6d5c8e2444e4310667ec1925e995f26179d7ee88)
-set(KAHYPAR_WHFC_TAG             5ae2e3664391ca0db7fab2c82973e98c48937a08)
-set(KAHYPAR_GROWT_TAG            0c1148ebcdfd4c04803be79706533ad09cc81d37)
+set(KAHYPAR_WHFC_TAG             30b0eeb0e49577d06c3deb09a44b035d81c529d2)
+set(KAHYPAR_GROWT_TAG            04b2a1afe4c5844c960a5a8289bb608fe2c6c68c)
+set(KAHYPAR_PARLAY_TAG           e1f1dc0ccf930492a2723f7fbef8510d35bf57f5)
 set(KAHYPAR_TBB_VERSION          v2022.0.0)
 set(KAHYPAR_GOOGLETEST_VERSION   v1.15.2)
 set(KAHYPAR_PYBIND11_VERSION     v2.13.6)
@@ -276,17 +358,31 @@ FetchContent_Populate(
   GIT_TAG        ${KAHYPAR_WHFC_TAG}
   SOURCE_DIR     external_tools/WHFC
 )
-FetchContent_Populate(
-  growt QUIET EXLUDE_FROM_ALL
-  GIT_REPOSITORY https://github.com/TooBiased/growt.git
-  GIT_TAG        ${KAHYPAR_GROWT_TAG}
-  SOURCE_DIR     external_tools/growt
-)
-
 target_include_directories(MtKaHyPar-Include INTERFACE
                            ${CMAKE_CURRENT_BINARY_DIR}/external_tools/kahypar-shared-resources
-                           ${CMAKE_CURRENT_BINARY_DIR}/external_tools/growt
-                           ${CMAKE_CURRENT_BINARY_DIR}/external_tools/WHFC)
+                           ${CMAKE_CURRENT_BINARY_DIR}/external_tools)
+
+if(KAHYPAR_USE_GROWT)
+  # Note: we use our own fork of growt since growt is no longer maintained and we need to fix some errors
+  FetchContent_Populate(
+    growt QUIET EXLUDE_FROM_ALL
+    GIT_REPOSITORY https://github.com/N-Maas/growt.git
+    GIT_TAG        ${KAHYPAR_GROWT_TAG}
+    SOURCE_DIR     external_tools/growt
+  )
+  target_compile_definitions(MtKaHyPar-BuildFlags INTERFACE KAHYPAR_USE_GROWT)
+endif()
+
+if(NOT KAHYPAR_DISABLE_PARLAY)
+  FetchContent_Populate(
+    parlay QUIET EXLUDE_FROM_ALL
+    GIT_REPOSITORY https://github.com/cmuparlay/parlaylib.git
+    GIT_TAG        ${KAHYPAR_PARLAY_TAG}
+    SOURCE_DIR     external_tools/parlay
+  )
+  target_include_directories(MtKaHyPar-Include INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/external_tools/parlay/include)
+  target_compile_options(MtKaHyPar-BuildFlags INTERFACE -DPARLAY_TBB)
+endif()
 
 
 if (KAHYPAR_ENABLE_TESTING)
@@ -363,6 +459,9 @@ if(KAHYPAR_DOWNLOAD_TBB)
     FetchContent_MakeAvailable(TBB)
   endblock()
 else()
+  if(KAHYPAR_STATIC_LINK_TBB)
+    message(WARNING "Static linking of TBB requires -DKAHYPAR_DOWNLOAD_TBB=On. Proceeding with dynamic linking.")
+  endif()
   # Find system TBB library
   find_package(TBB 2021.5 COMPONENTS tbb tbbmalloc)
   if(NOT TBB_FOUND)
@@ -378,6 +477,9 @@ target_link_libraries(MtKaHyPar-Include INTERFACE TBB::tbb TBB::tbbmalloc)
 
 # Find HWLOC Library
 if(NOT KAHYPAR_DISABLE_HWLOC)
+  if(KAHYPAR_STATIC_LINK_DEPENDENCIES)
+    message(WARNING "Static linking of hwloc is not supported. Consider using -DKAHYPAR_DISABLE_HWLOC=On to remove the dependency.")
+  endif()
   include(DetectHwloc)
   if(NOT TARGET HWLOC::hwloc)
     message(FATAL_ERROR "Hwloc library not found. Install hwloc on your system.")
@@ -396,6 +498,7 @@ target_include_directories(MtKaHyPar-BuildSources PUBLIC ${KaMinPar_PATH})
 
 
 #################################################################
+<<<<<<< HEAD
 ## Compile options and specialized builds                      ##
 #################################################################
 
@@ -467,6 +570,8 @@ endif()
 
 
 #################################################################
+=======
+>>>>>>> master
 ## Include the source code and targets via subdirectories      ##
 #################################################################
 

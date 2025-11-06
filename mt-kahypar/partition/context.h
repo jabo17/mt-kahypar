@@ -120,7 +120,11 @@ struct CoarseningParameters {
   double minimum_shrink_factor = std::numeric_limits<double>::max();
   double maximum_shrink_factor = std::numeric_limits<double>::max();
   size_t vertex_degree_sampling_threshold = std::numeric_limits<size_t>::max();
+
+  // parameters for deterministic coarsening
   size_t num_sub_rounds_deterministic = 16;
+  bool det_resolve_swaps = true;
+
   size_t lp_iterations = 5;
   bool lp_sort = true;
   GraphRepresentation rep = GraphRepresentation::UNDEFINED;
@@ -208,7 +212,6 @@ struct FlowParameters {
   HypernodeID max_num_pins = std::numeric_limits<HypernodeID>::max();
   bool find_most_balanced_cut = false;
   bool determine_distance_from_cut = false;
-  double parallel_searches_multiplier = 1.0;
   size_t num_parallel_searches = 0;
   size_t max_bfs_distance = 0;
   double min_relative_improvement_per_round = 0.0;
@@ -233,7 +236,6 @@ struct RebalancingParameters {
   double det_heavy_vertex_exclusion_factor = 1.5;
   double det_relative_deadzone_size = 1.0;
   size_t det_max_rounds = std::numeric_limits<size_t>::max();
-  size_t det_moves_sequential = 0;
 };
 
 std::ostream& operator<<(std::ostream& out, const RebalancingParameters& params);

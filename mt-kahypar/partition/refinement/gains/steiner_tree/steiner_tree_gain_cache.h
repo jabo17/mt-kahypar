@@ -40,6 +40,7 @@
 #include "mt-kahypar/datastructures/static_bitset.h"
 #include "mt-kahypar/datastructures/connectivity_set.h"
 #include "mt-kahypar/datastructures/delta_connectivity_set.h"
+#include "mt-kahypar/datastructures/synchronized_edge_update.h"
 #include "mt-kahypar/parallel/atomic_wrapper.h"
 #include "mt-kahypar/macros.h"
 #include "mt-kahypar/utils/range.h"
@@ -122,7 +123,7 @@ class SteinerTreeGainCache {
     return _is_initialized;
   }
 
-  void reset(const bool run_parallel = true) {
+  void reset(HypernodeID /*num_nodes*/, PartitionID /*k*/, const bool run_parallel = true) {
     unused(run_parallel);
     _is_initialized = false;
   }
@@ -139,6 +140,11 @@ class SteinerTreeGainCache {
   template<typename PartitionedHypergraph>
   void initializeGainCacheEntryForNode(const PartitionedHypergraph& partitioned_hg,
                                        const HypernodeID hn);
+
+  // ! Returns whether the block is adjacent to the node
+  bool blockIsAdjacent(const HypernodeID hn, const PartitionID block) const {
+    return _adjacent_blocks.contains(hn, block);
+  }
 
   // ! Returns an iterator over the adjacent blocks of a node
   AdjacentBlocksIterator adjacentBlocks(const HypernodeID hn) const {
@@ -458,6 +464,11 @@ class DeltaSteinerTreeGainCache {
   }
 
   // ####################### Gain Computation #######################
+
+  // ! Returns whether the block is adjacent to the node
+  bool blockIsAdjacent(const HypernodeID hn, const PartitionID block) const {
+    return _adjacent_blocks_delta.contains(hn, block);
+  }
 
   // ! Returns an iterator over the adjacent blocks of a node
   IteratorRange<AdjacentBlocksIterator> adjacentBlocks(const HypernodeID hn) const {

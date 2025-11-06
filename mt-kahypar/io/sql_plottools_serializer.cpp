@@ -91,6 +91,7 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
         << " coarsening_max_allowed_node_weight=" << context.coarsening.max_allowed_node_weight
         << " coarsening_vertex_degree_sampling_threshold=" << context.coarsening.vertex_degree_sampling_threshold
         << " coarsening_num_sub_rounds_deterministic=" << context.coarsening.num_sub_rounds_deterministic
+        << " coarsening_det_resolve_swaps=" << std::boolalpha << context.coarsening.det_resolve_swaps
         << " coarsening_contraction_limit=" << context.coarsening.contraction_limit
         << " rating_function=" << context.coarsening.rating.rating_function
         << " rating_heavy_node_penalty_policy=" << context.coarsening.rating.heavy_node_penalty_policy
@@ -156,7 +157,6 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
         << " global_refine_lp_algorithm=" << context.refinement.global.lp_algorithm
         << " global_refine_lp_unconstrained=" << std::boolalpha << context.refinement.global.lp_unconstrained;
     oss << " flow_algorithm=" << context.refinement.flows.algorithm
-        << " flow_parallel_searches_multiplier=" << context.refinement.flows.parallel_searches_multiplier
         << " flow_num_parallel_searches=" << context.refinement.flows.num_parallel_searches
         << " flow_max_bfs_distance=" << context.refinement.flows.max_bfs_distance
         << " flow_min_relative_improvement_per_round=" << context.refinement.flows.min_relative_improvement_per_round

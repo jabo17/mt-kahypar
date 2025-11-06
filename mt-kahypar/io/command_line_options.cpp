@@ -140,7 +140,7 @@ namespace mt_kahypar {
             ("maxnet-ignore",
              po::value<HyperedgeID>(&context.partition.ignore_hyperedge_size_threshold)->value_name(
                      "<uint64_t>")->default_value(1000),
-             "Hyperedges larger than this threshold are ignored during partitioning.")
+             "Hyperedges larger than this threshold are partially ignored during partitioning.")
             ("show-detailed-timings",
              po::value<bool>(&context.partition.show_detailed_timings)->value_name("<bool>")->default_value(false),
              "If true, shows detailed subtimings of each multilevel phase at the end of the partitioning process.")
@@ -316,8 +316,8 @@ namespace mt_kahypar {
                      })->default_value("no_penalty"),
              "Penalty function to discourage heavy vertices:\n"
              #ifdef KAHYPAR_ENABLE_EXPERIMENTAL_FEATURES
+             "- additive\n"
              "- multiplicative\n"
-             "- edge_frequency_penalty\n"
              #endif
              "- no_penalty")
             ("c-rating-acceptance-criterion",
@@ -338,7 +338,10 @@ namespace mt_kahypar {
             ("c-num-sub-rounds",
              po::value<size_t>(&context.coarsening.num_sub_rounds_deterministic)->value_name(
                      "<size_t>")->default_value(16),
-             "Number of sub-rounds used for deterministic coarsening.");
+             "Number of sub-rounds used for deterministic coarsening.")
+            ("c-resolve-swaps",
+             po::value<bool>(&context.coarsening.det_resolve_swaps)->value_name("<bool>")->default_value(true),
+             "Whether to resolve node swaps in a postprocessing step for deterministic coarsening.");
     return options;
   }
 
@@ -630,12 +633,7 @@ namespace mt_kahypar {
             po::value<size_t>((!initial_partitioning ? &context.refinement.rebalancing.det_max_rounds :
                               &context.initial_partitioning.refinement.rebalancing.det_max_rounds))->value_name(
                     "<size_t>")->default_value(0),
-            "Deterministic rebalancer: maximum number of iterations per rebalancing call")
-            ((initial_partitioning ? "i-r-det-rebalancing-seq-find-moves": "r-det-rebalancing-seq-find-moves"),
-            po::value<size_t>((!initial_partitioning ? &context.refinement.rebalancing.det_moves_sequential :
-                              &context.initial_partitioning.refinement.rebalancing.det_moves_sequential))->value_name(
-                    "<size_t>")->default_value(0),
-            "If the number of moves for a part is larger, then execute in parallel");
+            "Deterministic rebalancer: maximum number of iterations per rebalancing call");
     return options;
   }
 
@@ -656,10 +654,6 @@ namespace mt_kahypar {
              "Flow Algorithms:\n"
              "- do_nothing\n"
              "- flow_cutter")
-            ((initial_partitioning ? "i-r-flow-parallel-search-multiplier" : "r-flow-parallel-search-multiplier"),
-             po::value<double>((initial_partitioning ? &context.initial_partitioning.refinement.flows.parallel_searches_multiplier :
-                      &context.refinement.flows.parallel_searches_multiplier))->value_name("<double>"),
-             "Active block scheduling starts min(num_threads, mult * k) parallel searches")
             ((initial_partitioning ? "i-r-flow-max-bfs-distance" : "r-flow-max-bfs-distance"),
              po::value<size_t>((initial_partitioning ? &context.initial_partitioning.refinement.flows.max_bfs_distance :
                       &context.refinement.flows.max_bfs_distance))->value_name("<size_t>"),

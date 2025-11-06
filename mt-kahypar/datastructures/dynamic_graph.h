@@ -117,11 +117,11 @@ class DynamicGraph {
       _valid = false;
     }
 
-    HyperedgeWeight weight() const {
+    HypernodeWeight weight() const {
       return _weight;
     }
 
-    void setWeight(HyperedgeWeight weight) {
+    void setWeight(HypernodeWeight weight) {
       ASSERT(!isDisabled());
       _weight = weight;
     }
@@ -567,7 +567,7 @@ class DynamicGraph {
   }
 
   // ! Weight of an edge
-  HypernodeWeight edgeWeight(const HyperedgeID e) const {
+  HyperedgeWeight edgeWeight(const HyperedgeID e) const {
     return edge(e).weight;
   }
 

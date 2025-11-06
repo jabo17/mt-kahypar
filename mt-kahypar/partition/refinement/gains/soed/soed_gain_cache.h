@@ -34,6 +34,7 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/datastructures/array.h"
 #include "mt-kahypar/datastructures/sparse_map.h"
+#include "mt-kahypar/datastructures/synchronized_edge_update.h"
 #include "mt-kahypar/parallel/atomic_wrapper.h"
 #include "mt-kahypar/macros.h"
 #include "mt-kahypar/utils/range.h"
@@ -100,7 +101,7 @@ class SoedGainCache {
     return _is_initialized;
   }
 
-  void reset(const bool run_parallel = true) {
+  void reset(HypernodeID /*num_nodes*/, PartitionID /*k*/, const bool run_parallel = true) {
     unused(run_parallel);
     _is_initialized = false;
   }
@@ -118,6 +119,11 @@ class SoedGainCache {
   void initializeGainCacheEntryForNode(const PartitionedHypergraph&,
                                        const HypernodeID&) {
     // Do nothing
+  }
+
+  // ! Returns whether the block is adjacent to the node
+  bool blockIsAdjacent(const HypernodeID, const PartitionID) const {
+    return true;
   }
 
   IteratorRange<AdjacentBlocksIterator> adjacentBlocks(const HypernodeID) const {
@@ -373,6 +379,11 @@ class DeltaSoedGainCache {
   }
 
   // ####################### Gain Computation #######################
+
+  // ! Returns whether the block is adjacent to the node
+  bool blockIsAdjacent(const HypernodeID hn, const PartitionID block) const {
+    return _gain_cache.blockIsAdjacent(hn, block);
+  }
 
   // ! Returns an iterator over the adjacent blocks of a node
   IteratorRange<AdjacentBlocksIterator> adjacentBlocks(const HypernodeID hn) const {

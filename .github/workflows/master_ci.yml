@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libboost-program-options-dev libhwloc-dev lcov gcovr ${{ matrix.compiler.install_cmd }}
+          sudo apt-get update && sudo apt-get install libtbb-dev libboost-program-options-dev libhwloc-dev lcov gcovr ${{ matrix.compiler.install_cmd }}
 
       - name: Install Mt-KaHyPar
         env:
@@ -38,7 +38,7 @@ jobs:
           mkdir build
           cd build
           cmake .. --preset=default -DKAHYPAR_CI_BUILD=ON
-          make -j2 MtKaHyPar
+          make -j4 MtKaHyPar
 
   mt_kahypar_static_build:
     name: Statically Linked Build
@@ -52,7 +52,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libboost-program-options-dev libhwloc-dev libudev-dev
+          sudo apt-get update && sudo apt-get install libtbb-dev libboost-program-options-dev libhwloc-dev libudev-dev
 
       - name: Install Mt-KaHyPar
         run: |
@@ -60,7 +60,7 @@ jobs:
           mkdir build
           cd build
           cmake .. --preset=minimal -DKAHYPAR_CI_BUILD=ON -DBUILD_SHARED_LIBS=OFF -DKAHYPAR_STATIC_LINK_DEPENDENCIES=ON
-          make -j2 MtKaHyPar
+          make -j4 MtKaHyPar
           if [[ $(ldd mt-kahypar/application/MtKaHyPar | grep hwloc) ]]; then
             echo "Error: hwloc is dynamically linked"
             exit 1
@@ -82,7 +82,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
+          sudo apt-get update && sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
 
       - name: Install Mt-KaHyPar Test Suite
         run: |
@@ -90,7 +90,7 @@ jobs:
           mkdir build
           cd build
           cmake .. --preset=dev -DCMAKE_BUILD_TYPE=DEBUG -DKAHYPAR_CI_BUILD=ON -DKAHYPAR_USE_GCOV=ON
-          make -j2 mtkahypar_tests
+          make -j4 mtkahypar_tests
 
       - name: Run Mt-KaHyPar Tests
         run: |
@@ -119,7 +119,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
+          sudo apt-get update && sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
 
       - name: Install Mt-KaHyPar Integration Tests
         run: |
@@ -127,10 +127,10 @@ jobs:
           mkdir build
           cd build
           cmake .. --preset=python -DKAHYPAR_CI_BUILD=ON
-          make -j2 MtKaHyPar
-          make -j2 VerifyPartition
-          make -j2 GridGraphGenerator
-          make -j2 FixedVertexFileGenerator
+          make -j4 MtKaHyPar
+          make -j4 VerifyPartition
+          make -j4 GridGraphGenerator
+          make -j4 FixedVertexFileGenerator
 
       - name: Run Mt-KaHyPar Integration Tests
         run: |
@@ -148,7 +148,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
+          sudo apt-get update && sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
 
       - name: Run Mt-KaHyPar C Library Interface Tests
         run: |
@@ -156,7 +156,7 @@ jobs:
           mkdir build
           cd build
           cmake .. --preset=dev -DKAHYPAR_CI_BUILD=ON
-          make -j2 mtkahypar_interface_test
+          make -j4 mtkahypar_interface_test
 
   mt_kahypar_python_interface_tests:
     name: Python Interface Tests
@@ -170,7 +170,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
+          sudo apt-get update && sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
 
       - name: Build Mt-KaHyPar Python Interface
         run: |
@@ -218,7 +218,7 @@ jobs:
           cd build
           export CMAKE_GENERATOR="MSYS Makefiles"
           /mingw64/bin/cmake .. --preset=dev -DKAHYPAR_CI_BUILD=ON -DKAHYPAR_ENABLE_HIGHEST_QUALITY_FEATURES=OFF -DKAHYPAR_ENABLE_LARGE_K_PARTITIONING_FEATURES=OFF
-          make -j2 mtkahypar_tests
+          make -j4 mtkahypar_tests
 
       - name: Run Mt-KaHyPar Tests
         shell: msys2 {0}
@@ -246,7 +246,7 @@ jobs:
           mkdir build
           cd build
           cmake .. --preset=dev -DKAHYPAR_CI_BUILD=ON
-          make -j2 mtkahypar_tests
+          make -j3 mtkahypar_tests
 
       - name: Run Mt-KaHyPar Tests
         run: |

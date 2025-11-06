@@ -24,7 +24,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libboost-program-options-dev libhwloc-dev lcov gcovr ${{ matrix.compiler.install_cmd }}
+          sudo apt-get update && sudo apt-get install libtbb-dev libboost-program-options-dev libhwloc-dev lcov gcovr ${{ matrix.compiler.install_cmd }}
 
       - name: Install Mt-KaHyPar
         env:
@@ -35,7 +35,7 @@ jobs:
           mkdir build
           cd build
           cmake .. --preset=minimal-dev -DKAHYPAR_CI_BUILD=ON
-          make -j2 MtKaHyPar
+          make -j4 MtKaHyPar
 
   mt_kahypar_test_suite:
     name: Test Suite
@@ -49,7 +49,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr g++-14 gcc-14
+          sudo apt-get update && sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr g++-14 gcc-14
 
       - name: Install Mt-KaHyPar Test Suite
         env:
@@ -60,7 +60,7 @@ jobs:
           mkdir build
           cd build
           cmake .. --preset=minimal-dev -DKAHYPAR_USE_GCOV=ON -DKAHYPAR_CI_BUILD=ON
-          make -j2 mtkahypar_tests
+          make -j4 mtkahypar_tests
 
       - name: Run Mt-KaHyPar Tests
         run: |
@@ -79,7 +79,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
+          sudo apt-get update && sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
 
       - name: Run Mt-KaHyPar C Library Interface Tests
         run: |
@@ -87,7 +87,7 @@ jobs:
           mkdir build
           cd build
           cmake .. --preset=dev -DKAHYPAR_CI_BUILD=ON
-          make -j2 mtkahypar_interface_test
+          make -j4 mtkahypar_interface_test
 
   mt_kahypar_python_interface_tests:
     name: Python Interface Tests
@@ -101,7 +101,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
+          sudo apt-get update && sudo apt-get install libtbb-dev libhwloc-dev libboost-program-options-dev lcov gcovr
 
       - name: Build Mt-KaHyPar Python Interface
         run: |

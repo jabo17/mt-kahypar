@@ -118,11 +118,11 @@ class DynamicHypergraph {
       _valid = false;
     }
 
-    HyperedgeWeight weight() const {
+    HypernodeWeight weight() const {
       return _weight;
     }
 
-    void setWeight(HyperedgeWeight weight) {
+    void setWeight(HypernodeWeight weight) {
       ASSERT(!isDisabled());
       _weight = weight;
     }
@@ -146,7 +146,7 @@ class DynamicHypergraph {
 
    private:
     // ! Hypernode weight
-    HyperedgeWeight _weight;
+    HypernodeWeight _weight;
     // ! Community id
     PartitionID _community_id;
     // ! Index of the uncontraction batch in which this hypernode is contained in
@@ -674,7 +674,7 @@ class DynamicHypergraph {
   // ####################### Hyperedge Information #######################
 
   // ! Weight of a hyperedge
-  HypernodeWeight edgeWeight(const HyperedgeID e) const {
+  HyperedgeWeight edgeWeight(const HyperedgeID e) const {
     ASSERT(!hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
     return hyperedge(e).weight();
   }

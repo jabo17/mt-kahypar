@@ -26,14 +26,16 @@
 
 #pragma once
 
-#include "multilevel_coarsener_base.h"
-#include "i_coarsener.h"
+#include "kahypar-resources/datastructure/fast_reset_flag_array.h"
 
 #include "include/mtkahypartypes.h"
 
+#include "mt-kahypar/partition/coarsening/i_coarsener.h"
+#include "mt-kahypar/partition/coarsening/multilevel_coarsener_base.h"
 #include "mt-kahypar/utils/reproducible_random.h"
 #include "mt-kahypar/datastructures/sparse_map.h"
 #include "mt-kahypar/datastructures/buffered_vector.h"
+#include "mt-kahypar/datastructures/fixed_vertex_support.h"
 #include "mt-kahypar/utils/utilities.h"
 #include "mt-kahypar/utils/progress_bar.h"
 #include "mt-kahypar/utils/cast.h"
@@ -63,37 +65,21 @@ class DeterministicMultilevelCoarsener :  public ICoarsener,
 
   using Hypergraph = typename TypeTraits::Hypergraph;
   using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+  using CacheEfficientRatingMap = ds::FixedSizeSparseMap<HypernodeID, double>;
+  using LargeRatingMap = ds::SparseMap<HypernodeID, double>;
 
 public:
   DeterministicMultilevelCoarsener(mt_kahypar_hypergraph_t hypergraph,
                                    const Context& context,
-                                   uncoarsening_data_t* uncoarseningData) :
-    Base(utils::cast<Hypergraph>(hypergraph),
-         context,
-         uncoarsening::to_reference<TypeTraits>(uncoarseningData)),
-    config(context),
-    initial_num_nodes(utils::cast<Hypergraph>(hypergraph).initialNumNodes()),
-    propositions(utils::cast<Hypergraph>(hypergraph).initialNumNodes()),
-    cluster_weight(utils::cast<Hypergraph>(hypergraph).initialNumNodes(), 0),
-    opportunistic_cluster_weight(utils::cast<Hypergraph>(hypergraph).initialNumNodes(), 0),
-    nodes_in_too_heavy_clusters(utils::cast<Hypergraph>(hypergraph).initialNumNodes()),
-    default_rating_maps(utils::cast<Hypergraph>(hypergraph).initialNumNodes()),
-    pass(0),
-    progress_bar(utils::cast<Hypergraph>(hypergraph).initialNumNodes(), 0, false)
-  {
-  }
+                                   uncoarsening_data_t* uncoarseningData);
 
   ~DeterministicMultilevelCoarsener() {
 
   }
 
 private:
-  struct Proposition {
-    HypernodeID node = kInvalidHypernode, cluster = kInvalidHypernode;
-    HypernodeWeight weight = 0;
-  };
-
   static constexpr bool debug = false;
+  static constexpr bool enable_heavy_assert = false;
 
   void initializeImpl() override {
     if ( _context.partition.verbose_output && _context.partition.enable_progress_bar ) {
@@ -120,9 +106,21 @@ private:
                     (hg.initialNumNodes() - hg.numRemovedHypernodes()) / _context.coarsening.maximum_shrink_factor) );
   }
 
-  void calculatePreferredTargetCluster(HypernodeID u, const vec<HypernodeID>& clusters);
+  template<bool has_fixed_vertices>
+  void clusterNodesInRange(vec<HypernodeID>& clusters,
+                           HypernodeID& num_nodes,
+                           size_t first,
+                           size_t last,
+                           ds::FixedVertexSupport<Hypergraph>& fixed_vertices);
 
-  size_t approveVerticesInTooHeavyClusters(vec<HypernodeID>& clusters);
+  template<bool has_fixed_vertices, typename RatingMap>
+  void calculatePreferredTargetCluster(HypernodeID u,
+                                       const vec<HypernodeID>& clusters,
+                                       RatingMap& tmp_ratings,
+                                       const ds::FixedVertexSupport<Hypergraph>& fixed_vertices);
+
+  template<bool has_fixed_vertices>
+  size_t approveNodes(vec<HypernodeID>& clusters, ds::FixedVertexSupport<Hypergraph>& fixed_vertices);
 
   HypernodeID currentNumberOfNodesImpl() const override {
     return Base::currentNumNodes();
@@ -140,6 +138,12 @@ private:
         &Base::currentPartitionedHypergraph()), PartitionedHypergraph::TYPE };
   }
 
+  void handleNodeSwaps(const size_t first, const size_t last, const Hypergraph& hg);
+
+  bool useLargeRatingMapForRatingOfHypernode(const Hypergraph& hypergraph, const HypernodeID u);
+
+  void initializeEdgeDeduplication();
+
   using Base = MultilevelCoarsenerBase<TypeTraits>;
   using Base::_hg;
   using Base::_context;
@@ -152,10 +156,14 @@ private:
   vec<HypernodeID> propositions;
   vec<HypernodeWeight> cluster_weight, opportunistic_cluster_weight;
   ds::BufferedVector<HypernodeID> nodes_in_too_heavy_clusters;
-  tbb::enumerable_thread_specific<ds::SparseMap<HypernodeID, double>> default_rating_maps;
+  tbb::enumerable_thread_specific<LargeRatingMap> default_rating_maps;
+  tbb::enumerable_thread_specific<CacheEfficientRatingMap> cache_efficient_rating_maps;
   tbb::enumerable_thread_specific<vec<HypernodeID>> ties;
   size_t pass;
   utils::ProgressBar progress_bar;
+  ds::BufferedVector<HypernodeID> cluster_weights_to_fix;
 
+  size_t bloom_filter_mask;
+  tbb::enumerable_thread_specific<kahypar::ds::FastResetFlagArray<>> bloom_filters;
 };
 }

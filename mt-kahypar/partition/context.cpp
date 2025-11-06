@@ -114,8 +114,13 @@ namespace mt_kahypar {
     str << "  Minimum Shrink Factor:              " << params.minimum_shrink_factor << std::endl;
     str << "  Maximum Shrink Factor:              " << params.maximum_shrink_factor << std::endl;
     str << "  Vertex Degree Sampling Threshold:   " << params.vertex_degree_sampling_threshold << std::endl;
-    str << "  Number of subrounds (deterministic):" << params.num_sub_rounds_deterministic << std::endl;
-    str << std::endl << params.rating;
+    if ( params.algorithm == CoarseningAlgorithm::deterministic_multilevel_coarsener ) {
+      str << "  Number of Subrounds:                " << params.num_sub_rounds_deterministic << std::endl;
+      str << "  Resolve Node Swaps:                 " << std::boolalpha << params.det_resolve_swaps << std::endl;
+    }
+    if ( params.algorithm == CoarseningAlgorithm::multilevel_coarsener || params.algorithm == CoarseningAlgorithm::nlevel_coarsener ) {
+      str << std::endl << params.rating;
+    }
     return str;
   }
 
@@ -197,7 +202,6 @@ namespace mt_kahypar {
       out << "    Maximum Number of Pins:           " << params.max_num_pins << std::endl;
       out << "    Find Most Balanced Cut:           " << std::boolalpha << params.find_most_balanced_cut << std::endl;
       out << "    Determine Distance From Cut:      " << std::boolalpha << params.determine_distance_from_cut << std::endl;
-      out << "    Parallel Searches Multiplier:     " << params.parallel_searches_multiplier << std::endl;
       out << "    Number of Parallel Searches:      " << params.num_parallel_searches << std::endl;
       out << "    Maximum BFS Distance:             " << params.max_bfs_distance << std::endl;
       out << "    Min Rel. Improvement Per Round:   " << params.min_relative_improvement_per_round << std::endl;
@@ -434,25 +438,64 @@ namespace mt_kahypar {
     shared_memory.static_balancing_work_packages = std::clamp(shared_memory.static_balancing_work_packages, UL(4), UL(256));
 
     if ( partition.deterministic ) {
-      coarsening.algorithm = CoarseningAlgorithm::deterministic_multilevel_coarsener;
-
-      // disable FM until we have a deterministic version
-      refinement.fm.algorithm = FMAlgorithm::do_nothing;
-      initial_partitioning.refinement.fm.algorithm = FMAlgorithm::do_nothing;
-
       // disable adaptive IP
-      initial_partitioning.use_adaptive_ip_runs = false;
+      if ( initial_partitioning.use_adaptive_ip_runs ) {
+        initial_partitioning.use_adaptive_ip_runs = false;
+        WARNING("Disabling adaptive initial partitioning runs since deterministic mode is active");
+      }
 
+      // disable FM since there is no deterministic version
+      if ( refinement.fm.algorithm != FMAlgorithm::do_nothing || initial_partitioning.refinement.fm.algorithm != FMAlgorithm::do_nothing ) {
+        refinement.fm.algorithm = FMAlgorithm::do_nothing;
+        initial_partitioning.refinement.fm.algorithm = FMAlgorithm::do_nothing;
+        WARNING("Disabling FM refinement since deterministic mode is active");
+      }
 
-      // switch silently
+      // switch to deterministic algorithms
+      bool switched = false;
+
+      auto coarsening_algo = coarsening.algorithm;
+      if ( coarsening_algo != CoarseningAlgorithm::do_nothing_coarsener && coarsening_algo != CoarseningAlgorithm::deterministic_multilevel_coarsener ) {
+        coarsening.algorithm = CoarseningAlgorithm::deterministic_multilevel_coarsener;
+        switched = true;
+      }
+
+      // refinement
       auto lp_algo = refinement.label_propagation.algorithm;
       if ( lp_algo != LabelPropagationAlgorithm::do_nothing && lp_algo != LabelPropagationAlgorithm::deterministic ) {
         refinement.label_propagation.algorithm = LabelPropagationAlgorithm::deterministic;
+        switched = true;
+      }
+      auto jet_algo = refinement.jet.algorithm;
+      if ( jet_algo != JetAlgorithm::do_nothing && jet_algo != JetAlgorithm::deterministic ) {
+        refinement.jet.algorithm = JetAlgorithm::deterministic;
+        switched = true;
+      }
+      auto rebalancing_algo = refinement.rebalancing.algorithm;
+      if ( rebalancing_algo != RebalancingAlgorithm::do_nothing && rebalancing_algo != RebalancingAlgorithm::deterministic ) {
+        refinement.rebalancing.algorithm = RebalancingAlgorithm::deterministic;
+        switched = true;
       }
 
+      // refinement during initial partitioning
       lp_algo = initial_partitioning.refinement.label_propagation.algorithm;
       if ( lp_algo != LabelPropagationAlgorithm::do_nothing && lp_algo != LabelPropagationAlgorithm::deterministic ) {
         initial_partitioning.refinement.label_propagation.algorithm = LabelPropagationAlgorithm::deterministic;
+        switched = true;
+      }
+      jet_algo = initial_partitioning.refinement.jet.algorithm;
+      if ( jet_algo != JetAlgorithm::do_nothing && jet_algo != JetAlgorithm::deterministic ) {
+        initial_partitioning.refinement.jet.algorithm = JetAlgorithm::deterministic;
+        switched = true;
+      }
+      rebalancing_algo = initial_partitioning.refinement.rebalancing.algorithm;
+      if ( rebalancing_algo != RebalancingAlgorithm::do_nothing && rebalancing_algo != RebalancingAlgorithm::deterministic ) {
+        initial_partitioning.refinement.rebalancing.algorithm = RebalancingAlgorithm::deterministic;
+        switched = true;
+      }
+
+      if (switched) {
+        WARNING("Switching to deterministic algorithm variants since deterministic mode is active");
       }
     }
 
@@ -471,13 +514,12 @@ namespace mt_kahypar {
 
   void Context::setupThreadsPerFlowSearch() {
     if ( refinement.flows.algorithm == FlowAlgorithm::flow_cutter ) {
-      // = min(t, min(tau * k, k * (k - 1) / 2))
+      // = min{t, k, k * (k - 1) / 2}
       // t = number of threads
       // k * (k - 1) / 2 = maximum number of edges in the quotient graph
-      refinement.flows.num_parallel_searches = partition.k == 2 ? 1 :
-        std::min(shared_memory.num_threads, std::min(std::max(UL(1), static_cast<size_t>(
-          refinement.flows.parallel_searches_multiplier * partition.k)),
-            static_cast<size_t>((partition.k * (partition.k - 1)) / 2) ));
+      refinement.flows.num_parallel_searches = std::min(shared_memory.num_threads,
+        std::min(static_cast<size_t>(partition.k),
+          static_cast<size_t>((partition.k * (partition.k - 1)) / 2) ));
     }
   }
 

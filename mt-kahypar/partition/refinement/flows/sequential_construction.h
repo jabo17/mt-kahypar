@@ -28,8 +28,8 @@
 
 #include <tbb/concurrent_vector.h>
 
-#include "algorithm/hyperflowcutter.h"
-#include "algorithm/sequential_push_relabel.h"
+#include "WHFC/algorithm/hyperflowcutter.h"
+#include "WHFC/algorithm/sequential_push_relabel.h"
 
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/sparse_map.h"
@@ -133,12 +133,12 @@ class SequentialConstruction {
                                       vec<HypernodeID>& whfc_to_node);
 
   // ! Only for testing
-  FlowProblem constructFlowHypergraph(const PartitionedHypergraph& phg,
-                                      const Subhypergraph& sub_hg,
-                                      const PartitionID block_0,
-                                      const PartitionID block_1,
-                                      vec<HypernodeID>& whfc_to_node,
-                                      const bool default_construction);
+  FlowProblem constructFlowHypergraphExplicit(const PartitionedHypergraph& phg,
+                                              const Subhypergraph& sub_hg,
+                                              const PartitionID block_0,
+                                              const PartitionID block_1,
+                                              vec<HypernodeID>& whfc_to_node,
+                                              const bool default_construction);
 
  private:
   FlowProblem constructDefault(const PartitionedHypergraph& phg,

@@ -37,7 +37,9 @@
 #include "kahypar-resources/meta/mandatory.h"
 
 #include "mt-kahypar/datastructures/hypergraph_common.h"
+#include "mt-kahypar/datastructures/bitset.h"
 #include "mt-kahypar/datastructures/connectivity_set.h"
+#include "mt-kahypar/datastructures/synchronized_edge_update.h"
 #include "mt-kahypar/datastructures/thread_safe_fast_reset_flag_array.h"
 #include "mt-kahypar/parallel/atomic_wrapper.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
@@ -430,7 +432,7 @@ private:
   }
 
   // ! Weight of a hyperedge
-  HypernodeWeight edgeWeight(const HyperedgeID e) const {
+  HyperedgeWeight edgeWeight(const HyperedgeID e) const {
     return _hg->edgeWeight(e);
   }
 
@@ -723,6 +725,20 @@ private:
     return deep_copy;
   }
 
+  // ! Creates a SynchronizedEdgeUpdate for the hyperedge. The caller must ensure that there is no concurrent access
+  // ! which modifies connectivity set of the hyperedge.
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
+  SynchronizedEdgeUpdate createEdgeUpdate(const HyperedgeID he) {
+    SynchronizedEdgeUpdate sync_update;
+    ASSERT(uniqueEdgeID(he) < _edge_locks.size());
+    sync_update.he = he;
+    sync_update.edge_weight = edgeWeight(he);
+    sync_update.edge_size = edgeSize(he);
+    sync_update.target_graph = _target_graph;
+    sync_update.edge_locks = &_edge_locks;
+    return sync_update;
+  }
+
   // ! Initializes the partition of the hypergraph, if block ids are assigned with
   // ! setOnlyNodePart(...). In that case, block weights must be initialized explicitly here.
   void initializePartition() {
@@ -910,10 +926,7 @@ private:
         if (partID(source) == block && partID(target) == block && source < target) {
           ASSERT(he_mapping[edge] < num_edges);
           edge_weight[he_mapping[edge]] = edgeWeight(edge);
-          for (const HypernodeID& pin : pins(edge)) {
-            unused(pin);
-            edge_vector[he_mapping[edge]] = {node_mapping[source], node_mapping[target]};
-          }
+          edge_vector[he_mapping[edge]] = {node_mapping[source], node_mapping[target]};
         }
       });
     }, [&] {

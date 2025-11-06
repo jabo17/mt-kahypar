@@ -47,20 +47,20 @@ using ::testing::Test;
 namespace mt_kahypar {
 
 namespace {
-using TypeTraits = StaticHypergraphTypeTraits;
-using Hypergraph = typename TypeTraits::Hypergraph;
-using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
-using GainCache = typename GraphAndGainTypes<TypeTraits, Km1GainTypes>::GainCache;
+  using TypeTraits = StaticHypergraphTypeTraits;
+  using Hypergraph = typename TypeTraits::Hypergraph;
+  using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+  using GainCache = typename GraphAndGainTypes<TypeTraits, Km1GainTypes>::GainCache;
 }
 class DeterminismTest : public Test {
 
 public:
   DeterminismTest() :
-    hypergraph(),
-    partitioned_hypergraph(),
-    context(),
-    metrics(),
-    gain_cache() {
+          hypergraph(),
+          partitioned_hypergraph(),
+          context(),
+          metrics(),
+          gain_cache() {
     context.partition.graph_filename = "../tests/instances/powersim.mtx.hgr";
     context.partition.mode = Mode::direct;
     context.partition.preset_type = PresetType::deterministic;
@@ -86,6 +86,7 @@ public:
     context.preprocessing.community_detection.min_vertex_move_fraction = 0.01;
 
     // coarsening
+    context.coarsening.det_resolve_swaps = true;
     context.coarsening.num_sub_rounds_deterministic = 3;
     context.coarsening.contraction_limit = 320;
     context.coarsening.max_allowed_node_weight = 30;
@@ -109,7 +110,7 @@ public:
     hypergraph = io::readInputFile<Hypergraph>(
       context.partition.graph_filename, FileFormat::hMetis, true);
     partitioned_hypergraph = PartitionedHypergraph(
-      context.partition.k, hypergraph, parallel_tag_t());
+            context.partition.k, hypergraph, parallel_tag_t());
     context.setupPartWeights(hypergraph.totalWeight());
   }
 
@@ -173,7 +174,7 @@ public:
       for (HypernodeID u : hypergraph.nodes()) {
         partitioned_hypergraph.setNodePart(u, initial_partition[u]);
       }
-      gain_cache.reset();
+      gain_cache.reset(partitioned_hypergraph.initialNumNodes(), partitioned_hypergraph.k());
       gain_cache.initializeGainCache(partitioned_hypergraph);
       mt_kahypar_partitioned_hypergraph_t phg = utils::partitioned_hg_cast(partitioned_hypergraph);
       auto rebalancer = std::make_unique<DeterministicRebalancer<GraphAndGainTypes<TypeTraits, Km1GainTypes>>>(hypergraph.initialNumNodes(), context, gain_cache);
@@ -212,7 +213,7 @@ TEST_F(DeterminismTest, Preprocessing) {
 
   LouvainEdgeWeight edge_weight_type;
   if (static_cast<double>(hypergraph.initialNumEdges()) /
-    static_cast<double>(hypergraph.initialNumNodes()) < 0.75) {
+      static_cast<double>(hypergraph.initialNumNodes()) < 0.75) {
     edge_weight_type = LouvainEdgeWeight::degree;
   } else {
     edge_weight_type = LouvainEdgeWeight::uniform;
@@ -284,7 +285,7 @@ TEST_F(DeterminismTest, RefinementWithActiveNodeSet) {
 TEST_F(DeterminismTest, RefinementK2) {
   context.partition.k = 2;
   partitioned_hypergraph = PartitionedHypergraph(
-    context.partition.k, hypergraph, parallel_tag_t());
+          context.partition.k, hypergraph, parallel_tag_t());
   context.setupPartWeights(hypergraph.totalWeight());
   performRepeatedRefinement();
 }
@@ -297,7 +298,7 @@ TEST_F(DeterminismTest, RefinementOnCoarseHypergraph) {
   coarsener.coarsen();
   hypergraph = utils::cast<Hypergraph>(coarsener.coarsestHypergraph()).copy();
   partitioned_hypergraph = PartitionedHypergraph(
-    context.partition.k, hypergraph, parallel_tag_t());
+          context.partition.k, hypergraph, parallel_tag_t());
   performRepeatedRefinement();
 }
 

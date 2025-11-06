@@ -32,6 +32,7 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/datastructures/array.h"
 #include "mt-kahypar/datastructures/sparse_map.h"
+#include "mt-kahypar/datastructures/synchronized_edge_update.h"
 #include "mt-kahypar/parallel/atomic_wrapper.h"
 #include "mt-kahypar/macros.h"
 #include "mt-kahypar/utils/range.h"
@@ -90,9 +91,10 @@ class GraphCutGainCache {
     return _is_initialized;
   }
 
-  void reset(const bool run_parallel = true) {
+  void reset(HypernodeID num_nodes, PartitionID k, bool run_parallel = true) {
     if ( _is_initialized ) {
-      _gain_cache.assign(_gain_cache.size(),  CAtomic<HyperedgeWeight>(0), run_parallel);
+      ASSERT(num_nodes * k <= _gain_cache.size());
+      _gain_cache.assign(num_nodes * k, CAtomic<HyperedgeWeight>(0), run_parallel);
     }
     _is_initialized = false;
   }
@@ -110,6 +112,11 @@ class GraphCutGainCache {
   void initializeGainCacheEntryForNode(const PartitionedGraph&,
                                        const HypernodeID&) {
     // Do nothing
+  }
+
+  // ! Returns whether the block is adjacent to the node
+  bool blockIsAdjacent(const HypernodeID, const PartitionID) const {
+    return true;
   }
 
   IteratorRange<AdjacentBlocksIterator> adjacentBlocks(const HypernodeID) const {
@@ -327,6 +334,11 @@ class DeltaGraphCutGainCache {
   }
 
   // ####################### Gain Computation #######################
+
+  // ! Returns whether the block is adjacent to the node
+  bool blockIsAdjacent(const HypernodeID hn, const PartitionID block) const {
+    return _gain_cache.blockIsAdjacent(hn, block);
+  }
 
   // ! Returns an iterator over the adjacent blocks of a node
   IteratorRange<AdjacentBlocksIterator> adjacentBlocks(const HypernodeID hn) const {
