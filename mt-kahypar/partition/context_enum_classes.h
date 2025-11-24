@@ -122,6 +122,7 @@ enum class GraphRepresentation : uint8_t {
   cycle_matching,
   cycle_random_matching,
   clique,
+  bipartite_clique,
   UNDEFINED
 };
 

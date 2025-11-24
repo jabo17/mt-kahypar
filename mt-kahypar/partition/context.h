@@ -129,6 +129,10 @@ struct CoarseningParameters {
   bool lp_sort = true;
   GraphRepresentation rep = GraphRepresentation::UNDEFINED;
   GraphRepEdgeWeight rep_edge_weight = GraphRepEdgeWeight::UNDEFINED;
+  bool lp_adjust_two_hop_threshold = false;
+  // switch to star expansion in "bipartite_clique" representation if edge_size > bipartite_clique_threshold
+  HypernodeID bipartite_clique_threshold = 0;
+  bool lp_two_levels = false;
 
   // Those will be determined dynamically
   HypernodeWeight max_allowed_node_weight = 0;

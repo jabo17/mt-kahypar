@@ -32,13 +32,150 @@
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/macros.h"
+#include "mt-kahypar/partition/context_enum_classes.h"
 
 namespace mt_kahypar {
 
 static constexpr bool debug = true;
 static constexpr bool enable_heavy_assert = true;
 
+namespace {
+
+template <GraphRepresentation Rep>
+struct ExpandedEdges {};
+
+template <>
+struct ExpandedEdges<GraphRepresentation::bipartite> {
+  using EdgeID = kaminpar::shm::EdgeID;
+  static EdgeID count(HyperedgeID he_size) {
+    return he_size;
+  }
+};
+
+template <>
+struct ExpandedEdges<GraphRepresentation::cycle_matching> {
+  using EdgeID = kaminpar::shm::EdgeID;
+  static EdgeID count(HyperedgeID he_size) {
+    return he_size + he_size / 2;
+  }
+};
+
+template <>
+struct ExpandedEdges<GraphRepresentation::cycle_random_matching> : public ExpandedEdges<GraphRepresentation::cycle_matching> {};
+
+template <>
+struct ExpandedEdges<GraphRepresentation::clique> {
+  using EdgeID = kaminpar::shm::EdgeID;
+  static EdgeID count(HyperedgeID he_size) {
+    return he_size <= 3 ? he_size : (he_size - 1) * he_size / 2;
+  }
+};
+
+template <>
+struct ExpandedEdges<GraphRepresentation::bipartite_clique> {
+  using EdgeID = kaminpar::shm::EdgeID;
+  static EdgeID max(HyperedgeID he_size, HyperedgeID threshold) {
+    return std::max(
+        ExpandedEdges<GraphRepresentation::bipartite>::count(he_size),
+        ExpandedEdges<GraphRepresentation::clique>::count(std::min(threshold, he_size))
+    );
+  };
+};
+
+
+
+} // namespace
+
 // some helpers for constructing the different graph models
+
+
+template <typename TypeTraits>
+kaminpar::StaticArray<kaminpar::shm::NodeID> ExperimentalCoarsener<TypeTraits>::compute_one_level_lp_clustering(
+  const kaminpar::shm::Graph &graph
+){
+  const Hypergraph &hg = Base::currentHypergraph();
+
+  kaminpar::StaticArray<kaminpar::shm::NodeID> graph_clustering(graph.n());
+
+  auto ctx = kaminpar::shm::create_default_context();
+  ctx.parallel.num_threads = _context.shared_memory.num_threads;
+  ctx.partition.setup(graph, _context.partition.k, _context.partition.epsilon);
+  ctx.coarsening.clustering.lp.num_iterations =
+      _context.coarsening.lp_iterations;
+  if (_context.coarsening.rep == GraphRepresentation::bipartite 
+    && _context.coarsening.lp_adjust_two_hop_threshold){
+    const auto num_nodes = hg.initialNumNodes();
+    const auto num_edges = hg.initialNumEdges();
+    const auto edges_per_nodes = static_cast<double>(num_edges)/static_cast<double>(num_nodes);
+    ctx.coarsening.clustering.lp.two_hop_threshold = (ctx.coarsening.clustering.lp.two_hop_threshold + edges_per_nodes) / (1.0 + edges_per_nodes);
+  }
+  kaminpar::Random::reseed(_context.partition.seed + _pass_nr);
+
+  // initialize and set config for LPClustering
+  kaminpar::shm::LPClustering cluster_algo(ctx.coarsening);
+  cluster_algo.set_max_cluster_weight(
+      kaminpar::shm::compute_max_cluster_weight<kaminpar::shm::NodeWeight>(
+          ctx.coarsening, ctx.partition, graph.n(), graph.total_node_weight()));
+  std::size_t desired_num_clusters = 0;
+  if (_context.coarsening.rep != GraphRepresentation::bipartite 
+    && _context.coarsening.rep != GraphRepresentation::bipartite_clique) {
+    desired_num_clusters = static_cast<std::size_t>(
+        graph.n() / _context.coarsening.maximum_shrink_factor);
+  }
+  cluster_algo.set_desired_cluster_count(desired_num_clusters);
+
+  cluster_algo.compute_clustering(graph_clustering, graph, false);
+
+  return graph_clustering;
+}
+
+template <typename TypeTraits>
+kaminpar::StaticArray<kaminpar::shm::NodeID> ExperimentalCoarsener<TypeTraits>::compute_two_level_lp_clustering(
+  const kaminpar::shm::Graph &graph
+){
+  const Hypergraph &hg = Base::currentHypergraph();
+
+  kaminpar::StaticArray<kaminpar::shm::NodeID> graph_clustering(graph.n());
+
+  auto ctx = kaminpar::shm::create_default_context();
+  ctx.parallel.num_threads = _context.shared_memory.num_threads;
+  ctx.partition.setup(graph, _context.partition.k, _context.partition.epsilon);
+  ctx.coarsening.clustering.lp.num_iterations =
+      _context.coarsening.lp_iterations;
+  if (_context.coarsening.rep == GraphRepresentation::bipartite 
+    && _context.coarsening.lp_adjust_two_hop_threshold){
+    const auto num_nodes = hg.initialNumNodes();
+    const auto num_edges = hg.initialNumEdges();
+    const auto edges_per_nodes = static_cast<double>(num_edges)/static_cast<double>(num_nodes);
+    ctx.coarsening.clustering.lp.two_hop_threshold = (ctx.coarsening.clustering.lp.two_hop_threshold + edges_per_nodes) / (1.0 + edges_per_nodes);
+  }
+  kaminpar::Random::reseed(_context.partition.seed + _pass_nr);
+
+  kaminpar::shm::BasicClusterCoarsener cluster_coarsener(ctx, ctx.partition);
+
+  // corsen twice
+  cluster_coarsener.initialize(&graph);
+  cluster_coarsener.coarsen();
+  DBG << "Coarsened to graph with " << cluster_coarsener.current().n() << " nodes.";
+  cluster_coarsener.coarsen();
+  DBG << "Coarsened to graph with " << cluster_coarsener.current().n() << " nodes.";
+
+  // set ideentity as initial partitioning on the coarsest level
+  const auto& coarsest_graph = cluster_coarsener.current();
+  kaminpar::StaticArray<kaminpar::shm::BlockID> coarse_partition(coarsest_graph.n());
+  std::iota(coarse_partition.begin(), coarse_partition.end(), 0);
+  auto p_graph = kaminpar::shm::PartitionedGraph(coarsest_graph, coarsest_graph.n(), std::move(coarse_partition));
+
+  // uncoarsen twice
+  auto p_graph2 = cluster_coarsener.uncoarsen(std::move(p_graph));
+  auto p_graph3 = cluster_coarsener.uncoarsen(std::move(p_graph2));
+  
+  kaminpar::StaticArray<kaminpar::shm::NodeID> clustering(graph.n());
+  tbb::parallel_for<kaminpar::shm::NodeID>(UL(0), graph.n(), [&](const kaminpar::shm::NodeID u) {
+    clustering[u] = static_cast<kaminpar::shm::NodeID>(p_graph3.raw_partition()[u]);
+  });
+  return clustering;
+}
 
 template <typename TypeTraits>
 std::unique_ptr<kaminpar::shm::CSRGraph>
@@ -72,9 +209,15 @@ ExperimentalCoarsener<TypeTraits>::construct_graph_model_from_buffers(
     edge_weights[e] = toEdgeWeight(edge_weights_buf[e]);
   });
 
-  tbb::parallel_for<NodeID>(UL(0), n, [&](const NodeID id) {
-    NodeID u = _current_vertices[id];
-    node_weights[u] = hg.nodeWeight(id);
+  tbb::parallel_invoke([&]{
+    tbb::parallel_for<NodeID>(UL(0), hg.initialNumNodes(), [&](const NodeID id) {
+      NodeID u = _current_vertices[id];
+      node_weights[u] = hg.nodeWeight(id);
+    });
+  }, [&] {
+    tbb::parallel_for<NodeID>(hg.initialNumNodes(), n, [&](const NodeID id) {
+      node_weights[id] = 0;
+    });
   });
 
   return std::make_unique<CSRGraph>(
@@ -273,7 +416,7 @@ ExperimentalCoarsener<TypeTraits>::buildCycleMatchingRep() {
       _nodes_buf.begin() + 1, _nodes_buf.end(), _nodes_buf.begin() + 1,
       [&](EdgeID x, EdgeID y) { return x + y; }, 0);
 
-  EdgeWeight max_edges_in_expansion = countEdgesInEexpansion(hg.maxEdgeSize());
+  const EdgeID max_edges_in_expansion = ExpandedEdges<GraphRepresentation::cycle_matching>::count(hg.maxEdgeSize());
 
   tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
     const NodeID u = _current_vertices[id];
@@ -287,7 +430,7 @@ ExperimentalCoarsener<TypeTraits>::buildCycleMatchingRep() {
           std::distance(pins.begin(), std::find(pins.begin(), pins.end(), id));
       ASSERT(rank < edge_size);
       const double weight = getExpandedEdgeWeight(
-          he, countEdgesInEexpansion(hg.edgeSize(he)), max_edges_in_expansion);
+          he, ExpandedEdges<GraphRepresentation::cycle_matching>::count(edge_size), max_edges_in_expansion);
 
       ASSERT(edge_size >= 2, "Empty or single nets encountered.");
       // cycle edges
@@ -384,7 +527,7 @@ ExperimentalCoarsener<TypeTraits>::buildCycleRandomMatchingRep() {
       _nodes_buf.begin() + 1, _nodes_buf.end(), _nodes_buf.begin() + 1,
       [&](EdgeID x, EdgeID y) { return x + y; }, 0);
 
-  EdgeWeight max_edges_in_expansion = countEdgesInEexpansion(hg.maxEdgeSize());
+  const EdgeID max_edges_in_expansion = ExpandedEdges<GraphRepresentation::cycle_random_matching>::count(hg.maxEdgeSize());
 
   DBG << V(kNoEdge);
   tbb::parallel_for<NodeID>(UL(0), num_edges, [&](const EdgeID he) {
@@ -399,7 +542,7 @@ ExperimentalCoarsener<TypeTraits>::buildCycleRandomMatchingRep() {
     };
 
     const double weight = getExpandedEdgeWeight(
-        he, countEdgesInEexpansion(hg.edgeSize(he)), max_edges_in_expansion);
+        he, ExpandedEdges<GraphRepresentation::cycle_random_matching>::count(hg.edgeSize(he)), max_edges_in_expansion);
 
     // based on D. Seemaier's implementation
     ASSERT(edge_size >= 2);
@@ -576,15 +719,14 @@ ExperimentalCoarsener<TypeTraits>::buildCliqueRep() {
   _edge_weights_buf.resize(m);
   _edge_weights_buf2.resize(m);
 
-  const EdgeWeight max_edges_in_expansion =
-      countEdgesInEexpansion(hg.maxEdgeSize());
+  const EdgeID max_edges_in_expansion = ExpandedEdges<GraphRepresentation::clique>::count(hg.maxEdgeSize());
   tbb::parallel_for<HypernodeID>(UL(0), num_nodes, [&](const HyperedgeID hn) {
     // build neighborhood
     const NodeID u = _current_vertices[hn];
     EdgeID pos = _nodes_buf[u];
     for (const HyperedgeID he : hg.incidentEdges(hn)) {
       const double weight = getExpandedEdgeWeight(
-          he, countEdgesInEexpansion(hg.edgeSize(he)), max_edges_in_expansion);
+          he, ExpandedEdges<GraphRepresentation::clique>::count(hg.edgeSize(he)), max_edges_in_expansion);
       for (const HypernodeID pin : hg.pins(he)) {
         if (pin != hn) {
           _edges_buf[pos] = _current_vertices[pin];
@@ -594,6 +736,140 @@ ExperimentalCoarsener<TypeTraits>::buildCliqueRep() {
     }
     ASSERT(pos == _nodes_buf[u + 1], pos << " " << _nodes_buf[u + 1]);
 
+    _nodes_buf2[u + 1] = merge_multiedges_in_neighborhood(
+        _nodes_buf[u], _nodes_buf[u + 1], _edges_buf, _edge_weights_buf,
+        _edges_buf2, _edge_weights_buf2);
+  });
+  _nodes_buf2[0] = 0;
+
+  // determine defragmented positions of merged neighborhood
+  parallel_prefix_sum(
+      _nodes_buf2.begin() + 1, _nodes_buf2.end(), _nodes_buf2.begin() + 1,
+      [&](EdgeID x, EdgeID y) { return x + y; }, 0);
+
+  using std::swap;
+  swap(_nodes_buf, _nodes_buf2);
+
+  // defragment agg. neighborhoods with respect to nodes_agg
+  defragment_neighborhoods(_nodes_buf2, _edges_buf2, _edge_weights_buf2,
+                           _nodes_buf, _edges_buf, _edge_weights_buf);
+
+  constexpr bool neighborhood_sorted = true;
+  return construct_graph_model_from_buffers(
+      _nodes_buf, _edges_buf, _edge_weights_buf, neighborhood_sorted);
+}
+
+
+template <typename TypeTraits>
+std::unique_ptr<kaminpar::shm::CSRGraph>
+ExperimentalCoarsener<TypeTraits>::buildBipartiteCliqueRep() {
+  using namespace kaminpar;
+  using namespace kaminpar::shm;
+
+  const HypernodeID edge_size_threshold = _context.coarsening.bipartite_clique_threshold;
+  const Hypergraph &hg = Base::currentHypergraph();
+  const HypernodeID num_nodes = hg.initialNumNodes();
+  const HypernodeID num_edges = hg.initialNumEdges();
+
+  _star_id.resize(num_edges+1);
+  _star_id[0] = 0;
+  tbb::parallel_for<HyperedgeID>(
+      UL(0), num_edges, [&](const HyperedgeID he) {
+        _star_id[he+1] = hg.edgeSize(he) >= edge_size_threshold ? 1 : 0;
+      });
+  parallel_prefix_sum(
+      _star_id.begin()+1, _star_id.end(), _star_id.begin()+1,
+      [&](auto x, auto y) { return x + y; }, 0);
+  const HyperedgeID num_stars = _star_id[num_edges];
+  DBG << "Bipartite clique representation: " << num_stars << " stars out of " << num_edges << " hyperedges.";
+  
+  const NodeID n = num_nodes + num_stars;
+  _nodes_buf.resize(n + 1);
+  _nodes_buf2.resize(n + 1);
+
+  _nodes_buf[0] = 0;
+  // determine neighborhood sizes
+  tbb::parallel_invoke([&] {
+    tbb::parallel_for<NodeID>(UL(0), num_nodes, [&](const NodeID id) {
+      const auto u = _current_vertices[id];
+      auto & deg =_nodes_buf[u + 1];
+      deg = hg.nodeDegree(id);
+      for (const HyperedgeID he : hg.incidentEdges(id)) {
+        if (hg.edgeSize(he) < edge_size_threshold) {
+          // additional edges for clique expansion
+          ASSERT(hg.edgeSize(he) >= 2);
+          deg += hg.edgeSize(he) - 2;
+        }
+      }
+    });
+  },
+  [&]{
+    tbb::parallel_for<HyperedgeID>(UL(0), num_edges, [&](const HyperedgeID he) {
+      if (hg.edgeSize(he) >= edge_size_threshold) {
+        const HypernodeID star_id = num_nodes + _star_id[he];
+        _nodes_buf[star_id + 1] = hg.edgeSize(he);
+      }
+    });
+  });
+
+  parallel_prefix_sum(
+      _nodes_buf.begin() + 1, _nodes_buf.end(), _nodes_buf.begin() + 1,
+      [&](EdgeID x, EdgeID y) { return x + y; }, 0);
+
+  const EdgeID m = _nodes_buf[n];
+  _edges_buf.resize(m);
+  _edges_buf2.resize(m);
+  _edge_weights_buf.resize(m);
+  _edge_weights_buf2.resize(m);
+
+  const EdgeID max_edges_in_expansion = ExpandedEdges<GraphRepresentation::bipartite_clique>::max(hg.maxEdgeSize(), edge_size_threshold);
+  DBG << V(max_edges_in_expansion);
+  tbb::parallel_for<HypernodeID>(UL(0), num_nodes, [&](const HyperedgeID hn) {
+    // build neighborhood
+    const NodeID u = _current_vertices[hn];
+    EdgeID pos = _nodes_buf[u];
+    for (const HyperedgeID he : hg.incidentEdges(hn)) {
+      if(hg.edgeSize(he) >= edge_size_threshold) {
+        // star expansion
+        const double weight = getExpandedEdgeWeight(he, hg.edgeSize(he), max_edges_in_expansion);
+        _edges_buf[pos] = _star_id[he] + num_nodes;
+        _edge_weights_buf[pos++] = weight;
+      }else {
+        // clique expansion
+        const double weight = getExpandedEdgeWeight(he, ExpandedEdges<GraphRepresentation::clique>::count(hg.edgeSize(he)), max_edges_in_expansion);
+        for (const HypernodeID pin : hg.pins(he)) {
+          if (pin != hn) {
+            _edges_buf[pos] = _current_vertices[pin];
+            _edge_weights_buf[pos++] = weight;
+          }
+        }
+      }
+    }
+    ASSERT(pos == _nodes_buf[u + 1], pos << " " << _nodes_buf[u + 1]);
+    _nodes_buf2[u + 1] = merge_multiedges_in_neighborhood(
+        _nodes_buf[u], _nodes_buf[u + 1], _edges_buf, _edge_weights_buf,
+        _edges_buf2, _edge_weights_buf2);
+  });
+
+  // reverse star mapping
+  _reverse_star_id.resize(num_stars);
+  tbb::parallel_for<HyperedgeID>(UL(0), hg.initialNumEdges(), [&](const HyperedgeID he) {
+    if (hg.edgeSize(he) >= edge_size_threshold) {
+      _reverse_star_id[_star_id[he]] = he;
+    }
+  });
+
+  // build star neighborhoods
+  tbb::parallel_for<HyperedgeID>(UL(0), num_stars, [&](const HyperedgeID star_id) {
+    HyperedgeID he = _reverse_star_id[star_id];
+    ASSERT(hg.edgeSize(he) >= edge_size_threshold);
+    kaminpar::shm::NodeID u = num_nodes + star_id;
+    EdgeID pos = _nodes_buf[u];
+    const double weight = getExpandedEdgeWeight(he, hg.edgeSize(he), max_edges_in_expansion);
+    for (const HypernodeID pin : hg.pins(he)) {
+      _edges_buf[pos] = _current_vertices[pin];
+      _edge_weights_buf[pos++] = weight;
+    }
     _nodes_buf2[u + 1] = merge_multiedges_in_neighborhood(
         _nodes_buf[u], _nodes_buf[u + 1], _edges_buf, _edge_weights_buf,
         _edges_buf2, _edge_weights_buf2);
@@ -656,6 +932,8 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
       return buildCycleRandomMatchingRep();
     case GraphRepresentation::clique:
       return buildCliqueRep();
+    case GraphRepresentation::bipartite_clique:
+      return buildBipartiteCliqueRep();
     case GraphRepresentation::UNDEFINED:
       throw std::runtime_error("Undefined representation");
     }
@@ -674,32 +952,14 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
       << V(graph.csr_graph().max_degree());
 
   // configure LPClustering
-  auto ctx = kaminpar::shm::create_default_context();
-  ctx.parallel.num_threads = _context.shared_memory.num_threads;
-  ctx.partition.setup(graph, _context.partition.k, _context.partition.epsilon);
-  ctx.coarsening.clustering.lp.num_iterations =
-      _context.coarsening.lp_iterations;
-  kaminpar::Random::reseed(_context.partition.seed + _pass_nr);
-
-  // initialize and set config for LPClustering
-  kaminpar::shm::LPClustering lp_clustering(ctx.coarsening);
-  lp_clustering.set_max_cluster_weight(
-      kaminpar::shm::compute_max_cluster_weight<kaminpar::shm::NodeWeight>(
-          ctx.coarsening, ctx.partition, graph.n(), graph.total_node_weight()));
-  std::size_t desired_num_clusters = 0;
-  /*if (_context.coarsening.rep != GraphRepresentation::bipartite) {
-    desired_num_clusters = static_cast<std::size_t>(
-        graph.n() / _context.coarsening.maximum_shrink_factor);
-  }*/
-  lp_clustering.set_desired_cluster_count(desired_num_clusters);
-
-  kaminpar::StaticArray<kaminpar::shm::NodeID> graph_clustering(graph.n());
+  auto graph_clustering = [&]{
+    if(_context.coarsening.lp_two_levels) {
+      return compute_two_level_lp_clustering(graph);
+    }else {
+      return compute_one_level_lp_clustering(graph);
+    }
+  }();
   vec<std::atomic<kaminpar::shm::NodeID>> remap_clusters(graph.n());
-
-  DBG << "start to compute clustering";
-  lp_clustering.compute_clustering(graph_clustering, graph, false);
-  DBG << "computed clustering";
-
   // compute cluster for hypernodes with clustering for the expanded graph
   if (_context.coarsening.lp_sort) {
     auto perm = graph.csr_graph().take_raw_permutation();

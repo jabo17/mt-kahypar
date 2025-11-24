@@ -51,6 +51,7 @@
 #include <kaminpar-common/datastructures/static_array.h>
 #include <kaminpar-common/random.h>
 #include <kaminpar-shm/coarsening/clustering/lp_clusterer.h>
+#include <kaminpar-shm/coarsening/basic_cluster_coarsener.h>
 #include <kaminpar-shm/coarsening/max_cluster_weights.h>
 #include <kaminpar-shm/graphutils/permutator.h>
 #include <kaminpar.h>
@@ -151,9 +152,8 @@ private:
   std::unique_ptr<kaminpar::shm::CSRGraph> buildCycleRandomMatchingRep();
 
   std::unique_ptr<kaminpar::shm::CSRGraph> buildCliqueRep();
-
-  [[nodiscard]] kaminpar::shm::EdgeID
-  countEdgesInEexpansion(HyperedgeID he_size) const;
+  
+  std::unique_ptr<kaminpar::shm::CSRGraph> buildBipartiteCliqueRep();
 
   [[nodiscard]] double getExpandedEdgeWeight(
       const HyperedgeID he, const kaminpar::shm::EdgeID num_edges_in_expansion,
@@ -163,6 +163,9 @@ private:
   toEdgeWeight(const double edge_weight) const {
     return static_cast<kaminpar::shm::EdgeWeight>(edge_weight);
   }
+
+  kaminpar::StaticArray<kaminpar::shm::NodeID> compute_one_level_lp_clustering(const kaminpar::shm::Graph &graph);
+  kaminpar::StaticArray<kaminpar::shm::NodeID> compute_two_level_lp_clustering(const kaminpar::shm::Graph &graph);
 
   std::unique_ptr<kaminpar::shm::CSRGraph> construct_graph_model_from_buffers(
     const parallel::scalable_vector<kaminpar::shm::EdgeID> &nodes,
@@ -206,6 +209,8 @@ private:
   parallel::scalable_vector<kaminpar::shm::EdgeID> _nodes_buf2;
   parallel::scalable_vector<kaminpar::shm::NodeID> _edges_buf;
   parallel::scalable_vector<kaminpar::shm::NodeID> _edges_buf2;
+  parallel::scalable_vector<kaminpar::shm::EdgeID> _star_id;
+  parallel::scalable_vector<HyperedgeID> _reverse_star_id;
   parallel::scalable_vector<double> _edge_weights_buf;
   parallel::scalable_vector<double> _edge_weights_buf2;
 };
@@ -231,22 +236,4 @@ inline double ExperimentalCoarsener<TypeTraits>::getExpandedEdgeWeight(
   }
 }
 
-template <typename TypeTraits>
-inline kaminpar::shm::EdgeID
-ExperimentalCoarsener<TypeTraits>::countEdgesInEexpansion(
-    HyperedgeID he_size) const {
-  const GraphRepresentation rep = _context.coarsening.rep;
-  ASSERT(he_size >= 2);
-  if (he_size <= 3) {
-    return 3;
-  } else if (rep == GraphRepresentation::bipartite) {
-    return he_size;
-  } else if (rep == GraphRepresentation::clique) {
-    return (he_size - 1) * he_size / 2;
-  } else {
-    ASSERT(rep == GraphRepresentation::cycle_matching ||
-           rep == GraphRepresentation::cycle_random_matching);
-    return he_size + (he_size / 2);
-  }
-}
 } // namespace mt_kahypar

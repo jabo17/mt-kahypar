@@ -286,6 +286,7 @@ namespace mt_kahypar {
              " - cycle_matching"
              " - cycle_random_matching"
              " - clique"
+             " - bipartite_clique"
              )
             ("c-graph-rep-edge-weight",
              po::value<std::string>()->value_name("<string>")->notifier(
@@ -297,6 +298,15 @@ namespace mt_kahypar {
              " - hyperedge_weight"
              " - normalized_hyperedge_weight"
              )
+            ("c-lp-adjust-two-hop-threshold",
+             po::value<bool>(&context.coarsening.lp_adjust_two_hop_threshold)->value_name("<bool>")->default_value(false),
+             "Adjust two_hop_threshold in LP of KaMinPar.")
+            ("c-bipartite-clique-threshold",
+             po::value<HypernodeID>(&context.coarsening.bipartite_clique_threshold)->value_name("<int>")->default_value(0),
+             "Switch to star expansion in 'bipartite_clique' representation if edge_size > bipartite_clique_threshold")
+            ("c-lp-two-levels",
+             po::value<bool>(&context.coarsening.lp_two_levels)->value_name("<bool>")->default_value(false),
+             "Use two-level graph LP clustering.")
             ("c-rating-score",
              po::value<std::string>()->value_name("<string>")->notifier(
                      [&](const std::string& rating_score) {

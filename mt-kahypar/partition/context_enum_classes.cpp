@@ -181,6 +181,8 @@ namespace mt_kahypar {
           return os << "cycle_random_matching";
         case GraphRepresentation::clique:
           return os << "clique";
+        case GraphRepresentation::bipartite_clique:
+          return os << "bipartite_clique";
         case GraphRepresentation::UNDEFINED:
           return os << "UNDEFINED";
           // omit default case to trigger compiler warning for missing cases
@@ -424,6 +426,8 @@ namespace mt_kahypar {
       return GraphRepresentation::cycle_random_matching;
     } else if (rep == "clique") {
       return GraphRepresentation::clique;
+    } else if (rep == "bipartite_clique") {
+      return GraphRepresentation::bipartite_clique;
     }
 
     throw InvalidParameterException("Illegal option: " + rep);
