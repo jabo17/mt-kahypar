@@ -35,8 +35,8 @@
 
 namespace mt_kahypar {
 
-static constexpr bool debug = true;
-static constexpr bool enable_heavy_assert = true;
+static constexpr bool debug = false;
+static constexpr bool enable_heavy_assert = false;
 
 // some helpers for constructing the different graph models
 
@@ -386,7 +386,6 @@ ExperimentalCoarsener<TypeTraits>::buildCycleRandomMatchingRep() {
 
   EdgeWeight max_edges_in_expansion = countEdgesInEexpansion(hg.maxEdgeSize());
 
-  DBG << V(kNoEdge);
   tbb::parallel_for<NodeID>(UL(0), num_edges, [&](const EdgeID he) {
     auto pins = hg.pins(he);
     std::size_t edge_size = hg.edgeSize(he);
@@ -638,7 +637,7 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
     _current_vertices[u] = u;
   });
 
-  DisableRandomization();
+  //DisableRandomization();
   if (_enable_randomization) {
     ASSERT(num_nodes == _current_vertices.size());
     utils::Randomize::instance().parallelShuffleVector(
@@ -680,6 +679,7 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
   ctx.coarsening.clustering.lp.num_iterations =
       _context.coarsening.lp_iterations;
   kaminpar::Random::reseed(_context.partition.seed + _pass_nr);
+  kaminpar::Logger::set_quiet_mode(0);
 
   // initialize and set config for LPClustering
   kaminpar::shm::LPClustering lp_clustering(ctx.coarsening);
@@ -687,10 +687,12 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
       kaminpar::shm::compute_max_cluster_weight<kaminpar::shm::NodeWeight>(
           ctx.coarsening, ctx.partition, graph.n(), graph.total_node_weight()));
   std::size_t desired_num_clusters = 0;
-  /*if (_context.coarsening.rep != GraphRepresentation::bipartite) {
-    desired_num_clusters = static_cast<std::size_t>(
-        graph.n() / _context.coarsening.maximum_shrink_factor);
-  }*/
+  if (_context.coarsening.rep != GraphRepresentation::bipartite) {
+      desired_num_clusters = std::max(static_cast<std::size_t>(
+        graph.n() / _context.coarsening.maximum_shrink_factor),
+	static_cast<std::size_t>(_context.coarsening.contraction_limit));
+  }
+  DBG << V(desired_num_clusters);
   lp_clustering.set_desired_cluster_count(desired_num_clusters);
 
   kaminpar::StaticArray<kaminpar::shm::NodeID> graph_clustering(graph.n());
@@ -703,6 +705,28 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
   // compute cluster for hypernodes with clustering for the expanded graph
   if (_context.coarsening.lp_sort) {
     auto perm = graph.csr_graph().take_raw_permutation();
+
+    /*tbb::parallel_for(0u, graph.n(), [&](const kaminpar::shm::NodeID id) {
+  	remap_clusters[id] = 0;
+    });
+
+    tbb::parallel_for(0u, graph.n(), [&](const kaminpar::shm::NodeID id) {
+  	const kaminpar::shm::NodeID label_u = perm[graph_clustering[id]];
+  	remap_clusters[label_u] = 1;
+    });
+  
+    HypernodeID num_graph_clusters = tbb::parallel_reduce(
+        tbb::blocked_range<kaminpar::shm::NodeID>(0u, graph.n()), 0,
+        [&](const tbb::blocked_range<kaminpar::shm::NodeID> &range,
+            HypernodeID init) -> kaminpar::shm::NodeID {
+          for (HypernodeID i = range.begin(); i != range.end(); ++i) {
+            init += remap_clusters[i];
+          }
+          return init;
+        },
+        std::plus<kaminpar::shm::NodeID>());
+    DBG << V(num_graph_clusters);*/
+
     // remap cluster labels to hypervertices as representatives
     tbb::parallel_for(UL(0), num_nodes, [&](const HypernodeID id) {
       const HypernodeID u = perm[_current_vertices[id]];
@@ -718,6 +742,27 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
       clusters[id] = remap_clusters[label_u];
     });
   } else {
+    /*tbb::parallel_for(0u, graph.n(), [&](const kaminpar::shm::NodeID id) {
+  	remap_clusters[id] = 0;
+    });
+
+    tbb::parallel_for(0u, graph.n(), [&](const kaminpar::shm::NodeID id) {
+  	const kaminpar::shm::NodeID label_u = graph_clustering[id];
+  	remap_clusters[label_u] = 1;
+    });
+  
+    HypernodeID num_graph_clusters = tbb::parallel_reduce(
+        tbb::blocked_range<kaminpar::shm::NodeID>(0u, graph.n()), 0,
+        [&](const tbb::blocked_range<kaminpar::shm::NodeID> &range,
+            HypernodeID init) -> kaminpar::shm::NodeID {
+          for (HypernodeID i = range.begin(); i != range.end(); ++i) {
+            init += remap_clusters[i];
+          }
+          return init;
+        },
+        std::plus<kaminpar::shm::NodeID>());
+    DBG << V(num_graph_clusters);*/
+
     // remap cluster labels to hypervertices as representatives
     tbb::parallel_for(UL(0), num_nodes, [&](const HypernodeID id) {
       const HypernodeID u = _current_vertices[id];
@@ -798,7 +843,8 @@ bool ExperimentalCoarsener<TypeTraits>::coarseningPassImpl() {
   ++_pass_nr;
   DBG << V(num_nodes_before_pass / num_nodes);
   if (num_nodes_before_pass / num_nodes <=
-      _context.coarsening.minimum_shrink_factor) {
+      _context.coarsening.minimum_shrink_factor || num_nodes < _context.coarsening.contraction_limit) {
+
     return false;
   }
 

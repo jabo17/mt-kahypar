@@ -118,7 +118,7 @@ void register_coarsening_algorithms() {
 
   REGISTER_DISPATCHED_COARSENER(CoarseningAlgorithm::experimental_coarsener,
                                 ExperimentalCoarsenerDispatcher,
-                                kahypar::meta::PolicyRegistry<mt_kahypar_partition_type_t>::getInstance().getPolicy(
+                                ThreadSafePolicyRegistry<mt_kahypar_partition_type_t>::getInstance().getPolicy(
                                   context.partition.partition_type));
 
   REGISTER_DISPATCHED_COARSENER(CoarseningAlgorithm::do_nothing_coarsener,
